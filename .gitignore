@@ -1,0 +1,30 @@
+# -------------------------
+# Node / frontend
+# -------------------------
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.*    # ignore all variants
+
+# -------------------------
+# Maven / backend
+# -------------------------
+backend/target/
+backend/*.jar
+backend/.env
+backend/.env.*    # ignore all variants
+
+# -------------------------
+# Docker
+# -------------------------
+*.log
+*.env
+*.env.*  
+
+# -------------------------
+# OS / IDE
+# -------------------------
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
