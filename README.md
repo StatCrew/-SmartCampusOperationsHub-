@@ -38,8 +38,8 @@ Create a `.env` file in the project root:
 
 ```env
 # Backend
-SPRING_DATASOURCE_URL=jdbc:postgresql://db.fyoagalaxrwayzznzuvg.supabase.co:5432/postgres?sslmode=require
-SPRING_DATASOURCE_USERNAME=postgres
+SPRING_DATASOURCE_URL=our_supabase_url
+SPRING_DATASOURCE_USERNAME=our_supabase_username
 SPRING_DATASOURCE_PASSWORD=your_supabase_password_here
 SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.postgresql.Driver
 SPRING_JPA_DATABASE_PLATFORM=org.hibernate.dialect.PostgreSQLDialect
