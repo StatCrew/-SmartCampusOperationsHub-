@@ -1,13 +1,15 @@
 package com.smartcampus.backend.security.oauth;
 
+import com.smartcampus.backend.features.auth.dto.AuthResponse;
+import com.smartcampus.backend.features.auth.service.AuthService;
 import com.smartcampus.backend.features.user.model.User;
 import com.smartcampus.backend.features.user.repository.UserRepository;
-import com.smartcampus.backend.security.jwt.JwtService;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.OAuth2User;
@@ -19,7 +21,7 @@ import org.springframework.stereotype.Component;
 public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
 
     private final UserRepository userRepository;
-    private final JwtService jwtService;
+    private final ObjectProvider<AuthService> authServiceProvider;
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request,
@@ -31,18 +33,21 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ServletException("OAuth2 user not found after login"));
 
-        String accessToken = jwtService.generateAccessToken(user);
+        AuthResponse authResponse = authServiceProvider.getObject().issueOAuthToken(user);
         response.setStatus(HttpServletResponse.SC_OK);
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
 
-        String payload = "{\"accessToken\":\"" + escape(accessToken)
-                + "\",\"tokenType\":\"Bearer\",\"user\":{"
-                + "\"id\":" + user.getId() + ","
-                + "\"fullName\":\"" + escape(user.getFullName()) + "\","
-                + "\"email\":\"" + escape(user.getEmail()) + "\","
-                + "\"role\":\"" + escape(user.getRole().name()) + "\","
-                + "\"emailVerified\":" + user.isEmailVerified() + ","
-                + "\"provider\":\"" + escape(user.getProvider().name()) + "\""
+        AuthResponse.UserSummary summary = authResponse.user();
+        String payload = "{\"accessToken\":\"" + escape(authResponse.accessToken())
+                + "\",\"refreshToken\":\"" + escape(authResponse.refreshToken())
+                + "\",\"tokenType\":\"" + escape(authResponse.tokenType())
+                + "\",\"user\":{"
+                + "\"id\":" + summary.id() + ","
+                + "\"fullName\":\"" + escape(summary.fullName()) + "\","
+                + "\"email\":\"" + escape(summary.email()) + "\","
+                + "\"role\":\"" + escape(summary.role()) + "\","
+                + "\"emailVerified\":" + summary.emailVerified() + ","
+                + "\"provider\":\"" + escape(summary.provider()) + "\""
                 + "}}";
 
         response.getWriter().write(payload);
