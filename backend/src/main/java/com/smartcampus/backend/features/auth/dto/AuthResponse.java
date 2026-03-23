@@ -2,6 +2,7 @@ package com.smartcampus.backend.features.auth.dto;
 
 public record AuthResponse(
         String accessToken,
+        String refreshToken,
         String tokenType,
         UserSummary user
 ) {
