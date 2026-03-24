@@ -68,4 +68,11 @@ public class BookingService {
         booking.setStatus(newStatus);
         return bookingRepository.save(booking);
     }
+    // 5. Delete a Booking (Required by Rubric)
+    public void deleteBooking(Long bookingId) {
+        if (!bookingRepository.existsById(bookingId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found");
+        }
+        bookingRepository.deleteById(bookingId);
+    }
 }
