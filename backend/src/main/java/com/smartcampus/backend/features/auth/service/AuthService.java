@@ -1,13 +1,18 @@
 package com.smartcampus.backend.features.auth.service;
 
 import com.smartcampus.backend.features.auth.dto.AuthResponse;
+import com.smartcampus.backend.features.auth.dto.EmailVerificationResponse;
 import com.smartcampus.backend.features.auth.dto.LoginRequest;
 import com.smartcampus.backend.features.auth.dto.LogoutRequest;
 import com.smartcampus.backend.features.auth.dto.MeResponse;
 import com.smartcampus.backend.features.auth.dto.RefreshTokenRequest;
 import com.smartcampus.backend.features.auth.dto.RegisterRequest;
+import com.smartcampus.backend.features.auth.dto.SendVerificationOtpRequest;
+import com.smartcampus.backend.features.auth.dto.VerifyEmailOtpRequest;
+import com.smartcampus.backend.features.auth.model.EmailVerificationOtp;
 import com.smartcampus.backend.features.auth.model.RefreshToken;
 import com.smartcampus.backend.features.auth.model.RevokedToken;
+import com.smartcampus.backend.features.auth.repository.EmailVerificationOtpRepository;
 import com.smartcampus.backend.features.auth.repository.RefreshTokenRepository;
 import com.smartcampus.backend.features.auth.repository.RevokedTokenRepository;
 import com.smartcampus.backend.features.user.model.AuthProvider;
@@ -20,8 +25,11 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.HexFormat;
+import java.util.concurrent.ThreadLocalRandom;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -33,6 +41,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
+import static org.springframework.http.HttpStatus.FORBIDDEN;
+import static org.springframework.http.HttpStatus.TOO_MANY_REQUESTS;
 import static org.springframework.http.HttpStatus.UNAUTHORIZED;
 
 @Service
@@ -43,8 +53,19 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
+    private final EmailVerificationNotificationService emailVerificationNotificationService;
+    private final EmailVerificationOtpRepository emailVerificationOtpRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final RevokedTokenRepository revokedTokenRepository;
+
+    @Value("${app.auth.email-verification.otp-minutes:10}")
+    private long otpValidityMinutes;
+
+    @Value("${app.auth.email-verification.max-attempts:5}")
+    private int otpMaxAttempts;
+
+    @Value("${app.auth.email-verification.resend-cooldown-seconds:60}")
+    private long resendCooldownSeconds;
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
@@ -64,6 +85,7 @@ public class AuthService {
                 .build();
 
         User savedUser = userRepository.save(user);
+        sendOtpForUser(savedUser);
         return issueTokenPair(savedUser);
     }
 
@@ -73,10 +95,96 @@ public class AuthService {
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(normalizedEmail, request.password()));
             User user = (User) authentication.getPrincipal();
+
+            if (user.getProvider() == AuthProvider.LOCAL && !user.isEmailVerified()) {
+                throw new ResponseStatusException(FORBIDDEN, "Email is not verified. Verify your email before login");
+            }
+
             return issueTokenPair(user);
         } catch (BadCredentialsException ex) {
             throw new ResponseStatusException(UNAUTHORIZED, "Invalid email or password");
         }
+    }
+
+    @Transactional
+    public EmailVerificationResponse sendVerificationOtp(SendVerificationOtpRequest request) {
+        String normalizedEmail = request.email().toLowerCase().trim();
+        User user = userRepository.findByEmail(normalizedEmail)
+                .orElse(null);
+
+        if (user == null) {
+            return new EmailVerificationResponse(
+                    "If this email is registered, a verification code has been sent",
+                    false,
+                    null);
+        }
+
+        if (user.getProvider() != AuthProvider.LOCAL) {
+            return new EmailVerificationResponse(
+                    "OAuth accounts are already verified",
+                    true,
+                    null);
+        }
+
+        if (user.isEmailVerified()) {
+            return new EmailVerificationResponse("Email is already verified", true, null);
+        }
+
+        EmailVerificationOtp otp = sendOtpForUser(user);
+        return new EmailVerificationResponse("Verification code sent", false, otp.getExpiresAt());
+    }
+
+    @Transactional
+    public EmailVerificationResponse verifyEmailOtp(VerifyEmailOtpRequest request) {
+        String normalizedEmail = request.email().toLowerCase().trim();
+        User user = userRepository.findByEmail(normalizedEmail)
+                .orElseThrow(() -> new ResponseStatusException(BAD_REQUEST, "Invalid verification request"));
+
+        if (user.getProvider() != AuthProvider.LOCAL) {
+            throw new ResponseStatusException(BAD_REQUEST, "Email verification is only required for local accounts");
+        }
+
+        if (user.isEmailVerified()) {
+            return new EmailVerificationResponse("Email is already verified", true, null);
+        }
+
+        EmailVerificationOtp otpRecord = emailVerificationOtpRepository
+                .findTopByUserIdAndConsumedFalseOrderByCreatedAtDesc(user.getId())
+                .orElseThrow(() -> new ResponseStatusException(BAD_REQUEST, "OTP not found. Request a new code"));
+
+        Instant now = Instant.now();
+        if (otpRecord.getExpiresAt().isBefore(now)) {
+            otpRecord.setConsumed(true);
+            otpRecord.setConsumedAt(now);
+            emailVerificationOtpRepository.save(otpRecord);
+            throw new ResponseStatusException(BAD_REQUEST, "OTP has expired. Request a new code");
+        }
+
+        if (otpRecord.getAttempts() >= otpRecord.getMaxAttempts()) {
+            otpRecord.setConsumed(true);
+            otpRecord.setConsumedAt(now);
+            emailVerificationOtpRepository.save(otpRecord);
+            throw new ResponseStatusException(BAD_REQUEST, "OTP attempts exceeded. Request a new code");
+        }
+
+        if (!otpRecord.getOtpHash().equals(hashToken(request.otp().trim()))) {
+            otpRecord.setAttempts(otpRecord.getAttempts() + 1);
+            if (otpRecord.getAttempts() >= otpRecord.getMaxAttempts()) {
+                otpRecord.setConsumed(true);
+                otpRecord.setConsumedAt(now);
+            }
+            emailVerificationOtpRepository.save(otpRecord);
+            throw new ResponseStatusException(BAD_REQUEST, "Invalid OTP code");
+        }
+
+        otpRecord.setConsumed(true);
+        otpRecord.setConsumedAt(now);
+        emailVerificationOtpRepository.save(otpRecord);
+
+        user.setEmailVerified(true);
+        userRepository.save(user);
+
+        return new EmailVerificationResponse("Email verified successfully", true, null);
     }
 
     @Transactional
@@ -216,6 +324,45 @@ public class AuthService {
         } catch (NoSuchAlgorithmException ex) {
             throw new IllegalStateException("SHA-256 algorithm is not available", ex);
         }
+    }
+
+    private EmailVerificationOtp sendOtpForUser(User user) {
+        Instant now = Instant.now();
+        emailVerificationOtpRepository.deleteByExpiresAtBefore(now);
+
+        EmailVerificationOtp currentOtp = emailVerificationOtpRepository
+                .findTopByUserIdAndConsumedFalseOrderByCreatedAtDesc(user.getId())
+                .orElse(null);
+
+        if (currentOtp != null
+                && currentOtp.getCreatedAt().plus(resendCooldownSeconds, ChronoUnit.SECONDS).isAfter(now)) {
+            throw new ResponseStatusException(TOO_MANY_REQUESTS, "Please wait before requesting another OTP");
+        }
+
+        if (currentOtp != null) {
+            currentOtp.setConsumed(true);
+            currentOtp.setConsumedAt(now);
+            emailVerificationOtpRepository.save(currentOtp);
+        }
+
+        String otp = generateOtp();
+        EmailVerificationOtp newOtp = emailVerificationOtpRepository.save(EmailVerificationOtp.builder()
+                .user(user)
+                .otpHash(hashToken(otp))
+                .expiresAt(now.plus(otpValidityMinutes, ChronoUnit.MINUTES))
+                .attempts(0)
+                .maxAttempts(otpMaxAttempts)
+                .consumed(false)
+                .createdAt(now)
+                .build());
+
+        emailVerificationNotificationService.sendOtp(user.getEmail(), user.getFullName(), otp, newOtp.getExpiresAt());
+        return newOtp;
+    }
+
+    private String generateOtp() {
+        int value = ThreadLocalRandom.current().nextInt(100000, 1000000);
+        return String.valueOf(value);
     }
 }
 
