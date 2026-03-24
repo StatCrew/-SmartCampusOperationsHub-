@@ -1,11 +1,14 @@
 package com.smartcampus.backend.features.auth.controller;
 
 import com.smartcampus.backend.features.auth.dto.AuthResponse;
+import com.smartcampus.backend.features.auth.dto.EmailVerificationResponse;
 import com.smartcampus.backend.features.auth.dto.LoginRequest;
 import com.smartcampus.backend.features.auth.dto.LogoutRequest;
 import com.smartcampus.backend.features.auth.dto.MeResponse;
 import com.smartcampus.backend.features.auth.dto.RefreshTokenRequest;
 import com.smartcampus.backend.features.auth.dto.RegisterRequest;
+import com.smartcampus.backend.features.auth.dto.SendVerificationOtpRequest;
+import com.smartcampus.backend.features.auth.dto.VerifyEmailOtpRequest;
 import com.smartcampus.backend.features.auth.service.AuthService;
 import com.smartcampus.backend.features.user.model.User;
 import jakarta.validation.Valid;
@@ -41,6 +44,18 @@ public class AuthController {
     @PostMapping("/refresh")
     public ResponseEntity<AuthResponse> refresh(@Valid @RequestBody RefreshTokenRequest request) {
         return ResponseEntity.ok(authService.refresh(request));
+    }
+
+    @PostMapping("/email-verification/send-otp")
+    public ResponseEntity<EmailVerificationResponse> sendVerificationOtp(
+            @Valid @RequestBody SendVerificationOtpRequest request) {
+        return ResponseEntity.ok(authService.sendVerificationOtp(request));
+    }
+
+    @PostMapping("/email-verification/verify")
+    public ResponseEntity<EmailVerificationResponse> verifyEmailOtp(
+            @Valid @RequestBody VerifyEmailOtpRequest request) {
+        return ResponseEntity.ok(authService.verifyEmailOtp(request));
     }
 
     @PostMapping("/logout")
