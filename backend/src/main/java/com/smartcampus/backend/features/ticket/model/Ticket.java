@@ -1,0 +1,42 @@
+package com.smartcampus.backend.features.ticket.model;
+
+import com.smartcampus.backend.features.user.model.User;
+import jakarta.persistence.*;
+import lombok.*;
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "tickets")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class Ticket {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String title;
+
+    @Column(length = 1000)
+    private String description;
+
+    private String category;
+
+    private String priority; // LOW, MEDIUM, HIGH
+
+    private String status; // OPEN, IN_PROGRESS, RESOLVED, CLOSED, REJECTED
+
+    private Long resourceId;
+
+    private LocalDateTime createdAt;
+
+    private LocalDateTime updatedAt;
+
+    //Relationship with User
+    @ManyToOne
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+}
