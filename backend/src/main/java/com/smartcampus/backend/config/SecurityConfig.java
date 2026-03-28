@@ -73,7 +73,9 @@ public class SecurityConfig {
                                 "/api/v1/auth/register",
                                 "/api/v1/auth/refresh",
                                 "/api/v1/auth/email-verification/send-otp",
-                                "/api/v1/auth/email-verification/verify")
+                                "/api/v1/auth/email-verification/verify",
+                                "/api/v1/auth/forgot-password/send-otp",
+                                "/api/v1/auth/forgot-password/reset")
                         .permitAll()
                         .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
                         .requestMatchers("/h2-console/**").permitAll()
