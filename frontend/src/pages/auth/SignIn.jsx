@@ -108,6 +108,11 @@ function SignIn() {
               placeholder="********"
             />
             {errors.password ? <p className="mt-1 text-xs text-red-600">{errors.password}</p> : null}
+            <div className="mt-2 text-right">
+              <Link to="/forgot-password" className="text-xs font-medium text-indigo-600 hover:text-indigo-700">
+                Forgot password?
+              </Link>
+            </div>
           </div>
 
           {oauthError ? (
