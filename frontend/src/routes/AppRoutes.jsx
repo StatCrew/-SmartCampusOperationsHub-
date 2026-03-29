@@ -9,6 +9,7 @@ import VerifyEmail from '../pages/auth/VerifyEmail'
 import AdminDashboard from '../pages/dashboard/AdminDashboard'
 import TechnicianDashboard from '../pages/dashboard/TechnicianDashboard'
 import UserDashboard from '../pages/dashboard/UserDashboard'
+import UserProfile from '../pages/dashboard/UserProfile'
 import ProtectedRoute from './ProtectedRoute'
 
 function HomeRedirect() {
@@ -81,6 +82,7 @@ function AppRoutes() {
 
       <Route element={<ProtectedRoute allowedRoles={['USER']} />}>
         <Route path="/user-dashboard" element={<UserDashboard />} />
+        <Route path="/user-dashboard/profile" element={<UserProfile />} />
       </Route>
 
       <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
