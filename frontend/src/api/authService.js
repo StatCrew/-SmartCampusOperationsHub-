@@ -54,6 +54,16 @@ export async function verifyEmailOtp(payload) {
   return response.data
 }
 
+export async function sendForgotPasswordOtp(payload) {
+  const response = await apiClient.post(`${AUTH_PREFIX}/forgot-password/send-otp`, payload)
+  return response.data
+}
+
+export async function resetForgotPassword(payload) {
+  const response = await apiClient.post(`${AUTH_PREFIX}/forgot-password/reset`, payload)
+  return response.data
+}
+
 export function getGoogleLoginUrl() {
   return `${API_BASE_URL}${GOOGLE_AUTH_PATH}`
 }

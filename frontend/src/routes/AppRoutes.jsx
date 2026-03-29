@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { getDashboardPathByRole } from '../context/authRoles'
+import ForgotPassword from '../pages/auth/ForgotPassword'
 import OAuthCallback from '../pages/auth/OAuthCallback'
 import useAuth from '../context/useAuth'
 import SignIn from '../pages/auth/SignIn'
@@ -64,6 +65,14 @@ function AppRoutes() {
         element={
           <PublicRoute>
             <SignUp />
+          </PublicRoute>
+        }
+      />
+      <Route
+        path="/forgot-password"
+        element={
+          <PublicRoute>
+            <ForgotPassword />
           </PublicRoute>
         }
       />
