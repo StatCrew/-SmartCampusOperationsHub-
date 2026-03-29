@@ -1,12 +1,7 @@
-import DashboardLayout from './DashboardLayout'
+import UserOverviewPage from './user/UserOverviewPage'
 
 function UserDashboard() {
-  return (
-    <DashboardLayout
-      title="User Dashboard"
-      description="Welcome to your student operations workspace."
-    />
-  )
+  return <UserOverviewPage />
 }
 
 export default UserDashboard

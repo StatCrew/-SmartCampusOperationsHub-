@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import {
   getApiErrorMessage,
   login as loginRequest,
@@ -49,7 +49,7 @@ export function AuthProvider({ children }) {
     return null
   })
 
-  const login = async (credentials) => {
+  const login = useCallback(async (credentials) => {
     const data = await loginRequest(credentials)
     const normalized = normalizeAuthPayload(data)
 
@@ -59,9 +59,9 @@ export function AuthProvider({ children }) {
 
     saveAuth(normalized, setAuth)
     return normalized
-  }
+  }, [])
 
-  const register = async (registrationData) => {
+  const register = useCallback(async (registrationData) => {
     const data = await registerRequest(registrationData)
     const normalized = normalizeAuthPayload(data)
 
@@ -71,14 +71,14 @@ export function AuthProvider({ children }) {
     }
 
     return null
-  }
+  }, [])
 
-  const logout = () => {
+  const logout = useCallback(() => {
     setAuth(null)
     localStorage.removeItem(AUTH_STORAGE_KEY)
-  }
+  }, [])
 
-  const applyOAuthLogin = (oauthPayload) => {
+  const applyOAuthLogin = useCallback((oauthPayload) => {
     const normalized = normalizeAuthPayload(oauthPayload)
     if (!normalized) {
       throw new Error('OAuth response did not include token/role.')
@@ -86,9 +86,9 @@ export function AuthProvider({ children }) {
 
     saveAuth(normalized, setAuth)
     return normalized
-  }
+  }, [])
 
-  const completeEmailVerification = async ({ email, otp }) => {
+  const completeEmailVerification = useCallback(async ({ email, otp }) => {
     const response = await verifyEmailOtpRequest({ email, otp })
 
     setAuth((previous) => {
@@ -113,7 +113,35 @@ export function AuthProvider({ children }) {
     })
 
     return response
-  }
+  }, [])
+
+  const syncProfile = useCallback((profile) => {
+    if (!profile) {
+      return
+    }
+
+    setAuth((previous) => {
+      if (!previous) {
+        return previous
+      }
+
+      const nextAuth = {
+        ...previous,
+        role: profile.role || previous.role,
+        user: {
+          ...(previous.user || {}),
+          ...profile,
+          emailVerified:
+            typeof profile.emailVerified === 'boolean'
+              ? profile.emailVerified
+              : previous.user?.emailVerified,
+        },
+      }
+
+      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextAuth))
+      return nextAuth
+    })
+  }, [])
 
   const value = useMemo(
     () => ({
@@ -128,10 +156,19 @@ export function AuthProvider({ children }) {
       register,
       applyOAuthLogin,
       completeEmailVerification,
+      syncProfile,
       logout,
       getApiErrorMessage,
     }),
-    [auth],
+    [
+      auth,
+      applyOAuthLogin,
+      completeEmailVerification,
+      login,
+      logout,
+      register,
+      syncProfile,
+    ],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
