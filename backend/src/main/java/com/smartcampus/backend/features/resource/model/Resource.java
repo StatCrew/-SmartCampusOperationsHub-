@@ -2,7 +2,7 @@ package com.smartcampus.backend.features.resource.model;
 
 import jakarta.persistence.*;
 import lombok.*;
-import java.util.List;
+import java.time.Instant;
 
 @Entity
 @Table(name = "resources")
@@ -17,17 +17,25 @@ public class Resource {
     @Column(nullable = false)
     private String name;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private String type; // e.g., LECTURE_HALL, LAB, EQUIPMENT
+    private ResourceType type;
 
+    @Column(nullable = false)
     private Integer capacity;
 
     @Column(nullable = false)
     private String location;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private String status; // ACTIVE, OUT_OF_SERVICE
+    private ResourceStatus status;
 
-    @ElementCollection
-    private List<String> availabilityWindows; // e.g., ["08:00-10:00", "14:00-16:00"]
+    private String description;
+
+    @Column(nullable = false, updatable = false)
+    private Instant createdAt;
+
+    @Column
+    private Instant updatedAt;
 }

@@ -1,43 +1,50 @@
 package com.smartcampus.backend.features.resource.controller;
 
-import com.smartcampus.backend.features.resource.dto.ResourceDTO;
-import com.smartcampus.backend.features.resource.model.Resource;
+import com.smartcampus.backend.features.resource.dto.*;
+import com.smartcampus.backend.features.resource.model.ResourceType;
 import com.smartcampus.backend.features.resource.service.ResourceService;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/resources")
+@RequiredArgsConstructor
 public class ResourceController {
 
-    private final ResourceService service;
+    private final ResourceService resourceService;
 
-    public ResourceController(ResourceService service) {
-        this.service = service;
+    @GetMapping
+    public ResponseEntity<List<ResourceResponse>> getAll(
+            @RequestParam(required = false) ResourceType type,
+            @RequestParam(required = false) Integer minCapacity,
+            @RequestParam(required = false) String location) {
+        return ResponseEntity.ok(resourceService.getAllResources(type, minCapacity, location));
     }
 
     @PostMapping
-    public ResponseEntity<Resource> create(@Valid @RequestBody ResourceDTO dto) {
-        return new ResponseEntity<>(service.createResource(dto), HttpStatus.CREATED);
-    }
-
-    @GetMapping
-    public ResponseEntity<List<Resource>> getAll() {
-        return ResponseEntity.ok(service.getAllResources());
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ResourceResponse> create(@Valid @RequestBody ResourceRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(resourceService.createResource(request));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Resource> update(@PathVariable Long id, @Valid @RequestBody ResourceDTO dto) {
-        return ResponseEntity.ok(service.updateResource(id, dto));
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ResourceResponse> update(
+            @PathVariable Long id, 
+            @Valid @RequestBody ResourceRequest request) {
+        return ResponseEntity.ok(resourceService.updateResource(id, request));
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
-        service.deleteResource(id);
+        resourceService.deleteResource(id);
         return ResponseEntity.noContent().build();
     }
 }
