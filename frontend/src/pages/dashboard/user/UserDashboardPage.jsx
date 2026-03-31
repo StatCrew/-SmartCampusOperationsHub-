@@ -1,13 +1,14 @@
 import { useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import useAuth from '../../../context/useAuth'
+import { getHeaderLabelsByRole, getSidebarItemsByRole } from '../constants'
 import UserAccountSummaryCard from './components/UserAccountSummaryCard'
 import UserDashboardHeader from './components/UserDashboardHeader'
 import UserProfileDetailsCard from './components/UserProfileDetailsCard'
 import UserProfileHero from './components/UserProfileHero'
 import UserQuickStatsCard from './components/UserQuickStatsCard'
 import UserSidebar from './components/UserSidebar'
-import { userQuickStats, userSidebarItems } from './constants'
+import { userQuickStats } from './constants'
 import useUserProfile from './hooks/useUserProfile'
 
 function UserDashboardPage() {
@@ -37,9 +38,11 @@ function UserDashboardPage() {
   }
 
   const sidebarItems = useMemo(
-    () => userSidebarItems.map((item) => ({ ...item, active: item.path === location.pathname })),
-    [location.pathname],
+    () => getSidebarItemsByRole(role).map((item) => ({ ...item, active: item.path === location.pathname })),
+    [location.pathname, role],
   )
+
+  const headerLabels = getHeaderLabelsByRole(role)
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900">
@@ -53,7 +56,11 @@ function UserDashboardPage() {
       />
 
       <div className={`min-h-screen transition-all duration-300 ${isSidebarExpanded ? 'md:pl-64' : 'md:pl-20'}`}>
-        <UserDashboardHeader onLogout={handleLogout} />
+        <UserDashboardHeader
+          onLogout={handleLogout}
+          eyebrow={headerLabels.eyebrow}
+          title={headerLabels.title}
+        />
 
         <main className="mx-auto w-full max-w-6xl p-4 pb-24 md:p-8">
           {profileError ? (

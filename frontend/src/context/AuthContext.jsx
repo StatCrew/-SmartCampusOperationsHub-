@@ -1,6 +1,7 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   getApiErrorMessage,
+  getMyProfile as getMyProfileRequest,
   login as loginRequest,
   register as registerRequest,
   verifyEmailOtp as verifyEmailOtpRequest,
@@ -48,6 +49,63 @@ export function AuthProvider({ children }) {
     localStorage.removeItem(AUTH_STORAGE_KEY)
     return null
   })
+
+  const [isInitializing, setIsInitializing] = useState(() => Boolean(auth?.token))
+
+  useEffect(() => {
+    let isMounted = true
+
+    const validatePersistedSession = async () => {
+      if (!auth?.token) {
+        setIsInitializing(false)
+        return
+      }
+
+      setIsInitializing(true)
+
+      try {
+        const profile = await getMyProfileRequest()
+        if (!isMounted) {
+          return
+        }
+
+        setAuth((previous) => {
+          if (!previous) {
+            return previous
+          }
+
+          const nextAuth = {
+            ...previous,
+            role: profile.role || previous.role,
+            user: {
+              ...(previous.user || {}),
+              ...profile,
+            },
+          }
+
+          localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextAuth))
+          return nextAuth
+        })
+      } catch {
+        if (!isMounted) {
+          return
+        }
+
+        setAuth(null)
+        localStorage.removeItem(AUTH_STORAGE_KEY)
+      } finally {
+        if (isMounted) {
+          setIsInitializing(false)
+        }
+      }
+    }
+
+    validatePersistedSession()
+
+    return () => {
+      isMounted = false
+    }
+  }, [auth?.token])
 
   const login = useCallback(async (credentials) => {
     const data = await loginRequest(credentials)
@@ -151,7 +209,7 @@ export function AuthProvider({ children }) {
       role: auth?.role || null,
       user: auth?.user || null,
       isAuthenticated: Boolean(auth?.token),
-      isInitializing: false,
+      isInitializing,
       login,
       register,
       applyOAuthLogin,
@@ -168,6 +226,7 @@ export function AuthProvider({ children }) {
       logout,
       register,
       syncProfile,
+      isInitializing,
     ],
   )
 

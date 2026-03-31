@@ -104,6 +104,7 @@ public class AuthService {
         return issueTokenPair(savedUser);
     }
 
+    @Transactional
     public AuthResponse login(LoginRequest request) {
         String normalizedEmail = request.email().toLowerCase().trim();
         try {
@@ -341,6 +342,7 @@ public class AuthService {
                 authenticatedUser.getProvider().name());
     }
 
+    @Transactional
     public AuthResponse issueOAuthToken(User user) {
         return issueTokenPair(user);
     }

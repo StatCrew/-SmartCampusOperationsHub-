@@ -1,14 +1,14 @@
 import { useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import useAuth from '../../../context/useAuth'
+import { getHeaderLabelsByRole, getSidebarItemsByRole } from '../constants'
 import UserDashboardHeader from './components/UserDashboardHeader'
 import UserSidebar from './components/UserSidebar'
-import { userSidebarItems } from './constants'
 
 function UserOverviewPage() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { user, logout } = useAuth()
+  const { role, user, logout } = useAuth()
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false)
 
   const handleLogout = () => {
@@ -17,9 +17,11 @@ function UserOverviewPage() {
   }
 
   const sidebarItems = useMemo(
-    () => userSidebarItems.map((item) => ({ ...item, active: item.path === location.pathname })),
-    [location.pathname],
+    () => getSidebarItemsByRole(role).map((item) => ({ ...item, active: item.path === location.pathname })),
+    [location.pathname, role],
   )
+
+  const headerLabels = getHeaderLabelsByRole(role)
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900">
@@ -33,7 +35,11 @@ function UserOverviewPage() {
       />
 
       <div className={`min-h-screen transition-all duration-300 ${isSidebarExpanded ? 'md:pl-64' : 'md:pl-20'}`}>
-        <UserDashboardHeader onLogout={handleLogout} />
+        <UserDashboardHeader
+          onLogout={handleLogout}
+          eyebrow={headerLabels.eyebrow}
+          title={headerLabels.title}
+        />
 
         <main className="mx-auto w-full max-w-6xl p-4 pb-24 md:p-8">
           <section className="rounded-2xl bg-white p-6 shadow-sm">
@@ -61,7 +67,7 @@ function UserOverviewPage() {
 
             <button
               type="button"
-              onClick={() => navigate('/user-dashboard/profile')}
+              onClick={() => navigate('/dashboard/user/profile')}
               className="mt-6 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700"
             >
               Go to Profile
