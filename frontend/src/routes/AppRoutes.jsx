@@ -6,8 +6,9 @@ import useAuth from '../context/useAuth'
 import SignIn from '../pages/auth/SignIn'
 import SignUp from '../pages/auth/SignUp'
 import VerifyEmail from '../pages/auth/VerifyEmail'
-import AdminDashboard from '../pages/dashboard/AdminDashboard'
-import TechnicianDashboard from '../pages/dashboard/TechnicianDashboard'
+import AdminUsersPage from '../pages/dashboard/admin/AdminUsersPage'
+import CreateTechnicianPage from '../pages/dashboard/admin/CreateTechnicianPage'
+import TechnicianDashboardPage from '../pages/dashboard/technician/TechnicianDashboardPage'
 import UserDashboard from '../pages/dashboard/UserDashboard'
 import UserProfile from '../pages/dashboard/UserProfile'
 import ProtectedRoute from './ProtectedRoute'
@@ -81,17 +82,23 @@ function AppRoutes() {
       <Route path="/oauth/callback" element={<OAuthCallback />} />
 
       <Route element={<ProtectedRoute allowedRoles={['USER']} />}>
-        <Route path="/user-dashboard" element={<UserDashboard />} />
-        <Route path="/user-dashboard/profile" element={<UserProfile />} />
+        <Route path="/dashboard/user" element={<UserDashboard />} />
+        <Route path="/dashboard/user/profile" element={<UserProfile />} />
       </Route>
 
       <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
-        <Route path="/admin-dashboard" element={<AdminDashboard />} />
+        <Route path="/dashboard/admin/users" element={<AdminUsersPage />} />
+        <Route path="/dashboard/admin/create-technician" element={<CreateTechnicianPage />} />
       </Route>
 
       <Route element={<ProtectedRoute allowedRoles={['TECHNICIAN']} />}>
-        <Route path="/technician-dashboard" element={<TechnicianDashboard />} />
+        <Route path="/dashboard/technician" element={<TechnicianDashboardPage />} />
       </Route>
+
+      <Route path="/user-dashboard" element={<Navigate to="/dashboard/user" replace />} />
+      <Route path="/user-dashboard/profile" element={<Navigate to="/dashboard/user/profile" replace />} />
+      <Route path="/admin-dashboard" element={<Navigate to="/dashboard/admin/users" replace />} />
+      <Route path="/technician-dashboard" element={<Navigate to="/dashboard/technician" replace />} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
@@ -99,7 +106,3 @@ function AppRoutes() {
 }
 
 export default AppRoutes
-
-
-
-
