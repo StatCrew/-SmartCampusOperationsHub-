@@ -6,8 +6,9 @@ import useAuth from '../context/useAuth'
 import SignIn from '../pages/auth/SignIn'
 import SignUp from '../pages/auth/SignUp'
 import VerifyEmail from '../pages/auth/VerifyEmail'
+import AdminDashboardPage from '../pages/dashboard/admin/AdminDashboardPage'
 import AdminUsersPage from '../pages/dashboard/admin/AdminUsersPage'
-import CreateTechnicianPage from '../pages/dashboard/admin/CreateTechnicianPage'
+import CreateUserPage from '../pages/dashboard/admin/CreateUserPage'
 import TechnicianDashboardPage from '../pages/dashboard/technician/TechnicianDashboardPage'
 import UserDashboard from '../pages/dashboard/UserDashboard'
 import UserProfile from '../pages/dashboard/UserProfile'
@@ -83,12 +84,17 @@ function AppRoutes() {
 
       <Route element={<ProtectedRoute allowedRoles={['USER']} />}>
         <Route path="/dashboard/user" element={<UserDashboard />} />
+      </Route>
+
+      <Route element={<ProtectedRoute allowedRoles={['USER', 'ADMIN', 'TECHNICIAN']} />}>
         <Route path="/dashboard/user/profile" element={<UserProfile />} />
       </Route>
 
       <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
-        <Route path="/dashboard/admin/users" element={<AdminUsersPage />} />
-        <Route path="/dashboard/admin/create-technician" element={<CreateTechnicianPage />} />
+        <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+        <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+        <Route path="/admin/users" element={<AdminUsersPage />} />
+        <Route path="/admin/users/create" element={<CreateUserPage />} />
       </Route>
 
       <Route element={<ProtectedRoute allowedRoles={['TECHNICIAN']} />}>
@@ -97,7 +103,7 @@ function AppRoutes() {
 
       <Route path="/user-dashboard" element={<Navigate to="/dashboard/user" replace />} />
       <Route path="/user-dashboard/profile" element={<Navigate to="/dashboard/user/profile" replace />} />
-      <Route path="/admin-dashboard" element={<Navigate to="/dashboard/admin/users" replace />} />
+      <Route path="/admin-dashboard" element={<Navigate to="/admin/dashboard" replace />} />
       <Route path="/technician-dashboard" element={<Navigate to="/dashboard/technician" replace />} />
 
       <Route path="*" element={<Navigate to="/" replace />} />

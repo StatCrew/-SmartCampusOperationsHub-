@@ -1,6 +1,6 @@
 export const ROLE_DASHBOARD_PATHS = {
   USER: '/dashboard/user',
-  ADMIN: '/dashboard/admin/users',
+  ADMIN: '/admin/dashboard',
   TECHNICIAN: '/dashboard/technician',
 }
 

@@ -1,8 +1,8 @@
 import axios from 'axios'
 
 const API_BASE_URL = (
-  import.meta.env.BACKEND_API_URL ||
   import.meta.env.VITE_API_BASE_URL ||
+  import.meta.env.VITE_BACKEND_API_URL ||
   'http://localhost:8080'
 ).replace(/\/$/, '')
 const AUTH_PREFIX = import.meta.env.VITE_AUTH_PREFIX || '/api/v1/auth'
@@ -70,7 +70,7 @@ export async function resetForgotPassword(payload) {
 }
 
 export function getGoogleLoginUrl() {
-  return `${API_BASE_URL}${GOOGLE_AUTH_PATH}`
+  return new URL(GOOGLE_AUTH_PATH, API_BASE_URL).toString()
 }
 
 export function getApiErrorMessage(error) {

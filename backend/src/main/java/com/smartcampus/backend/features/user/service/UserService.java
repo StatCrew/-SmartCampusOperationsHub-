@@ -43,18 +43,23 @@ public class UserService {
 
     @Transactional
     public UserResponse createTechnician(CreateTechnicianRequest request) {
-        String normalizedEmail = request.email().toLowerCase().trim();
+        return createUser(request.fullName(), request.email(), request.password(), Role.TECHNICIAN, true);
+    }
+
+    @Transactional
+    public UserResponse createUser(String fullName, String email, String password, Role role, Boolean active) {
+        String normalizedEmail = email.toLowerCase().trim();
         if (userRepository.existsByEmail(normalizedEmail)) {
             throw new ResponseStatusException(BAD_REQUEST, "Email is already registered");
         }
 
         User technician = User.builder()
-                .fullName(request.fullName().trim())
+                .fullName(fullName.trim())
                 .email(normalizedEmail)
-                .password(passwordEncoder.encode(request.password()))
-                .role(Role.TECHNICIAN)
+                .password(passwordEncoder.encode(password))
+                .role(role)
                 .provider(AuthProvider.LOCAL)
-                .emailVerified(true)
+                .emailVerified(Boolean.TRUE.equals(active))
                 .createdAt(Instant.now())
                 .build();
 
