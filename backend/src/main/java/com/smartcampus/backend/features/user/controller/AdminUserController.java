@@ -1,6 +1,7 @@
 package com.smartcampus.backend.features.user.controller;
 
 import com.smartcampus.backend.features.user.dto.CreateTechnicianRequest;
+import com.smartcampus.backend.features.user.dto.CreateUserRequest;
 import com.smartcampus.backend.features.user.dto.UpdateRoleRequest;
 import com.smartcampus.backend.features.user.dto.UpdateUserStatusRequest;
 import com.smartcampus.backend.features.user.dto.UserResponse;
@@ -30,6 +31,17 @@ public class AdminUserController {
 
     private final UserService userService;
     private final UserModelAssembler userModelAssembler;
+
+    @PostMapping
+    public ResponseEntity<EntityModel<UserResponse>> createUser(@Valid @RequestBody CreateUserRequest request) {
+        UserResponse response = userService.createUser(
+                request.fullName(),
+                request.email(),
+                request.password(),
+                request.role(),
+                request.active());
+        return ResponseEntity.status(HttpStatus.CREATED).body(userModelAssembler.toAdminModel(response));
+    }
 
     @PostMapping("/technician")
     public ResponseEntity<EntityModel<UserResponse>> createTechnician(

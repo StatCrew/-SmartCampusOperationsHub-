@@ -28,7 +28,11 @@ export async function getUsers() {
 }
 
 export async function createTechnician(payload) {
-  const response = await apiClient.post(`${ADMIN_USERS_PREFIX}/technician`, payload)
+  return createUser({ ...payload, role: 'TECHNICIAN' })
+}
+
+export async function createUser(payload) {
+  const response = await apiClient.post(ADMIN_USERS_PREFIX, payload)
   return response.data
 }
 

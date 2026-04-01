@@ -106,10 +106,10 @@ function AdminUsersPage() {
               </div>
               <button
                 type="button"
-                onClick={() => navigate('/dashboard/admin/create-technician')}
+                onClick={() => navigate('/admin/users/create')}
                 className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700"
               >
-                Create Technician
+                Create User
               </button>
             </div>
 
@@ -151,15 +151,16 @@ function AdminUsersPage() {
                             <span className="mr-3 inline-flex rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700">
                               {item.role}
                             </span>
-                            <select
-                              value={item.role === 'ADMIN' ? 'USER' : item.role}
-                              disabled={isProcessingRow || item.role === 'ADMIN'}
-                              onChange={(event) => handleRoleUpdate(item.id, event.target.value)}
-                              className="rounded-lg border border-slate-300 px-2 py-1 text-xs outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 disabled:cursor-not-allowed disabled:bg-slate-100"
-                            >
-                              <option value="USER">USER</option>
-                              <option value="TECHNICIAN">TECHNICIAN</option>
-                            </select>
+                              <select
+                                value={item.role}
+                                disabled={isProcessingRow}
+                                onChange={(event) => handleRoleUpdate(item.id, event.target.value)}
+                                className="rounded-lg border border-slate-300 px-2 py-1 text-xs outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 disabled:cursor-not-allowed disabled:bg-slate-100"
+                              >
+                                <option value="USER">USER</option>
+                                <option value="ADMIN">ADMIN</option>
+                                <option value="TECHNICIAN">TECHNICIAN</option>
+                              </select>
                           </td>
                           <td className="px-4 py-3">
                             <span

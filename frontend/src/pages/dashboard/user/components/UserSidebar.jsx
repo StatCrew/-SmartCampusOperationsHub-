@@ -12,38 +12,25 @@ function UserSidebar({
         isSidebarExpanded ? 'w-64' : 'w-20'
       }`}
     >
-      {isSidebarExpanded ? (
-        <div className="mb-6 flex items-center justify-between px-2 py-2">
-          <div className="flex items-center gap-2 overflow-hidden">
-            <div className="grid h-8 w-8 place-items-center rounded-lg bg-indigo-600 text-white">
-              <span className="material-symbols-outlined text-base">school</span>
-            </div>
-            <span className="text-sm font-bold text-slate-900">Campus Hub</span>
-          </div>
-          <button
-            type="button"
-            onClick={onCollapse}
-            className="grid h-8 w-8 place-items-center rounded-lg text-slate-500 transition hover:bg-slate-100"
-            aria-label="Collapse sidebar"
-          >
-            <span className="material-symbols-outlined text-base">left_panel_close</span>
-          </button>
-        </div>
-      ) : (
-        <div className="mb-6 flex flex-col items-center gap-2 py-2">
-          <div className="grid h-8 w-8 place-items-center rounded-lg bg-indigo-600 text-white">
+      <div className="mb-6 flex items-center justify-between gap-2 px-2 py-2">
+        <div className={`flex items-center gap-2 overflow-hidden ${isSidebarExpanded ? 'opacity-100' : 'justify-center'}`}>
+          <div className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-lg bg-indigo-600 text-white">
             <span className="material-symbols-outlined text-base">school</span>
           </div>
-          <button
-            type="button"
-            onClick={onExpand}
-            className="grid h-8 w-8 place-items-center rounded-lg text-slate-500 transition hover:bg-slate-100"
-            aria-label="Expand sidebar"
-          >
-            <span className="material-symbols-outlined text-base">menu</span>
-          </button>
+          {isSidebarExpanded ? <span className="text-sm font-bold text-slate-900">Campus Hub</span> : null}
         </div>
-      )}
+
+        <button
+          type="button"
+          onClick={isSidebarExpanded ? onCollapse : onExpand}
+          className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-lg text-slate-500 transition hover:bg-slate-100"
+          aria-label={isSidebarExpanded ? 'Collapse sidebar' : 'Expand sidebar'}
+        >
+          <span className="material-symbols-outlined text-base">
+            {isSidebarExpanded ? 'left_panel_close' : 'menu'}
+          </span>
+        </button>
+      </div>
 
       <nav className="flex-1 space-y-1">
         {sidebarItems.map((item) => (

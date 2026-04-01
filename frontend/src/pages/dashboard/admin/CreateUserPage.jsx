@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { createTechnician } from '../../../api/adminApi'
+import { createUser } from '../../../api/adminApi'
 import useAuth from '../../../context/useAuth'
 import { getHeaderLabelsByRole, getSidebarItemsByRole } from '../constants'
 import UserDashboardHeader from '../user/components/UserDashboardHeader'
@@ -10,9 +10,11 @@ const initialFormData = {
   fullName: '',
   email: '',
   password: '',
+  role: 'USER',
+  active: true,
 }
 
-function CreateTechnicianPage() {
+function CreateUserPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const { role, logout, getApiErrorMessage } = useAuth()
@@ -64,17 +66,19 @@ function CreateTechnicianPage() {
     setFormSuccess('')
 
     try {
-      await createTechnician({
+      await createUser({
         fullName: formData.fullName.trim(),
         email: formData.email.trim(),
         password: formData.password,
+        role: formData.role,
+        active: formData.active,
       })
 
       setFormData(initialFormData)
-      setFormSuccess('Technician account created successfully.')
+      setFormSuccess('User account created successfully.')
 
       setTimeout(() => {
-        navigate('/dashboard/admin/users')
+        navigate('/admin/users')
       }, 700)
     } catch (error) {
       setFormError(getApiErrorMessage(error))
@@ -105,13 +109,13 @@ function CreateTechnicianPage() {
         <UserDashboardHeader
           onLogout={handleLogout}
           eyebrow={headerLabels.eyebrow}
-          title="Create Technician"
+          title="Create User"
         />
 
         <main className="mx-auto w-full max-w-3xl p-4 pb-24 md:p-8">
           <section className="rounded-2xl bg-white p-6 shadow-sm">
-            <h2 className="text-xl font-semibold text-slate-900">Create Technician</h2>
-            <p className="mt-1 text-sm text-slate-600">Add a new technician account with role-based access.</p>
+            <h2 className="text-xl font-semibold text-slate-900">Create User</h2>
+            <p className="mt-1 text-sm text-slate-600">Add a new account with role-based access.</p>
 
             <form onSubmit={handleSubmit} className="mt-6 space-y-4">
               <div>
@@ -129,6 +133,41 @@ function CreateTechnicianPage() {
               </div>
 
               <div>
+                <label htmlFor="role" className="mb-1 block text-sm font-medium text-slate-700">
+                  Role
+                </label>
+                <select
+                  id="role"
+                  name="role"
+                  value={formData.role}
+                  onChange={handleInputChange}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+                >
+                  <option value="USER">USER</option>
+                  <option value="ADMIN">ADMIN</option>
+                  <option value="TECHNICIAN">TECHNICIAN</option>
+                </select>
+              </div>
+
+              <div>
+                <label htmlFor="active" className="mb-1 block text-sm font-medium text-slate-700">
+                  Status
+                </label>
+                <select
+                  id="active"
+                  name="active"
+                  value={String(formData.active)}
+                  onChange={(event) =>
+                    setFormData((previous) => ({ ...previous, active: event.target.value === 'true' }))
+                  }
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+                >
+                  <option value="true">Active</option>
+                  <option value="false">Inactive</option>
+                </select>
+              </div>
+
+              <div>
                 <label htmlFor="email" className="mb-1 block text-sm font-medium text-slate-700">
                   Email
                 </label>
@@ -139,7 +178,7 @@ function CreateTechnicianPage() {
                   value={formData.email}
                   onChange={handleInputChange}
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-                  placeholder="technician@campus.edu"
+                  placeholder="user@campus.edu"
                 />
               </div>
 
@@ -173,11 +212,11 @@ function CreateTechnicianPage() {
                   disabled={isSubmitting}
                   className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-70"
                 >
-                  {isSubmitting ? 'Creating...' : 'Create Technician'}
+                  {isSubmitting ? 'Creating...' : 'Create User'}
                 </button>
                 <button
                   type="button"
-                  onClick={() => navigate('/dashboard/admin/users')}
+                  onClick={() => navigate('/admin/users')}
                   className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
                 >
                   Cancel
@@ -191,5 +230,5 @@ function CreateTechnicianPage() {
   )
 }
 
-export default CreateTechnicianPage
+export default CreateUserPage
 
