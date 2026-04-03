@@ -59,6 +59,16 @@ export async function getMyProfile() {
   return response.data
 }
 
+export async function updateMyProfile(payload) {
+  const response = await apiClient.put('/api/v1/users/me', payload)
+  return response.data
+}
+
+export async function verifyEmailChange(payload) {
+  const response = await apiClient.post('/api/v1/users/me/email-change/verify', payload)
+  return response.data
+}
+
 export async function sendForgotPasswordOtp(payload) {
   const response = await apiClient.post(`${AUTH_PREFIX}/forgot-password/send-otp`, payload)
   return response.data

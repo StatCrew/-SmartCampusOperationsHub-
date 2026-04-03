@@ -60,6 +60,25 @@ public class EmailVerificationNotificationService {
         }
     }
 
+    public void sendEmailChangeOtp(String recipientEmail, String fullName, String otp, Instant expiresAt) {
+        JavaMailSender mailSender = mailSenderProvider.getIfAvailable();
+        if (mailSender == null) {
+            handleDeliveryIssue("JavaMailSender is not configured", recipientEmail, otp, expiresAt);
+            return;
+        }
+
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromAddress);
+            message.setTo(recipientEmail);
+            message.setSubject("Smart Campus - Verify New Email Address");
+            message.setText(buildEmailChangeBody(fullName, otp, expiresAt));
+            mailSender.send(message);
+        } catch (Exception ex) {
+            handleDeliveryIssue("Failed to send email change OTP: " + ex.getMessage(), recipientEmail, otp, expiresAt);
+        }
+    }
+
     private void handleDeliveryIssue(String reason, String recipientEmail, String otp, Instant expiresAt) {
         if (requireEmailSend) {
             throw new IllegalStateException(reason);
@@ -86,6 +105,17 @@ public class EmailVerificationNotificationService {
                 + "Your Smart Campus password reset code is: " + otp + "\n"
                 + "This code expires at: " + expiresAt + "\n\n"
                 + "If you did not request a password reset, you can ignore this email.\n\n"
+                + "- Smart Campus Team";
+    }
+
+    private String buildEmailChangeBody(String fullName, String otp, Instant expiresAt) {
+        String recipientName = (fullName == null || fullName.isBlank()) ? "there" : fullName;
+
+        return "Hello " + recipientName + ",\n\n"
+                + "We received a request to change your Smart Campus email address.\n"
+                + "Use this verification code to confirm the new address: " + otp + "\n"
+                + "This code expires at: " + expiresAt + "\n\n"
+                + "If you did not request this change, please ignore this email.\n\n"
                 + "- Smart Campus Team";
     }
 }

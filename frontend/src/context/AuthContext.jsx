@@ -4,7 +4,9 @@ import {
   getMyProfile as getMyProfileRequest,
   login as loginRequest,
   register as registerRequest,
+  updateMyProfile as updateMyProfileRequest,
   verifyEmailOtp as verifyEmailOtpRequest,
+  verifyEmailChange as verifyEmailChangeRequest,
 } from '../api/authService'
 import AuthContext from './authContextInstance'
 
@@ -201,6 +203,27 @@ export function AuthProvider({ children }) {
     })
   }, [])
 
+  const updateMyProfile = useCallback(async (payload) => {
+    const response = await updateMyProfileRequest(payload)
+
+    if (response?.profile) {
+      syncProfile(response.profile)
+    }
+
+    return response
+  }, [syncProfile])
+
+  const completeEmailChange = useCallback(async ({ email, otp }) => {
+    const response = await verifyEmailChangeRequest({ email, otp })
+    const normalized = normalizeAuthPayload(response)
+
+    if (normalized) {
+      saveAuth(normalized, setAuth)
+    }
+
+    return response
+  }, [])
+
   const value = useMemo(
     () => ({
       auth,
@@ -214,6 +237,8 @@ export function AuthProvider({ children }) {
       register,
       applyOAuthLogin,
       completeEmailVerification,
+      completeEmailChange,
+      updateMyProfile,
       syncProfile,
       logout,
       getApiErrorMessage,
@@ -222,9 +247,11 @@ export function AuthProvider({ children }) {
       auth,
       applyOAuthLogin,
       completeEmailVerification,
+      completeEmailChange,
       login,
       logout,
       register,
+      updateMyProfile,
       syncProfile,
       isInitializing,
     ],
