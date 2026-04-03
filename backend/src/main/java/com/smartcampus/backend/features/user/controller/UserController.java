@@ -1,7 +1,10 @@
 package com.smartcampus.backend.features.user.controller;
 
+import com.smartcampus.backend.features.auth.dto.AuthResponse;
 import com.smartcampus.backend.features.user.dto.UpdateUserRequest;
+import com.smartcampus.backend.features.user.dto.ProfileUpdateResponse;
 import com.smartcampus.backend.features.user.dto.UserResponse;
+import com.smartcampus.backend.features.user.dto.VerifyEmailChangeRequest;
 import com.smartcampus.backend.features.user.hateoas.UserModelAssembler;
 import com.smartcampus.backend.features.user.model.User;
 import com.smartcampus.backend.features.user.service.UserService;
@@ -14,6 +17,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -31,11 +35,17 @@ public class UserController {
     }
 
     @PutMapping("/me")
-    public ResponseEntity<EntityModel<UserResponse>> updateMyProfile(
+    public ResponseEntity<ProfileUpdateResponse> updateMyProfile(
             @AuthenticationPrincipal User user,
             @Valid @RequestBody UpdateUserRequest request) {
-        UserResponse response = userService.updateMyProfile(user, request);
-        return ResponseEntity.ok(userModelAssembler.toCurrentUserModel(response));
+        return ResponseEntity.ok(userService.updateMyProfile(user, request));
+    }
+
+    @PostMapping("/me/email-change/verify")
+    public ResponseEntity<AuthResponse> verifyEmailChange(
+            @AuthenticationPrincipal User user,
+            @Valid @RequestBody VerifyEmailChangeRequest request) {
+        return ResponseEntity.ok(userService.verifyEmailChange(user, request));
     }
 }
 

@@ -347,6 +347,11 @@ public class AuthService {
         return issueTokenPair(user);
     }
 
+    @Transactional
+    public AuthResponse issueTokenPairForUser(User user) {
+        return issueTokenPair(user);
+    }
+
     private AuthResponse issueTokenPair(User user) {
         refreshTokenRepository.deleteByExpiresAtBefore(Instant.now());
         revokedTokenRepository.deleteByExpiresAtBefore(Instant.now());

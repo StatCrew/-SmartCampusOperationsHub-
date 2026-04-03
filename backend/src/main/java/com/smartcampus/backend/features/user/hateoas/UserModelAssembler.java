@@ -21,7 +21,7 @@ public class UserModelAssembler {
         return EntityModel.of(
                 response,
                 linkTo(methodOn(UserController.class).getMyProfile(null)).withSelfRel(),
-                linkTo(methodOn(UserController.class).updateMyProfile(null, new UpdateUserRequest(response.fullName())))
+                linkTo(methodOn(UserController.class).updateMyProfile(null, new UpdateUserRequest(response.fullName(), null)))
                         .withRel("update-profile"));
     }
 
