@@ -18,6 +18,7 @@ function OAuthCallback() {
     const email = searchParams.get('email')
     const provider = searchParams.get('provider')
     const emailVerified = searchParams.get('emailVerified') === 'true'
+    const active = searchParams.get('active') === 'true'
 
     const isValid = Boolean(accessToken && role)
 
@@ -33,6 +34,7 @@ function OAuthCallback() {
           email: email || '',
           role,
           emailVerified,
+          active,
           provider: provider || 'GOOGLE',
         },
       },

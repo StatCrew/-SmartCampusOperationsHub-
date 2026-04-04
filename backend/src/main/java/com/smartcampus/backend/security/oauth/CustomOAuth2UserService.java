@@ -47,6 +47,7 @@ public class CustomOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
                         .role(Role.USER)
                         .provider(AuthProvider.GOOGLE)
                         .emailVerified(true)
+                        .active(true)
                         .createdAt(Instant.now())
                         .build());
 

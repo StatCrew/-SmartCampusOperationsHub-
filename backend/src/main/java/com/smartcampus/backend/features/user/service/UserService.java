@@ -6,6 +6,7 @@ import com.smartcampus.backend.features.auth.repository.EmailChangeOtpRepository
 import com.smartcampus.backend.features.auth.service.AuthService;
 import com.smartcampus.backend.features.auth.service.EmailVerificationNotificationService;
 import com.smartcampus.backend.features.user.dto.CreateTechnicianRequest;
+import com.smartcampus.backend.features.user.dto.UpdateAdminUserRequest;
 import com.smartcampus.backend.features.user.dto.ProfileUpdateResponse;
 import com.smartcampus.backend.features.user.dto.UpdateRoleRequest;
 import com.smartcampus.backend.features.user.dto.UpdateUserRequest;
@@ -22,9 +23,10 @@ import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.HexFormat;
-import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -157,6 +159,7 @@ public class UserService {
                 .role(role)
                 .provider(AuthProvider.LOCAL)
                 .emailVerified(Boolean.TRUE.equals(active))
+                .active(Boolean.TRUE.equals(active))
                 .createdAt(Instant.now())
                 .build();
 
@@ -164,13 +167,37 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
-    public List<UserResponse> getAllUsers() {
-        return userRepository.findAll().stream().map(this::toResponse).toList();
+    public Page<UserResponse> getAllUsers(String search, Role role, Boolean active, Pageable pageable) {
+        return userRepository.searchUsers(normalizeSearch(search), role, active, pageable).map(this::toResponse);
     }
 
     @Transactional(readOnly = true)
     public UserResponse getUserById(Long id) {
         return toResponse(getUserOrThrow(id));
+    }
+
+    @Transactional
+    public UserResponse updateUser(Long id, UpdateAdminUserRequest request) {
+        User user = getUserOrThrow(id);
+        String normalizedEmail = normalizeEmail(request.email());
+
+        userRepository.findByEmail(normalizedEmail)
+                .filter(existing -> !existing.getId().equals(user.getId()))
+                .ifPresent(existing -> {
+                    throw new ResponseStatusException(BAD_REQUEST, "Email is already registered");
+                });
+
+        boolean emailChanged = !normalizedEmail.equalsIgnoreCase(user.getEmail());
+        user.setFullName(request.fullName().trim());
+        user.setEmail(normalizedEmail);
+        user.setRole(request.role());
+        user.setActive(Boolean.TRUE.equals(request.active()));
+
+        if (emailChanged) {
+            user.setEmailVerified(false);
+        }
+
+        return toResponse(userRepository.save(user));
     }
 
     @Transactional
@@ -187,8 +214,18 @@ public class UserService {
     @Transactional
     public UserResponse updateUserStatus(Long id, UpdateUserStatusRequest request) {
         User user = getUserOrThrow(id);
-        user.setEmailVerified(Boolean.TRUE.equals(request.active()));
+        user.setActive(Boolean.TRUE.equals(request.active()));
         return toResponse(userRepository.save(user));
+    }
+
+    @Transactional
+    public void deleteUser(Long id, User authenticatedUser) {
+        if (authenticatedUser != null && authenticatedUser.getId() != null && authenticatedUser.getId().equals(id)) {
+            throw new ResponseStatusException(BAD_REQUEST, "You cannot delete your own account");
+        }
+
+        User user = getUserOrThrow(id);
+        userRepository.delete(user);
     }
 
     private EmailChangeOtp sendEmailChangeOtp(User user, String targetEmail) {
@@ -246,11 +283,16 @@ public class UserService {
                 user.getEmail(),
                 user.getRole().name(),
                 user.isEmailVerified(),
+                Boolean.TRUE.equals(user.getActive()),
                 user.getCreatedAt());
     }
 
     private String normalizeEmail(String email) {
         return email == null || email.isBlank() ? null : email.toLowerCase().trim();
+    }
+
+    private String normalizeSearch(String search) {
+        return search == null || search.isBlank() ? null : search.trim();
     }
 
     private String hashToken(String token) {

@@ -17,6 +17,10 @@ function ProtectedRoute({ allowedRoles }) {
     return <Navigate to="/signin" replace />
   }
 
+  if (user?.active === false) {
+    return <Navigate to="/signin?oauth=failed&message=Your%20account%20is%20inactive" replace />
+  }
+
   if (user?.provider === 'LOCAL' && user?.emailVerified === false) {
     const encodedEmail = encodeURIComponent(user?.email || '')
     return <Navigate to={`/verify-email?email=${encodedEmail}`} replace />

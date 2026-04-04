@@ -20,8 +20,8 @@ function AdminDashboardPage() {
     setErrorMessage('')
 
     try {
-      const data = await getUsers()
-      setUsers(data)
+      const data = await getUsers({ page: 0, size: 1000 })
+      setUsers(data?.content || [])
     } catch (error) {
       setErrorMessage(getApiErrorMessage(error))
     } finally {
@@ -44,7 +44,7 @@ function AdminDashboardPage() {
   )
 
   const headerLabels = getHeaderLabelsByRole(role)
-  const activeUsers = users.filter((item) => item.emailVerified).length
+  const activeUsers = users.filter((item) => item.active).length
   const roleCounts = users.reduce(
     (acc, item) => {
       acc[item.role] = (acc[item.role] || 0) + 1
