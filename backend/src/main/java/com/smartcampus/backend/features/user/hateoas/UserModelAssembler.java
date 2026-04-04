@@ -7,6 +7,7 @@ import com.smartcampus.backend.features.user.dto.UpdateUserRequest;
 import com.smartcampus.backend.features.user.dto.UpdateUserStatusRequest;
 import com.smartcampus.backend.features.user.dto.UserResponse;
 import java.util.List;
+import org.springframework.data.domain.Pageable;
 import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.stereotype.Component;
@@ -40,7 +41,7 @@ public class UserModelAssembler {
     public CollectionModel<EntityModel<UserResponse>> toAdminCollection(List<UserResponse> users) {
         List<EntityModel<UserResponse>> models = users.stream().map(this::toAdminModel).toList();
         return CollectionModel.of(models,
-                linkTo(methodOn(AdminUserController.class).getAllUsers()).withSelfRel());
+                linkTo(methodOn(AdminUserController.class).getAllUsers(null, null, null, Pageable.unpaged())).withSelfRel());
     }
 }
 

@@ -2,25 +2,33 @@ package com.smartcampus.backend.features.user.controller;
 
 import com.smartcampus.backend.features.user.dto.CreateTechnicianRequest;
 import com.smartcampus.backend.features.user.dto.CreateUserRequest;
+import com.smartcampus.backend.features.user.dto.UpdateAdminUserRequest;
 import com.smartcampus.backend.features.user.dto.UpdateRoleRequest;
 import com.smartcampus.backend.features.user.dto.UpdateUserStatusRequest;
 import com.smartcampus.backend.features.user.dto.UserResponse;
 import com.smartcampus.backend.features.user.hateoas.UserModelAssembler;
+import com.smartcampus.backend.features.user.model.Role;
+import com.smartcampus.backend.features.user.model.User;
 import com.smartcampus.backend.features.user.service.UserService;
 import jakarta.validation.Valid;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
-import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -51,14 +59,25 @@ public class AdminUserController {
     }
 
     @GetMapping
-    public ResponseEntity<CollectionModel<EntityModel<UserResponse>>> getAllUsers() {
-        List<UserResponse> users = userService.getAllUsers();
-        return ResponseEntity.ok(userModelAssembler.toAdminCollection(users));
+    public ResponseEntity<Page<UserResponse>> getAllUsers(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) Role role,
+            @RequestParam(required = false) Boolean active,
+            @PageableDefault(size = 10, sort = "createdAt") Pageable pageable) {
+        return ResponseEntity.ok(userService.getAllUsers(search, role, active, pageable));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<EntityModel<UserResponse>> getUserById(@PathVariable Long id) {
         UserResponse response = userService.getUserById(id);
+        return ResponseEntity.ok(userModelAssembler.toAdminModel(response));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<EntityModel<UserResponse>> updateUser(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateAdminUserRequest request) {
+        UserResponse response = userService.updateUser(id, request);
         return ResponseEntity.ok(userModelAssembler.toAdminModel(response));
     }
 
@@ -76,6 +95,12 @@ public class AdminUserController {
             @Valid @RequestBody UpdateUserStatusRequest request) {
         UserResponse response = userService.updateUserStatus(id, request);
         return ResponseEntity.ok(userModelAssembler.toAdminModel(response));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteUser(@PathVariable Long id, @AuthenticationPrincipal User user) {
+        userService.deleteUser(id, user);
+        return ResponseEntity.noContent().build();
     }
 }
 

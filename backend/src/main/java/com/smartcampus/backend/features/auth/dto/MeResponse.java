@@ -6,6 +6,7 @@ public record MeResponse(
         String email,
         String role,
         boolean emailVerified,
+        boolean active,
         String provider
 ) {
 }

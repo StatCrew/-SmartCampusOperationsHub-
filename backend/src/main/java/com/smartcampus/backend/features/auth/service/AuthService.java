@@ -38,6 +38,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -96,6 +97,7 @@ public class AuthService {
                 .role(Role.USER)
                 .provider(AuthProvider.LOCAL)
                 .emailVerified(false)
+                .active(true)
                 .createdAt(Instant.now())
                 .build();
 
@@ -119,6 +121,8 @@ public class AuthService {
             return issueTokenPair(user);
         } catch (BadCredentialsException ex) {
             throw new ResponseStatusException(UNAUTHORIZED, "Invalid email or password");
+        } catch (DisabledException ex) {
+            throw new ResponseStatusException(FORBIDDEN, "Your account is inactive. Contact an administrator");
         }
     }
 
@@ -339,6 +343,7 @@ public class AuthService {
                 authenticatedUser.getEmail(),
                 authenticatedUser.getRole().name(),
                 authenticatedUser.isEmailVerified(),
+                Boolean.TRUE.equals(authenticatedUser.getActive()),
                 authenticatedUser.getProvider().name());
     }
 
@@ -377,6 +382,7 @@ public class AuthService {
                 user.getEmail(),
                 user.getRole().name(),
                 user.isEmailVerified(),
+                Boolean.TRUE.equals(user.getActive()),
                 user.getProvider().name());
 
         return new AuthResponse(accessToken, refreshToken, "Bearer", summary);
