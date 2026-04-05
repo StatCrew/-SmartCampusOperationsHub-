@@ -1,14 +1,10 @@
 export const roleSidebarItems = {
-  USER: [
-    { icon: 'dashboard', label: 'Dashboard', path: '/dashboard/user' },
-    { icon: 'person', label: 'Profile', path: '/dashboard/user/profile' },
-  ],
+  USER: [{ icon: 'dashboard', label: 'Dashboard', path: '/dashboard/user' }],
   ADMIN: [
     { icon: 'dashboard', label: 'Dashboard', path: '/admin/dashboard' },
     { icon: 'group', label: 'Users', path: '/admin/users' },
-    { icon: 'person', label: 'Profile', path: '/dashboard/user/profile' },
   ],
-  TECHNICIAN: [{ icon: 'person', label: 'My Profile', path: '/dashboard/technician' }],
+  TECHNICIAN: [{ icon: 'dashboard', label: 'Dashboard', path: '/dashboard/technician' }],
 }
 
 export const roleHeaderLabels = {
@@ -24,4 +20,3 @@ export function getSidebarItemsByRole(role) {
 export function getHeaderLabelsByRole(role) {
   return roleHeaderLabels[role] || roleHeaderLabels.USER
 }
-
