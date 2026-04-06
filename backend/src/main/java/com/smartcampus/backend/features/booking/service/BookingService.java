@@ -75,4 +75,9 @@ public class BookingService {
         }
         bookingRepository.deleteById(bookingId);
     }
+    // Get a single booking by ID (Required for HATEOAS self-links)
+    public Booking getBookingById(Long bookingId) {
+        return bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found with ID: " + bookingId));
+    }
 }
