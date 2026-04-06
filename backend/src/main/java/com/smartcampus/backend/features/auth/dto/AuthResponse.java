@@ -12,6 +12,7 @@ public record AuthResponse(
             String email,
             String role,
             boolean emailVerified,
+            boolean active,
             String provider
     ) {
     }

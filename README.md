@@ -47,7 +47,27 @@ SPRING_JPA_HIBERNATE_DDL_AUTO=update
 
 # Frontend
 BACKEND_API_URL=http://localhost:8080
+VITE_AUTH_PREFIX=/api/v1/auth
+VITE_GOOGLE_AUTH_PATH=/oauth2/authorization/google
+
+# Google OAuth (Backend)
+GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+FRONTEND_OAUTH_SUCCESS_URL=http://localhost:3000/oauth/callback
+FRONTEND_OAUTH_FAILURE_URL=http://localhost:3000/signin?oauth=failed
+
+# Gmail SMTP for OTP emails
+SPRING_MAIL_HOST=smtp.gmail.com
+SPRING_MAIL_PORT=587
+SPRING_MAIL_USERNAME=your_gmail_address@gmail.com
+SPRING_MAIL_PASSWORD=your_gmail_app_password
+SPRING_MAIL_SMTP_AUTH=true
+SPRING_MAIL_SMTP_STARTTLS=true
+MAIL_FROM=your_gmail_address@gmail.com
+APP_AUTH_REQUIRE_EMAIL_SEND=true
 ```
+
+For local Vite development (not Docker), switch OAuth redirect URLs to `http://localhost:5173/...`.
 
 > Optional: Uncomment MySQL settings if you want local development using MySQL.
 

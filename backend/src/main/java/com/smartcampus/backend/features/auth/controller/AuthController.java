@@ -1,11 +1,17 @@
 package com.smartcampus.backend.features.auth.controller;
 
 import com.smartcampus.backend.features.auth.dto.AuthResponse;
+import com.smartcampus.backend.features.auth.dto.EmailVerificationResponse;
+import com.smartcampus.backend.features.auth.dto.ForgotPasswordResetRequest;
+import com.smartcampus.backend.features.auth.dto.ForgotPasswordResponse;
+import com.smartcampus.backend.features.auth.dto.ForgotPasswordSendRequest;
 import com.smartcampus.backend.features.auth.dto.LoginRequest;
 import com.smartcampus.backend.features.auth.dto.LogoutRequest;
 import com.smartcampus.backend.features.auth.dto.MeResponse;
 import com.smartcampus.backend.features.auth.dto.RefreshTokenRequest;
 import com.smartcampus.backend.features.auth.dto.RegisterRequest;
+import com.smartcampus.backend.features.auth.dto.SendVerificationOtpRequest;
+import com.smartcampus.backend.features.auth.dto.VerifyEmailOtpRequest;
 import com.smartcampus.backend.features.auth.service.AuthService;
 import com.smartcampus.backend.features.user.model.User;
 import jakarta.validation.Valid;
@@ -41,6 +47,30 @@ public class AuthController {
     @PostMapping("/refresh")
     public ResponseEntity<AuthResponse> refresh(@Valid @RequestBody RefreshTokenRequest request) {
         return ResponseEntity.ok(authService.refresh(request));
+    }
+
+    @PostMapping("/email-verification/send-otp")
+    public ResponseEntity<EmailVerificationResponse> sendVerificationOtp(
+            @Valid @RequestBody SendVerificationOtpRequest request) {
+        return ResponseEntity.ok(authService.sendVerificationOtp(request));
+    }
+
+    @PostMapping("/email-verification/verify")
+    public ResponseEntity<EmailVerificationResponse> verifyEmailOtp(
+            @Valid @RequestBody VerifyEmailOtpRequest request) {
+        return ResponseEntity.ok(authService.verifyEmailOtp(request));
+    }
+
+    @PostMapping("/forgot-password/send-otp")
+    public ResponseEntity<ForgotPasswordResponse> sendForgotPasswordOtp(
+            @Valid @RequestBody ForgotPasswordSendRequest request) {
+        return ResponseEntity.ok(authService.sendForgotPasswordOtp(request));
+    }
+
+    @PostMapping("/forgot-password/reset")
+    public ResponseEntity<ForgotPasswordResponse> resetForgotPassword(
+            @Valid @RequestBody ForgotPasswordResetRequest request) {
+        return ResponseEntity.ok(authService.resetForgotPassword(request));
     }
 
     @PostMapping("/logout")

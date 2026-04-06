@@ -50,8 +50,13 @@ public class User implements UserDetails {
     @Column(nullable = false, length = 20)
     private AuthProvider provider;
 
+    @Builder.Default
     @Column(nullable = false)
-    private boolean emailVerified;
+    private boolean emailVerified = false;
+
+    @Builder.Default
+    @Column(nullable = false, columnDefinition = "boolean default true")
+    private Boolean active = true;
 
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
@@ -83,7 +88,7 @@ public class User implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return true;
+        return !Boolean.FALSE.equals(active);
     }
 }
 
