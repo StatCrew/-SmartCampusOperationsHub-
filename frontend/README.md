@@ -1,16 +1,62 @@
-# React + Vite
+# Smart Campus Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + Tailwind CSS frontend with role-based authentication and protected dashboards.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- Sign In and Sign Up pages
+- Axios API integration for login/register
+- Global authentication state with Context API
+- Route protection and role-based authorization
+- Dashboard redirects for `USER`, `ADMIN`, and `TECHNICIAN`
+- Automatic JWT attachment through Axios interceptor
+- Logout support and basic form/error validation
 
-## React Compiler
+## Folder Structure
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```text
+src/
+  api/
+	authService.js
+  context/
+	AuthContext.jsx
+  pages/
+	auth/
+	  SignIn.jsx
+	  SignUp.jsx
+	dashboard/
+	  AdminDashboard.jsx
+	  DashboardLayout.jsx
+	  TechnicianDashboard.jsx
+	  UserDashboard.jsx
+  routes/
+	AppRoutes.jsx
+	ProtectedRoute.jsx
+  components/
+	App.jsx
+  main.jsx
+```
 
-## Expanding the ESLint configuration
+## Environment Variables
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+The frontend reads env vars from the project root `.env` file.
+
+```env
+BACKEND_API_URL=http://localhost:8080
+VITE_AUTH_PREFIX=/api/v1/auth
+VITE_GOOGLE_AUTH_PATH=/oauth2/authorization/google
+FRONTEND_OAUTH_SUCCESS_URL=http://localhost:5173/oauth/callback
+```
+
+## Run
+
+```powershell
+npm install
+npm run dev
+```
+
+## Build
+
+```powershell
+npm run build
+```

@@ -2,6 +2,9 @@ package com.smartcampus.backend.features.auth.service;
 
 import com.smartcampus.backend.features.auth.dto.AuthResponse;
 import com.smartcampus.backend.features.auth.dto.EmailVerificationResponse;
+import com.smartcampus.backend.features.auth.dto.ForgotPasswordResetRequest;
+import com.smartcampus.backend.features.auth.dto.ForgotPasswordResponse;
+import com.smartcampus.backend.features.auth.dto.ForgotPasswordSendRequest;
 import com.smartcampus.backend.features.auth.dto.LoginRequest;
 import com.smartcampus.backend.features.auth.dto.LogoutRequest;
 import com.smartcampus.backend.features.auth.dto.MeResponse;
@@ -10,9 +13,11 @@ import com.smartcampus.backend.features.auth.dto.RegisterRequest;
 import com.smartcampus.backend.features.auth.dto.SendVerificationOtpRequest;
 import com.smartcampus.backend.features.auth.dto.VerifyEmailOtpRequest;
 import com.smartcampus.backend.features.auth.model.EmailVerificationOtp;
+import com.smartcampus.backend.features.auth.model.PasswordResetOtp;
 import com.smartcampus.backend.features.auth.model.RefreshToken;
 import com.smartcampus.backend.features.auth.model.RevokedToken;
 import com.smartcampus.backend.features.auth.repository.EmailVerificationOtpRepository;
+import com.smartcampus.backend.features.auth.repository.PasswordResetOtpRepository;
 import com.smartcampus.backend.features.auth.repository.RefreshTokenRepository;
 import com.smartcampus.backend.features.auth.repository.RevokedTokenRepository;
 import com.smartcampus.backend.features.user.model.AuthProvider;
@@ -33,6 +38,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -55,6 +61,7 @@ public class AuthService {
     private final JwtService jwtService;
     private final EmailVerificationNotificationService emailVerificationNotificationService;
     private final EmailVerificationOtpRepository emailVerificationOtpRepository;
+    private final PasswordResetOtpRepository passwordResetOtpRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final RevokedTokenRepository revokedTokenRepository;
 
@@ -66,6 +73,15 @@ public class AuthService {
 
     @Value("${app.auth.email-verification.resend-cooldown-seconds:60}")
     private long resendCooldownSeconds;
+
+    @Value("${app.auth.forgot-password.otp-minutes:10}")
+    private long forgotPasswordOtpValidityMinutes;
+
+    @Value("${app.auth.forgot-password.max-attempts:5}")
+    private int forgotPasswordOtpMaxAttempts;
+
+    @Value("${app.auth.forgot-password.resend-cooldown-seconds:60}")
+    private long forgotPasswordResendCooldownSeconds;
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
@@ -81,6 +97,7 @@ public class AuthService {
                 .role(Role.USER)
                 .provider(AuthProvider.LOCAL)
                 .emailVerified(false)
+                .active(true)
                 .createdAt(Instant.now())
                 .build();
 
@@ -89,6 +106,7 @@ public class AuthService {
         return issueTokenPair(savedUser);
     }
 
+    @Transactional
     public AuthResponse login(LoginRequest request) {
         String normalizedEmail = request.email().toLowerCase().trim();
         try {
@@ -103,6 +121,8 @@ public class AuthService {
             return issueTokenPair(user);
         } catch (BadCredentialsException ex) {
             throw new ResponseStatusException(UNAUTHORIZED, "Invalid email or password");
+        } catch (DisabledException ex) {
+            throw new ResponseStatusException(FORBIDDEN, "Your account is inactive. Contact an administrator");
         }
     }
 
@@ -188,6 +208,71 @@ public class AuthService {
     }
 
     @Transactional
+    public ForgotPasswordResponse sendForgotPasswordOtp(ForgotPasswordSendRequest request) {
+        String normalizedEmail = request.email().toLowerCase().trim();
+        User user = userRepository.findByEmail(normalizedEmail).orElse(null);
+
+        if (user == null || user.getProvider() != AuthProvider.LOCAL) {
+            return new ForgotPasswordResponse(
+                    "If this account exists, a password reset code has been sent",
+                    null);
+        }
+
+        PasswordResetOtp otp = sendPasswordResetOtpForUser(user);
+        return new ForgotPasswordResponse("Password reset code sent", otp.getExpiresAt());
+    }
+
+    @Transactional
+    public ForgotPasswordResponse resetForgotPassword(ForgotPasswordResetRequest request) {
+        String normalizedEmail = request.email().toLowerCase().trim();
+        User user = userRepository.findByEmail(normalizedEmail)
+                .orElseThrow(() -> new ResponseStatusException(BAD_REQUEST, "Invalid password reset request"));
+
+        if (user.getProvider() != AuthProvider.LOCAL) {
+            throw new ResponseStatusException(BAD_REQUEST, "Password reset is only available for local accounts");
+        }
+
+        PasswordResetOtp otpRecord = passwordResetOtpRepository
+                .findTopByUserIdAndConsumedFalseOrderByCreatedAtDesc(user.getId())
+                .orElseThrow(() -> new ResponseStatusException(BAD_REQUEST, "OTP not found. Request a new code"));
+
+        Instant now = Instant.now();
+        if (otpRecord.getExpiresAt().isBefore(now)) {
+            otpRecord.setConsumed(true);
+            otpRecord.setConsumedAt(now);
+            passwordResetOtpRepository.save(otpRecord);
+            throw new ResponseStatusException(BAD_REQUEST, "OTP has expired. Request a new code");
+        }
+
+        if (otpRecord.getAttempts() >= otpRecord.getMaxAttempts()) {
+            otpRecord.setConsumed(true);
+            otpRecord.setConsumedAt(now);
+            passwordResetOtpRepository.save(otpRecord);
+            throw new ResponseStatusException(BAD_REQUEST, "OTP attempts exceeded. Request a new code");
+        }
+
+        if (!otpRecord.getOtpHash().equals(hashToken(request.otp().trim()))) {
+            otpRecord.setAttempts(otpRecord.getAttempts() + 1);
+            if (otpRecord.getAttempts() >= otpRecord.getMaxAttempts()) {
+                otpRecord.setConsumed(true);
+                otpRecord.setConsumedAt(now);
+            }
+            passwordResetOtpRepository.save(otpRecord);
+            throw new ResponseStatusException(BAD_REQUEST, "Invalid OTP code");
+        }
+
+        otpRecord.setConsumed(true);
+        otpRecord.setConsumedAt(now);
+        passwordResetOtpRepository.save(otpRecord);
+
+        user.setPassword(passwordEncoder.encode(request.newPassword()));
+        userRepository.save(user);
+        revokeAllRefreshTokens(user, now);
+
+        return new ForgotPasswordResponse("Password reset successfully", null);
+    }
+
+    @Transactional
     public AuthResponse refresh(RefreshTokenRequest request) {
         String refreshToken = request.refreshToken().trim();
         String tokenHash = hashToken(refreshToken);
@@ -258,10 +343,17 @@ public class AuthService {
                 authenticatedUser.getEmail(),
                 authenticatedUser.getRole().name(),
                 authenticatedUser.isEmailVerified(),
+                Boolean.TRUE.equals(authenticatedUser.getActive()),
                 authenticatedUser.getProvider().name());
     }
 
+    @Transactional
     public AuthResponse issueOAuthToken(User user) {
+        return issueTokenPair(user);
+    }
+
+    @Transactional
+    public AuthResponse issueTokenPairForUser(User user) {
         return issueTokenPair(user);
     }
 
@@ -290,6 +382,7 @@ public class AuthService {
                 user.getEmail(),
                 user.getRole().name(),
                 user.isEmailVerified(),
+                Boolean.TRUE.equals(user.getActive()),
                 user.getProvider().name());
 
         return new AuthResponse(accessToken, refreshToken, "Bearer", summary);
@@ -358,6 +451,48 @@ public class AuthService {
 
         emailVerificationNotificationService.sendOtp(user.getEmail(), user.getFullName(), otp, newOtp.getExpiresAt());
         return newOtp;
+    }
+
+    private PasswordResetOtp sendPasswordResetOtpForUser(User user) {
+        Instant now = Instant.now();
+        passwordResetOtpRepository.deleteByExpiresAtBefore(now);
+
+        PasswordResetOtp currentOtp = passwordResetOtpRepository
+                .findTopByUserIdAndConsumedFalseOrderByCreatedAtDesc(user.getId())
+                .orElse(null);
+
+        if (currentOtp != null
+                && currentOtp.getCreatedAt().plus(forgotPasswordResendCooldownSeconds, ChronoUnit.SECONDS).isAfter(now)) {
+            throw new ResponseStatusException(TOO_MANY_REQUESTS, "Please wait before requesting another OTP");
+        }
+
+        if (currentOtp != null) {
+            currentOtp.setConsumed(true);
+            currentOtp.setConsumedAt(now);
+            passwordResetOtpRepository.save(currentOtp);
+        }
+
+        String otp = generateOtp();
+        PasswordResetOtp newOtp = passwordResetOtpRepository.save(PasswordResetOtp.builder()
+                .user(user)
+                .otpHash(hashToken(otp))
+                .expiresAt(now.plus(forgotPasswordOtpValidityMinutes, ChronoUnit.MINUTES))
+                .attempts(0)
+                .maxAttempts(forgotPasswordOtpMaxAttempts)
+                .consumed(false)
+                .createdAt(now)
+                .build());
+
+        emailVerificationNotificationService
+                .sendPasswordResetOtp(user.getEmail(), user.getFullName(), otp, newOtp.getExpiresAt());
+        return newOtp;
+    }
+
+    private void revokeAllRefreshTokens(User user, Instant now) {
+        for (RefreshToken refreshToken : refreshTokenRepository.findAllByUserIdAndRevokedFalse(user.getId())) {
+            refreshToken.setRevoked(true);
+            refreshToken.setRevokedAt(now);
+        }
     }
 
     private String generateOtp() {
