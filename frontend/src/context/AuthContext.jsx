@@ -17,13 +17,14 @@ function normalizeAuthPayload(data) {
   const refreshToken = data?.refreshToken || null
   const tokenType = data?.tokenType || 'Bearer'
   const role = data?.role || data?.user?.role || null
+  const active = typeof data?.active === 'boolean' ? data.active : data?.user?.active
   const user = data?.user || null
 
   if (!token || !role) {
     return null
   }
 
-  return { token, refreshToken, tokenType, role, user }
+  return { token, refreshToken, tokenType, role, active, user }
 }
 
 function saveAuth(normalized, setAuth) {
@@ -82,6 +83,10 @@ export function AuthProvider({ children }) {
             user: {
               ...(previous.user || {}),
               ...profile,
+              active:
+                typeof profile.active === 'boolean'
+                  ? profile.active
+                  : previous.user?.active,
             },
           }
 
@@ -188,6 +193,10 @@ export function AuthProvider({ children }) {
       const nextAuth = {
         ...previous,
         role: profile.role || previous.role,
+        active:
+          typeof profile.active === 'boolean'
+            ? profile.active
+            : previous.active,
         user: {
           ...(previous.user || {}),
           ...profile,
@@ -195,6 +204,10 @@ export function AuthProvider({ children }) {
             typeof profile.emailVerified === 'boolean'
               ? profile.emailVerified
               : previous.user?.emailVerified,
+          active:
+            typeof profile.active === 'boolean'
+              ? profile.active
+              : previous.user?.active,
         },
       }
 
@@ -230,6 +243,7 @@ export function AuthProvider({ children }) {
       token: auth?.token || null,
       refreshToken: auth?.refreshToken || null,
       role: auth?.role || null,
+      active: auth?.active ?? auth?.user?.active ?? null,
       user: auth?.user || null,
       isAuthenticated: Boolean(auth?.token),
       isInitializing,

@@ -9,6 +9,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
@@ -29,13 +30,17 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
     @Value("${app.oauth2.success-redirect-uri:http://localhost:5173/oauth/callback}")
     private String successRedirectUri;
 
+    @Value("${app.oauth2.failure-redirect-uri:http://localhost:5173/signin?oauth=failed}")
+    private String failureRedirectUri;
+
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request,
                                         HttpServletResponse response,
                                         Authentication authentication) throws IOException {
         OAuth2User principal = (OAuth2User) authentication.getPrincipal();
-        String email = ((String) principal.getAttributes().getOrDefault("email", "")).toLowerCase().trim();
-        String name = (String) principal.getAttributes().getOrDefault("name", "Campus User");
+        Map<String, Object> attributes = principal.getAttributes();
+        String email = String.valueOf(attributes.getOrDefault("email", "")).toLowerCase().trim();
+        String name = String.valueOf(attributes.getOrDefault("name", "Campus User"));
 
         User user = userRepository.findByEmail(email).orElseGet(() -> {
             log.warn("OAuth success user not found in DB for email {}. Creating fallback user record.", email);
@@ -46,10 +51,16 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
                     .role(com.smartcampus.backend.features.user.model.Role.USER)
                     .provider(com.smartcampus.backend.features.user.model.AuthProvider.GOOGLE)
                     .emailVerified(true)
+                    .active(true)
                     .createdAt(java.time.Instant.now())
                     .build();
             return userRepository.save(fallback);
         });
+
+        if (!user.isEnabled()) {
+            response.sendRedirect(failureRedirectUri + "&message=" + encode("Your account is inactive. Contact an administrator"));
+            return;
+        }
 
         AuthResponse authResponse = authServiceProvider.getObject().issueOAuthToken(user);
 
@@ -63,6 +74,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
                 + "&email=" + encode(summary.email())
                 + "&role=" + encode(summary.role())
                 + "&emailVerified=" + summary.emailVerified()
+                + "&active=" + summary.active()
                 + "&provider=" + encode(summary.provider());
 
         response.sendRedirect(redirectUrl);
