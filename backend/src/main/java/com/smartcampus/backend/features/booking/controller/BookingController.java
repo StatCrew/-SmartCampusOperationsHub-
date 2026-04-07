@@ -1,5 +1,6 @@
 package com.smartcampus.backend.features.booking.controller;
 
+import com.smartcampus.backend.features.booking.dto.AnalyticsResponse;
 import com.smartcampus.backend.features.booking.dto.BookingRequest;
 import com.smartcampus.backend.features.booking.model.Booking;
 import com.smartcampus.backend.features.booking.service.BookingService;
@@ -20,6 +21,7 @@ import java.util.stream.Collectors;
 // Required static imports for HATEOAS link building
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
+
 
 @RestController
 @RequestMapping("/api/v1/bookings")
@@ -110,5 +112,11 @@ public class BookingController {
     public ResponseEntity<Void> deleteBooking(@PathVariable Long id) {
         bookingService.deleteBooking(id);
         return ResponseEntity.noContent().build(); 
+    }
+    // GET: Admin Analytics Dashboard
+    @GetMapping("/analytics")
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<AnalyticsResponse> getAnalytics() {
+        return ResponseEntity.ok(bookingService.getBookingAnalytics());
     }
 }
