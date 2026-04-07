@@ -37,6 +37,48 @@ public class TicketService {
         return ticketRepository.save(ticket);
     }
 
+    // Update Ticket
+    public Ticket updateTicket(Long id, Ticket updatedTicket) {
+
+        // Find existing ticket
+        Ticket existing = ticketRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Ticket not found"));
+
+        // Only allow updates if status is OPEN
+        if (!existing.getStatus().equals("OPEN")) {
+            throw new RuntimeException("Cannot update ticket. Already in progress or closed.");
+        }
+
+        // Update fields
+        existing.setTitle(updatedTicket.getTitle());
+        existing.setDescription(updatedTicket.getDescription());
+        existing.setCategory(updatedTicket.getCategory());
+        existing.setPriority(updatedTicket.getPriority());
+
+        // Update timestamp
+        existing.setUpdatedAt(java.time.LocalDateTime.now());
+
+        // Save
+        return ticketRepository.save(existing);
+    }
+
+
+    // Delete Ticket
+    public void deleteTicket(Long id) {
+
+        // Find ticket
+        Ticket existing = ticketRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Ticket not found"));
+
+        // Only allow delete if status is OPEN
+        if (!existing.getStatus().equals("OPEN")) {
+            throw new RuntimeException("Cannot delete ticket. Already in progress or closed.");
+        }
+
+        // Delete
+        ticketRepository.delete(existing);
+    }
+
     // Get logged-in user's tickets
     public List<Ticket> getMyTickets() {
 
