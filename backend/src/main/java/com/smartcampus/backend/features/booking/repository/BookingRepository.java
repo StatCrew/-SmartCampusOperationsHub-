@@ -24,4 +24,9 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
             @Param("resourceId") Long resourceId, 
             @Param("startTime") LocalDateTime startTime, 
             @Param("endTime") LocalDateTime endTime);
+
+    // INNOVATION FEATURE: Fetch all future bookings for a resource to help calculate gaps
+    List<Booking> findByResourceIdAndStartTimeGreaterThanEqualOrderByStartTimeAsc(
+            Long resourceId, 
+            LocalDateTime startTime);
 }
