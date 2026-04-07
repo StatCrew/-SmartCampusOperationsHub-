@@ -11,6 +11,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.time.Duration;
+import java.time.LocalDateTime;
 
 
 import java.util.List;
@@ -33,7 +35,15 @@ public class BookingService {
         );
 
         if (!conflicts.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Resource is already booked or pending during this time.");
+            // THE INNOVATION: Calculate the next available slot and return it in the error message
+            LocalDateTime nextAvailable = findNextAvailableSlot(request.resourceId(), request.startTime(), request.endTime());
+            LocalDateTime nextAvailableEnd = nextAvailable.plus(Duration.between(request.startTime(), request.endTime()));
+            
+            String suggestion = String.format("Resource is busy. The next available slot is from %s to %s.", 
+                    nextAvailable.toString().replace("T", " "), 
+                    nextAvailableEnd.toString().replace("T", " "));
+                    
+            throw new ResponseStatusException(HttpStatus.CONFLICT, suggestion);
         }
 
         // Using the Builder pattern (thanks to Lombok's @Builder) to map DTO to Entity
@@ -106,6 +116,36 @@ public class BookingService {
                 .rejectedRequests(rejected)
                 .popularResources(popularResources)
                 .build();
+    }
+    
+
+    
+
+    // Helper Method: Calculates the next available time slot if a conflict occurs
+    private LocalDateTime findNextAvailableSlot(Long resourceId, LocalDateTime requestedStart, LocalDateTime requestedEnd) {
+        Duration requestedDuration = Duration.between(requestedStart, requestedEnd);
+        LocalDateTime proposedStart = requestedStart;
+
+        // Get all upcoming bookings for this resource to find a gap
+        List<Booking> futureBookings = bookingRepository.findByResourceIdAndStartTimeGreaterThanEqualOrderByStartTimeAsc(resourceId, requestedStart);
+
+        for (Booking b : futureBookings) {
+            // Ignore cancelled or rejected bookings
+            if (b.getStatus().equals("CANCELLED") || b.getStatus().equals("REJECTED")) {
+                continue;
+            }
+
+            LocalDateTime proposedEnd = proposedStart.plus(requestedDuration);
+            
+            // If our proposed slot overlaps with this booking, push our proposed start to the end of this booking
+            if (proposedStart.isBefore(b.getEndTime()) && proposedEnd.isAfter(b.getStartTime())) {
+                proposedStart = b.getEndTime();
+            } else {
+                // We found a gap large enough! Break the loop.
+                break;
+            }
+        }
+        return proposedStart;
     }
     
 }
