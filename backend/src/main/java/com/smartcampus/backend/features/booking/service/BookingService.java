@@ -1,5 +1,6 @@
 package com.smartcampus.backend.features.booking.service;
 
+import com.smartcampus.backend.features.booking.dto.AnalyticsResponse;
 import com.smartcampus.backend.features.booking.dto.BookingRequest;
 import com.smartcampus.backend.features.booking.model.Booking;
 import com.smartcampus.backend.features.booking.repository.BookingRepository;
@@ -8,8 +9,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
+import java.util.Map;
+import java.util.stream.Collectors;
+
 
 import java.util.List;
+
 
 @Service
 @RequiredArgsConstructor // Lombok: Automatically creates a constructor for the repository
@@ -80,4 +85,27 @@ public class BookingService {
         return bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found with ID: " + bookingId));
     }
+
+    // 6. Generate Admin Analytics Dashboard
+    public AnalyticsResponse getBookingAnalytics() {
+        List<Booking> allBookings = bookingRepository.findAll();
+
+        long total = allBookings.size();
+        long pending = allBookings.stream().filter(b -> b.getStatus().equals("PENDING")).count();
+        long approved = allBookings.stream().filter(b -> b.getStatus().equals("APPROVED")).count();
+        long rejected = allBookings.stream().filter(b -> b.getStatus().equals("REJECTED")).count();
+
+        // Group by Resource ID and count to find the most popular resources
+        Map<Long, Long> popularResources = allBookings.stream()
+                .collect(Collectors.groupingBy(Booking::getResourceId, Collectors.counting()));
+
+        return AnalyticsResponse.builder()
+                .totalBookings(total)
+                .pendingRequests(pending)
+                .approvedRequests(approved)
+                .rejectedRequests(rejected)
+                .popularResources(popularResources)
+                .build();
+    }
+    
 }
