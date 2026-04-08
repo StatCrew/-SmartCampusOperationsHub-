@@ -3,6 +3,7 @@ export const roleSidebarItems = {
   ADMIN: [
     { icon: 'dashboard', label: 'Dashboard', path: '/admin/dashboard' },
     { icon: 'group', label: 'Users', path: '/admin/users' },
+    { icon: 'cloud_upload', label: 'Storage Test', path: '/admin/storage-test' },
   ],
   TECHNICIAN: [{ icon: 'dashboard', label: 'Dashboard', path: '/dashboard/technician' }],
 }
