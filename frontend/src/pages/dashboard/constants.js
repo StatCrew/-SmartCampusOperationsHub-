@@ -1,11 +1,20 @@
 export const roleSidebarItems = {
-  USER: [{ icon: 'dashboard', label: 'Dashboard', path: '/dashboard/user' }],
+  USER: [
+    { icon: 'dashboard', label: 'Dashboard', path: '/dashboard/user' },
+    // ADDED: Student Bookings Page
+    { icon: 'book_online', label: 'My Bookings', path: '/dashboard/user/bookings' } 
+  ],
   ADMIN: [
     { icon: 'dashboard', label: 'Dashboard', path: '/admin/dashboard' },
     { icon: 'group', label: 'Users', path: '/admin/users' },
+    // ADDED: Admin Analytics & Booking Requests
+    { icon: 'analytics', label: 'Booking Analytics', path: '/admin/analytics' },
+    { icon: 'list_alt', label: 'Booking Requests', path: '/admin/bookings' },
     { icon: 'cloud_upload', label: 'Storage Test', path: '/admin/storage-test' },
   ],
-  TECHNICIAN: [{ icon: 'dashboard', label: 'Dashboard', path: '/dashboard/technician' }],
+  TECHNICIAN: [
+    { icon: 'dashboard', label: 'Dashboard', path: '/dashboard/technician' }
+  ],
 }
 
 export const roleHeaderLabels = {
