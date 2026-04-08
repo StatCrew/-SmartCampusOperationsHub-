@@ -115,7 +115,7 @@ public class BookingController {
     }
     // GET: Admin Analytics Dashboard
     @GetMapping("/analytics")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('ADMIN') or hasRole('ADMIN')") 
     public ResponseEntity<AnalyticsResponse> getAnalytics() {
         return ResponseEntity.ok(bookingService.getBookingAnalytics());
     }
