@@ -14,6 +14,7 @@ import UserDashboard from '../pages/dashboard/UserDashboard'
 import UserProfile from '../pages/dashboard/UserProfile'
 import ProtectedRoute from './ProtectedRoute'
 
+
 function HomeRedirect() {
   const { isInitializing, isAuthenticated, role } = useAuth()
 

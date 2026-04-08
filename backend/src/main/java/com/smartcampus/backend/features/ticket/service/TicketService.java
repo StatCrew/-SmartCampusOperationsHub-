@@ -96,6 +96,13 @@ public class TicketService {
             .orElseThrow(() -> new RuntimeException("Ticket not found"));
     }
 
+    // Get all tickets (for admin)
+    public List<Ticket> getAllTickets() {
+    return ticketRepository.findAll();
+    }
+
+
+
 
 
 }
