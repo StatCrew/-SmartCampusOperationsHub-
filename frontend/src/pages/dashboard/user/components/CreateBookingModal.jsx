@@ -1,8 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
-
-// --- Mock API & Auth (replace with your real imports) ---
-// import { createBooking } from '../../../../../api/bookingApi'
-// import useAuth from '../../../../../context/useAuth'
+import { createBooking } from '../../../../api/bookingApi'
+import useAuth from '../../../../context/useAuth'
 
 const mockCreateBooking = async (payload) => {
   await new Promise(r => setTimeout(r, 1500))
@@ -31,8 +29,8 @@ const fmtDuration = (s, e) => {
 
 // ─── Main Component ───────────────────────────────────────────────
 export default function CreateBookingModal({ isOpen, onClose, onSuccess }) {
-  // const { getApiErrorMessage } = useAuth()
-  const getApiErrorMessage = () => 'Something went wrong. Please try again.'
+  const { getApiErrorMessage } = useAuth()
+  //const getApiErrorMessage = () => 'Something went wrong. Please try again.'
 
   const [step, setStep] = useState(1)
   const [formData, setFormData] = useState({
@@ -84,7 +82,7 @@ export default function CreateBookingModal({ isOpen, onClose, onSuccess }) {
         purpose:   formData.purpose,
         attendees: parseInt(formData.attendees)
       }
-      await mockCreateBooking(payload)
+      await createBooking(payload)
       setSubmitted(true)
       setTimeout(() => { onSuccess?.(); onClose() }, 2200)
     } catch (err) {
