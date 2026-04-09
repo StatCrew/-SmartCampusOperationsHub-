@@ -2,6 +2,7 @@ import apiClient from './authService'
 
 const ADMIN_USERS_PREFIX = '/api/v1/admin/users'
 const ADMIN_STORAGE_TEST_PREFIX = '/api/v1/admin/storage-test'
+const ADMIN_NOTIFICATIONS_PREFIX = '/api/v1/admin/notifications'
 
 function normalizeCollection(payload) {
   if (Array.isArray(payload)) {
@@ -115,6 +116,11 @@ export async function getAdminTestFileUrl(key) {
     params: { key },
   })
 
+  return response.data
+}
+
+export async function sendAdminTestNotification(payload) {
+  const response = await apiClient.post(`${ADMIN_NOTIFICATIONS_PREFIX}/test`, payload)
   return response.data
 }
 
