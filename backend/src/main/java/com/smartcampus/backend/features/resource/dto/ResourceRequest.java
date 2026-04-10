@@ -10,5 +10,6 @@ public record ResourceRequest(
     @NotNull @Min(1) Integer capacity,
     @NotBlank String location,
     @NotNull ResourceStatus status,
-    String description
+    String description,
+    String availabilityWindow // Added here
 ) {}

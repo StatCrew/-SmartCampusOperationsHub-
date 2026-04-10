@@ -38,4 +38,8 @@ public class Resource {
 
     @Column
     private Instant updatedAt;
+
+    // Added this field back
+    @Column(name = "availability_window")
+    private String availabilityWindow;
 }

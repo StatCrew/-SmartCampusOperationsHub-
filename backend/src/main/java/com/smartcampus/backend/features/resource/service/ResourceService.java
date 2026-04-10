@@ -19,14 +19,6 @@ public class ResourceService {
 
     private final ResourceRepository resourceRepository;
 
-    @Transactional(readOnly = true)
-    public List<ResourceResponse> getAllResources(ResourceType type, Integer minCapacity, String location) {
-        return resourceRepository.searchResources(type, minCapacity, location)
-                .stream()
-                .map(this::mapToResponse)
-                .collect(Collectors.toList());
-    }
-
     @Transactional
     public ResourceResponse createResource(ResourceRequest request) {
         Resource resource = Resource.builder()
@@ -36,6 +28,7 @@ public class ResourceService {
                 .location(request.location())
                 .status(request.status())
                 .description(request.description())
+                .availabilityWindow(request.availabilityWindow()) // Map it here
                 .createdAt(Instant.now())
                 .build();
         
@@ -53,24 +46,22 @@ public class ResourceService {
         resource.setLocation(request.location());
         resource.setStatus(request.status());
         resource.setDescription(request.description());
+        resource.setAvailabilityWindow(request.availabilityWindow()); // Map it here
         resource.setUpdatedAt(Instant.now());
 
         return mapToResponse(resourceRepository.save(resource));
     }
 
-    @Transactional
-    public void deleteResource(Long id) {
-        if (!resourceRepository.existsById(id)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Resource not found");
-        }
-        resourceRepository.deleteById(id);
-    }
-
     private ResourceResponse mapToResponse(Resource resource) {
         return new ResourceResponse(
-                resource.getId(), resource.getName(), resource.getType(),
-                resource.getCapacity(), resource.getLocation(),
-                resource.getStatus(), resource.getDescription()
+                resource.getId(), 
+                resource.getName(), 
+                resource.getType(),
+                resource.getCapacity(), 
+                resource.getLocation(),
+                resource.getStatus(), 
+                resource.getDescription(),
+                resource.getAvailabilityWindow() // This will now compile
         );
     }
 }
