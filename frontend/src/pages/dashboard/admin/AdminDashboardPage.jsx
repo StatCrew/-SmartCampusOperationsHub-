@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { getUsers } from '../../../api/adminApi'
+import { getUsers, sendAdminTestNotification } from '../../../api/adminApi'
 import useAuth from '../../../context/useAuth'
 import { getHeaderLabelsByRole, getSidebarItemsByRole } from '../constants'
 import UserDashboardHeader from '../user/components/UserDashboardHeader'
@@ -14,6 +14,8 @@ function AdminDashboardPage() {
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState('')
+  const [isSendingNotification, setIsSendingNotification] = useState(false)
+  const [successMessage, setSuccessMessage] = useState('')
 
   const loadDashboard = useCallback(async () => {
     setLoading(true)
@@ -36,6 +38,30 @@ function AdminDashboardPage() {
   const handleLogout = () => {
     logout()
     navigate('/signin', { replace: true })
+  }
+
+  const handleSendSelfNotification = async () => {
+    if (!user?.id) {
+      return
+    }
+
+    setIsSendingNotification(true)
+    setErrorMessage('')
+    setSuccessMessage('')
+
+    try {
+      await sendAdminTestNotification({
+        recipientUserId: user.id,
+        title: 'Test Notification',
+        message: 'Notification system is working.',
+        actionUrl: '/admin/dashboard',
+      })
+      setSuccessMessage('Test notification sent. Check the bell icon.')
+    } catch (error) {
+      setErrorMessage(getApiErrorMessage(error))
+    } finally {
+      setIsSendingNotification(false)
+    }
   }
 
   const sidebarItems = useMemo(
@@ -73,10 +99,23 @@ function AdminDashboardPage() {
               {errorMessage}
             </div>
           ) : null}
+          {successMessage ? (
+            <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+              {successMessage}
+            </div>
+          ) : null}
 
           <section className="mb-6 rounded-2xl bg-white p-6 shadow-sm">
             <h2 className="text-2xl font-bold text-slate-900">Welcome back, {user?.fullName || 'Admin'}!</h2>
             <p className="mt-1 text-sm text-slate-600">Monitor users and manage the campus account base from here.</p>
+            <button
+              type="button"
+              onClick={handleSendSelfNotification}
+              disabled={isSendingNotification}
+              className="mt-4 rounded-lg border border-indigo-300 px-4 py-2 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isSendingNotification ? 'Sending...' : 'Send Test Notification'}
+            </button>
           </section>
 
           <section className="grid grid-cols-1 gap-4 md:grid-cols-3">

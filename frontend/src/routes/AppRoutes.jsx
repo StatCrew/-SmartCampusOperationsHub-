@@ -7,6 +7,7 @@ import SignIn from '../pages/auth/SignIn'
 import SignUp from '../pages/auth/SignUp'
 import VerifyEmail from '../pages/auth/VerifyEmail'
 import AdminDashboardPage from '../pages/dashboard/admin/AdminDashboardPage'
+import AdminStorageTestPage from '../pages/dashboard/admin/AdminStorageTestPage'
 import AdminUsersPage from '../pages/dashboard/admin/AdminUsersPage'
 import CreateUserPage from '../pages/dashboard/admin/CreateUserPage'
 import TechnicianDashboardPage from '../pages/dashboard/technician/TechnicianDashboardPage'
@@ -95,6 +96,7 @@ function AppRoutes() {
         <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
         <Route path="/admin/users" element={<AdminUsersPage />} />
         <Route path="/admin/users/create" element={<CreateUserPage />} />
+        <Route path="/admin/storage-test" element={<AdminStorageTestPage />} />
       </Route>
 
       <Route element={<ProtectedRoute allowedRoles={['TECHNICIAN']} />}>

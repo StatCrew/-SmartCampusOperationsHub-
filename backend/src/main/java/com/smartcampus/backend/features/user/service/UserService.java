@@ -5,9 +5,11 @@ import com.smartcampus.backend.features.auth.model.EmailChangeOtp;
 import com.smartcampus.backend.features.auth.repository.EmailChangeOtpRepository;
 import com.smartcampus.backend.features.auth.service.AuthService;
 import com.smartcampus.backend.features.auth.service.EmailVerificationNotificationService;
+import com.smartcampus.backend.features.notifications.model.NotificationSeverity;
+import com.smartcampus.backend.features.notifications.service.NotificationEventPublisher;
 import com.smartcampus.backend.features.user.dto.CreateTechnicianRequest;
-import com.smartcampus.backend.features.user.dto.UpdateAdminUserRequest;
 import com.smartcampus.backend.features.user.dto.ProfileUpdateResponse;
+import com.smartcampus.backend.features.user.dto.UpdateAdminUserRequest;
 import com.smartcampus.backend.features.user.dto.UpdateRoleRequest;
 import com.smartcampus.backend.features.user.dto.UpdateUserRequest;
 import com.smartcampus.backend.features.user.dto.UpdateUserStatusRequest;
@@ -35,8 +37,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
-import static org.springframework.http.HttpStatus.UNAUTHORIZED;
 import static org.springframework.http.HttpStatus.TOO_MANY_REQUESTS;
+import static org.springframework.http.HttpStatus.UNAUTHORIZED;
 
 @Service
 @RequiredArgsConstructor
@@ -47,6 +49,7 @@ public class UserService {
     private final EmailChangeOtpRepository emailChangeOtpRepository;
     private final EmailVerificationNotificationService emailVerificationNotificationService;
     private final AuthService authService;
+    private final NotificationEventPublisher notificationEventPublisher;
 
     @Transactional(readOnly = true)
     public UserResponse getMyProfile(User authenticatedUser) {
@@ -152,7 +155,7 @@ public class UserService {
             throw new ResponseStatusException(BAD_REQUEST, "Email is already registered");
         }
 
-        User technician = User.builder()
+        User createdUser = User.builder()
                 .fullName(fullName.trim())
                 .email(normalizedEmail)
                 .password(passwordEncoder.encode(password))
@@ -163,7 +166,20 @@ public class UserService {
                 .createdAt(Instant.now())
                 .build();
 
-        return toResponse(userRepository.save(technician));
+        User savedUser = userRepository.save(createdUser);
+
+        notificationEventPublisher.publishToUser(
+                savedUser.getId(),
+                "USER_ACCOUNT_CREATED",
+                "Your account is ready",
+                "Your Smart Campus account has been created by an administrator.",
+                NotificationSeverity.SUCCESS,
+                "/dashboard/user/profile",
+                "users",
+                String.valueOf(savedUser.getId()),
+                null);
+
+        return toResponse(savedUser);
     }
 
     @Transactional(readOnly = true)
@@ -179,6 +195,8 @@ public class UserService {
     @Transactional
     public UserResponse updateUser(Long id, UpdateAdminUserRequest request) {
         User user = getUserOrThrow(id);
+        Role previousRole = user.getRole();
+        boolean previousActive = Boolean.TRUE.equals(user.getActive());
         String normalizedEmail = normalizeEmail(request.email());
 
         userRepository.findByEmail(normalizedEmail)
@@ -197,7 +215,51 @@ public class UserService {
             user.setEmailVerified(false);
         }
 
-        return toResponse(userRepository.save(user));
+        User savedUser = userRepository.save(user);
+
+        if (emailChanged) {
+            notificationEventPublisher.publishToUser(
+                    savedUser.getId(),
+                    "USER_EMAIL_CHANGED",
+                    "Account email updated",
+                    "Your account email was changed by an administrator and needs verification.",
+                    NotificationSeverity.WARNING,
+                    "/dashboard/user/profile",
+                    "users",
+                    String.valueOf(savedUser.getId()),
+                    null);
+        }
+
+        if (previousRole != savedUser.getRole()) {
+            notificationEventPublisher.publishToUser(
+                    savedUser.getId(),
+                    "USER_ROLE_CHANGED",
+                    "Your role was updated",
+                    "Your access role is now " + savedUser.getRole().name() + ".",
+                    NotificationSeverity.INFO,
+                    "/",
+                    "users",
+                    String.valueOf(savedUser.getId()),
+                    null);
+        }
+
+        boolean currentActive = Boolean.TRUE.equals(savedUser.getActive());
+        if (previousActive != currentActive) {
+            notificationEventPublisher.publishToUser(
+                    savedUser.getId(),
+                    "USER_STATUS_CHANGED",
+                    currentActive ? "Account activated" : "Account deactivated",
+                    currentActive
+                            ? "Your account has been activated by an administrator."
+                            : "Your account has been deactivated by an administrator.",
+                    currentActive ? NotificationSeverity.SUCCESS : NotificationSeverity.WARNING,
+                    "/dashboard/user/profile",
+                    "users",
+                    String.valueOf(savedUser.getId()),
+                    null);
+        }
+
+        return toResponse(savedUser);
     }
 
     @Transactional
@@ -208,14 +270,43 @@ public class UserService {
         }
 
         user.setRole(request.role());
-        return toResponse(userRepository.save(user));
+        User savedUser = userRepository.save(user);
+
+        notificationEventPublisher.publishToUser(
+                savedUser.getId(),
+                "USER_ROLE_CHANGED",
+                "Your role was updated",
+                "Your access role is now " + savedUser.getRole().name() + ".",
+                NotificationSeverity.INFO,
+                "/",
+                "users",
+                String.valueOf(savedUser.getId()),
+                null);
+
+        return toResponse(savedUser);
     }
 
     @Transactional
     public UserResponse updateUserStatus(Long id, UpdateUserStatusRequest request) {
         User user = getUserOrThrow(id);
         user.setActive(Boolean.TRUE.equals(request.active()));
-        return toResponse(userRepository.save(user));
+        User savedUser = userRepository.save(user);
+
+        boolean active = Boolean.TRUE.equals(savedUser.getActive());
+        notificationEventPublisher.publishToUser(
+                savedUser.getId(),
+                "USER_STATUS_CHANGED",
+                active ? "Account activated" : "Account deactivated",
+                active
+                        ? "Your account has been activated by an administrator."
+                        : "Your account has been deactivated by an administrator.",
+                active ? NotificationSeverity.SUCCESS : NotificationSeverity.WARNING,
+                "/dashboard/user/profile",
+                "users",
+                String.valueOf(savedUser.getId()),
+                null);
+
+        return toResponse(savedUser);
     }
 
     @Transactional
@@ -258,7 +349,11 @@ public class UserService {
                 .createdAt(now)
                 .build());
 
-        emailVerificationNotificationService.sendEmailChangeOtp(user.getEmail(), user.getFullName(), otp, newOtp.getExpiresAt());
+        emailVerificationNotificationService.sendEmailChangeOtp(
+                user.getEmail(),
+                user.getFullName(),
+                otp,
+                newOtp.getExpiresAt());
         return newOtp;
     }
 
