@@ -1,6 +1,8 @@
 import apiClient from './authService'
 
 const ADMIN_USERS_PREFIX = '/api/v1/admin/users'
+const ADMIN_STORAGE_TEST_PREFIX = '/api/v1/admin/storage-test'
+const ADMIN_NOTIFICATIONS_PREFIX = '/api/v1/admin/notifications'
 
 function normalizeCollection(payload) {
   if (Array.isArray(payload)) {
@@ -93,6 +95,32 @@ export async function updateUserStatus(id, status) {
 
 export async function deleteUser(id) {
   const response = await apiClient.delete(`${ADMIN_USERS_PREFIX}/${id}`)
+  return response.data
+}
+
+export async function uploadAdminTestImage(file) {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  const response = await apiClient.post(`${ADMIN_STORAGE_TEST_PREFIX}/upload-image`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  })
+
+  return response.data
+}
+
+export async function getAdminTestFileUrl(key) {
+  const response = await apiClient.get(`${ADMIN_STORAGE_TEST_PREFIX}/file-url`, {
+    params: { key },
+  })
+
+  return response.data
+}
+
+export async function sendAdminTestNotification(payload) {
+  const response = await apiClient.post(`${ADMIN_NOTIFICATIONS_PREFIX}/test`, payload)
   return response.data
 }
 
