@@ -27,6 +27,10 @@ function normalizeAuthPayload(data) {
   return { token, refreshToken, tokenType, role, active, user }
 }
 
+function isUnverifiedLocalUser(authState) {
+  return authState?.user?.provider === 'LOCAL' && authState?.user?.emailVerified === false
+}
+
 function saveAuth(normalized, setAuth) {
   setAuth(normalized)
   localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(normalized))
@@ -43,6 +47,11 @@ export function AuthProvider({ children }) {
     try {
       const parsed = JSON.parse(persisted)
       if (parsed?.token && parsed?.role) {
+        if (isUnverifiedLocalUser(parsed)) {
+          localStorage.removeItem(AUTH_STORAGE_KEY)
+          return null
+        }
+
         return parsed
       }
     } catch {
@@ -131,6 +140,12 @@ export function AuthProvider({ children }) {
     const normalized = normalizeAuthPayload(data)
 
     if (normalized) {
+      if (isUnverifiedLocalUser(normalized)) {
+        setAuth(null)
+        localStorage.removeItem(AUTH_STORAGE_KEY)
+        return normalized
+      }
+
       saveAuth(normalized, setAuth)
       return normalized
     }
