@@ -1,12 +1,15 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { getDashboardPathByRole } from '../../context/authRoles'
 import useAuth from '../../context/useAuth'
+import useToast from '../../context/useToast'
 
 function OAuthCallback() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { applyOAuthLogin } = useAuth()
+  const { showError, showSuccess } = useToast()
+  const hasHandledCallback = useRef(false)
 
   const oauthData = useMemo(() => {
     const accessToken = searchParams.get('accessToken')
@@ -42,18 +45,28 @@ function OAuthCallback() {
   }, [searchParams])
 
   useEffect(() => {
+    if (hasHandledCallback.current) {
+      return
+    }
+
+    hasHandledCallback.current = true
+
     if (!oauthData.isValid) {
+      showError('Google login response is invalid. Please try again.')
+      navigate('/signin?oauth=failed&message=Google%20login%20failed', { replace: true })
       return
     }
 
     try {
       const normalized = applyOAuthLogin(oauthData.payload)
+      showSuccess('Signed in with Google successfully.')
 
       navigate(getDashboardPathByRole(normalized.role), { replace: true })
     } catch {
+      showError('Google sign in failed. Please try again.')
       navigate('/signin', { replace: true })
     }
-  }, [applyOAuthLogin, navigate, oauthData])
+  }, [applyOAuthLogin, navigate, oauthData, showError, showSuccess])
 
   if (!oauthData.isValid) {
     return (

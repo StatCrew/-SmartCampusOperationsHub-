@@ -1,25 +1,25 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { getApiErrorMessage, resetForgotPassword, sendForgotPasswordOtp } from '../../api/authService'
+import useToast from '../../context/useToast'
 
 function ForgotPassword() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
+  const { showError, showSuccess } = useToast()
 
   const defaultEmail = useMemo(() => searchParams.get('email') || '', [searchParams])
 
   const [email, setEmail] = useState(defaultEmail)
   const [otp, setOtp] = useState('')
   const [newPassword, setNewPassword] = useState('')
-  const [message, setMessage] = useState('')
-  const [error, setError] = useState('')
   const [otpExpiresAt, setOtpExpiresAt] = useState('')
   const [isSendingOtp, setIsSendingOtp] = useState(false)
   const [isResettingPassword, setIsResettingPassword] = useState(false)
 
   const validateEmail = () => {
     if (!email.trim()) {
-      setError('Email is required.')
+      showError('Email is required.')
       return false
     }
 
@@ -28,8 +28,6 @@ function ForgotPassword() {
 
   const handleSendOtp = async (event) => {
     event.preventDefault()
-    setMessage('')
-    setError('')
 
     if (!validateEmail()) {
       return
@@ -39,10 +37,10 @@ function ForgotPassword() {
 
     try {
       const response = await sendForgotPasswordOtp({ email: email.trim() })
-      setMessage(response?.message || 'Password reset code sent.')
+      showSuccess(response?.message || 'Password reset code sent.')
       setOtpExpiresAt(response?.otpExpiresAt || '')
     } catch (sendError) {
-      setError(getApiErrorMessage(sendError))
+      showError(getApiErrorMessage(sendError))
     } finally {
       setIsSendingOtp(false)
     }
@@ -50,20 +48,18 @@ function ForgotPassword() {
 
   const handleResetPassword = async (event) => {
     event.preventDefault()
-    setMessage('')
-    setError('')
 
     if (!validateEmail()) {
       return
     }
 
     if (!/^\d{6}$/.test(otp.trim())) {
-      setError('OTP must be a 6 digit code.')
+      showError('OTP must be a 6 digit code.')
       return
     }
 
     if (newPassword.length < 8) {
-      setError('New password must be at least 8 characters.')
+      showError('New password must be at least 8 characters.')
       return
     }
 
@@ -76,12 +72,12 @@ function ForgotPassword() {
         newPassword,
       })
 
-      setMessage(response?.message || 'Password reset successfully.')
+      showSuccess(response?.message || 'Password reset successfully.')
       setTimeout(() => {
         navigate('/signin', { replace: true })
       }, 900)
     } catch (resetError) {
-      setError(getApiErrorMessage(resetError))
+      showError(getApiErrorMessage(resetError))
     } finally {
       setIsResettingPassword(false)
     }
@@ -153,8 +149,6 @@ function ForgotPassword() {
             <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">OTP expires at: {otpExpiresAt}</p>
           ) : null}
 
-          {message ? <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{message}</p> : null}
-          {error ? <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p> : null}
 
           <button
             type="submit"
