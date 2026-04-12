@@ -3,10 +3,12 @@ import { Link, useNavigate } from 'react-router-dom'
 import { getGoogleLoginUrl } from '../../api/authService'
 import { getDashboardPathByRole } from '../../context/authRoles'
 import useAuth from '../../context/useAuth'
+import useToast from '../../context/useToast'
 
 function SignUp() {
   const navigate = useNavigate()
   const { register, getApiErrorMessage } = useAuth()
+  const { showError, showInfo, showSuccess } = useToast()
 
   const [formData, setFormData] = useState({
     fullName: '',
@@ -15,14 +17,12 @@ function SignUp() {
     confirmPassword: '',
   })
   const [errors, setErrors] = useState({})
-  const [serverError, setServerError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleChange = (event) => {
     const { name, value } = event.target
     setFormData((prev) => ({ ...prev, [name]: value }))
     setErrors((prev) => ({ ...prev, [name]: '' }))
-    setServerError('')
   }
 
   const validateForm = () => {
@@ -68,14 +68,19 @@ function SignUp() {
       })
 
       if (result?.user?.provider === 'LOCAL' && result?.user?.emailVerified === false) {
-        navigate(`/verify-email?email=${encodeURIComponent(formData.email.trim())}`, { replace: true })
+        showInfo('Account created. Verify your email with the OTP to continue.')
+        navigate(`/verify-email?from=signup&email=${encodeURIComponent(formData.email.trim())}`, {
+          replace: true,
+        })
       } else if (result?.role) {
+        showSuccess('Registration successful.')
         navigate(getDashboardPathByRole(result.role), { replace: true })
       } else {
+        showSuccess('Registration successful. Please sign in.')
         navigate('/signin', { replace: true })
       }
     } catch (error) {
-      setServerError(getApiErrorMessage(error))
+      showError(getApiErrorMessage(error))
     } finally {
       setIsSubmitting(false)
     }
@@ -162,9 +167,6 @@ function SignUp() {
             ) : null}
           </div>
 
-          {serverError ? (
-            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{serverError}</p>
-          ) : null}
 
           <button
             type="submit"

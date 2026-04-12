@@ -1,27 +1,58 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { getGoogleLoginUrl } from '../../api/authService'
 import { getDashboardPathByRole } from '../../context/authRoles'
 import useAuth from '../../context/useAuth'
+import useToast from '../../context/useToast'
+
+function isUnverifiedEmailError(message) {
+  const normalized = (message || '').toLowerCase()
+
+  return (
+    normalized.includes('email is not verified') ||
+    normalized.includes('email not verified') ||
+    normalized.includes('verify your email') ||
+    normalized.includes('verification required')
+  )
+}
+
+function isLikelyUnverifiedLogin(error, message) {
+  const status = error?.response?.status
+  const normalized = (message || '').toLowerCase()
+
+  // Some backend/security flows return plain 403 Forbidden for unverified local users.
+  if (status === 403 && (normalized === 'forbidden' || normalized.includes('access denied'))) {
+    return true
+  }
+
+  return isUnverifiedEmailError(message)
+}
 
 function SignIn() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { login, getApiErrorMessage } = useAuth()
+  const { showError, showInfo } = useToast()
   const [formData, setFormData] = useState({
     email: '',
     password: '',
   })
   const [errors, setErrors] = useState({})
-  const [serverError, setServerError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const oauthError = searchParams.get('oauth') === 'failed' ? searchParams.get('message') || 'Google sign in failed.' : ''
+  const hasShownOAuthErrorToast = useRef(false)
+
+  useEffect(() => {
+    if (oauthError && !hasShownOAuthErrorToast.current) {
+      hasShownOAuthErrorToast.current = true
+      showError(oauthError)
+    }
+  }, [oauthError, showError])
 
   const handleChange = (event) => {
     const { name, value } = event.target
     setFormData((prev) => ({ ...prev, [name]: value }))
     setErrors((prev) => ({ ...prev, [name]: '' }))
-    setServerError('')
   }
 
   const validateForm = () => {
@@ -54,12 +85,14 @@ function SignIn() {
       navigate(getDashboardPathByRole(authenticatedUser.role), { replace: true })
     } catch (error) {
       const errorMessage = getApiErrorMessage(error)
-      if (errorMessage.toLowerCase().includes('email is not verified')) {
-        navigate(`/verify-email?email=${encodeURIComponent(formData.email.trim())}`, { replace: true })
+      if (isLikelyUnverifiedLogin(error, errorMessage)) {
+        const encodedEmail = encodeURIComponent(formData.email.trim())
+        showInfo('Please verify your email to continue. We can resend your OTP if needed.')
+        navigate(`/verify-email?from=signin&email=${encodedEmail}`, { replace: true })
         return
       }
 
-      setServerError(errorMessage)
+      showError(errorMessage)
     } finally {
       setIsSubmitting(false)
     }
@@ -115,13 +148,6 @@ function SignIn() {
             </div>
           </div>
 
-          {oauthError ? (
-            <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-700">{oauthError}</p>
-          ) : null}
-
-          {serverError ? (
-            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{serverError}</p>
-          ) : null}
 
           <button
             type="submit"

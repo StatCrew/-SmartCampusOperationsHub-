@@ -1,13 +1,16 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { sendVerificationOtp } from '../../api/authService'
 import { getDashboardPathByRole } from '../../context/authRoles'
 import useAuth from '../../context/useAuth'
+import useToast from '../../context/useToast'
 
 function VerifyEmail() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
-  const { user, role, completeEmailVerification, getApiErrorMessage } = useAuth()
+  const { user, role, isAuthenticated, completeEmailVerification, getApiErrorMessage } = useAuth()
+  const { showError, showInfo, showSuccess } = useToast()
+  const verificationSource = searchParams.get('from')
 
   const defaultEmail = useMemo(
     () => searchParams.get('email') || user?.email || '',
@@ -16,23 +19,36 @@ function VerifyEmail() {
 
   const [email, setEmail] = useState(defaultEmail)
   const [otp, setOtp] = useState('')
-  const [message, setMessage] = useState('')
-  const [error, setError] = useState('')
   const [isVerifying, setIsVerifying] = useState(false)
   const [isResending, setIsResending] = useState(false)
+  const hasShownSourceToast = useRef(false)
+
+  useEffect(() => {
+    if (hasShownSourceToast.current) {
+      return
+    }
+
+    if (verificationSource === 'signin') {
+      hasShownSourceToast.current = true
+      showInfo('Please verify your email to continue signing in.')
+    }
+
+    if (verificationSource === 'signup') {
+      hasShownSourceToast.current = true
+      showInfo('We sent an OTP to your email. Enter it to activate your account.')
+    }
+  }, [showInfo, verificationSource])
 
   const handleVerify = async (event) => {
     event.preventDefault()
-    setMessage('')
-    setError('')
 
     if (!email.trim()) {
-      setError('Email is required.')
+      showError('Email is required.')
       return
     }
 
     if (!/^\d{6}$/.test(otp.trim())) {
-      setError('OTP must be a 6 digit code.')
+      showError('OTP must be a 6 digit code.')
       return
     }
 
@@ -40,26 +56,26 @@ function VerifyEmail() {
 
     try {
       const response = await completeEmailVerification({ email: email.trim(), otp: otp.trim() })
-      setMessage(response?.message || 'Email verified successfully.')
+      showSuccess(response?.message || 'Email verified successfully.')
 
-      if (role) {
+      if (verificationSource === 'signup' || !isAuthenticated) {
+        showInfo('Verification complete. Please sign in.')
+        navigate('/signin', { replace: true })
+      } else if (role) {
         navigate(getDashboardPathByRole(role), { replace: true })
       } else {
         navigate('/signin', { replace: true })
       }
     } catch (verifyError) {
-      setError(getApiErrorMessage(verifyError))
+      showError(getApiErrorMessage(verifyError))
     } finally {
       setIsVerifying(false)
     }
   }
 
   const handleResend = async () => {
-    setMessage('')
-    setError('')
-
     if (!email.trim()) {
-      setError('Enter your email to resend OTP.')
+      showError('Enter your email to resend OTP.')
       return
     }
 
@@ -67,9 +83,9 @@ function VerifyEmail() {
 
     try {
       const response = await sendVerificationOtp({ email: email.trim() })
-      setMessage(response?.message || 'Verification code sent.')
+      showSuccess(response?.message || 'Verification code sent.')
     } catch (resendError) {
-      setError(getApiErrorMessage(resendError))
+      showError(getApiErrorMessage(resendError))
     } finally {
       setIsResending(false)
     }
@@ -112,8 +128,6 @@ function VerifyEmail() {
             />
           </div>
 
-          {message ? <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{message}</p> : null}
-          {error ? <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p> : null}
 
           <button
             type="submit"

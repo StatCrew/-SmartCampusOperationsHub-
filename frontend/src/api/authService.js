@@ -84,12 +84,22 @@ export function getGoogleLoginUrl() {
 }
 
 export function getApiErrorMessage(error) {
+  const status = error?.response?.status
+
   if (error?.response?.data?.message) {
     return error.response.data.message
   }
 
   if (error?.response?.data?.error) {
     return error.response.data.error
+  }
+
+  if (status === 401) {
+    return 'Invalid email or password.'
+  }
+
+  if (status === 403) {
+    return 'Access denied. If you recently signed up, please verify your email first.'
   }
 
   return error?.message || 'Something went wrong. Please try again.'
