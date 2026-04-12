@@ -27,8 +27,6 @@ public class Ticket {
 
     private String priority; // LOW, MEDIUM, HIGH
 
-    private String status; // OPEN, IN_PROGRESS, RESOLVED, CLOSED, REJECTED
-
     private Long resourceId;
 
     private LocalDateTime createdAt;
@@ -39,4 +37,13 @@ public class Ticket {
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
+
+    @Enumerated(EnumType.STRING)
+    private TicketStatus status; // OPEN, IN_PROGRESS, RESOLVED, CLOSED
+
+    @ManyToOne
+    @JoinColumn(name = "technician_id")
+    private User technician;
+
+
 }

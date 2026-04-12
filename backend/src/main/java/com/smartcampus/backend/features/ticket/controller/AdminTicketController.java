@@ -2,10 +2,15 @@ package com.smartcampus.backend.features.ticket.controller;
 
 import com.smartcampus.backend.features.ticket.dto.TicketResponse;
 import com.smartcampus.backend.features.ticket.model.Ticket;
+import com.smartcampus.backend.features.ticket.model.TicketStatus;
 import com.smartcampus.backend.features.ticket.service.TicketService;
+import com.smartcampus.backend.features.user.model.User;
+import com.smartcampus.backend.features.user.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.List;
 
@@ -17,6 +22,7 @@ import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
 public class AdminTicketController {
 
     private final TicketService ticketService;
+    private final UserRepository userRepository;
 
     // GET ALL TICKETS
     @GetMapping
@@ -56,5 +62,26 @@ public class AdminTicketController {
                 .getAllTickets()).withRel("all-tickets"));
 
         return response;
+    }
+
+    @PutMapping("/{id}/status")
+    public TicketResponse updateStatus(
+            @PathVariable Long id,
+            @RequestParam String status
+    ) {
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String email = auth.getName();
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        Ticket updated = ticketService.updateTicketStatus(
+                id,
+                TicketStatus.valueOf(status),
+                user
+        );
+
+        return new TicketResponse(updated);
     }
 }

@@ -24,6 +24,10 @@ public class TicketResponse extends RepresentationModel<TicketResponse> {
     private Long userId;
     private String userEmail;
 
+    // technician info (SAFE)
+    private Long technicianId;
+    private String technicianEmail;
+
     // constructor
     public TicketResponse(Ticket ticket) {
     this.id = ticket.getId();
@@ -31,11 +35,13 @@ public class TicketResponse extends RepresentationModel<TicketResponse> {
     this.description = ticket.getDescription();
     this.category = ticket.getCategory();
     this.priority = ticket.getPriority();
-    this.status = ticket.getStatus();
+    this.status = ticket.getStatus().toString();
     this.resourceId = ticket.getResourceId();
     this.createdAt = ticket.getCreatedAt();
     this.userId = ticket.getUser().getId();
     this.userEmail = ticket.getUser().getEmail();
+    this.technicianId = ticket.getTechnician() != null ? ticket.getTechnician().getId() : null; // Handle null technician
+    this.technicianEmail = ticket.getTechnician() != null ? ticket.getTechnician().getEmail() : null; 
     }   
-    // getters only
+    
 }
