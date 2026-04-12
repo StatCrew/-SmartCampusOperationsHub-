@@ -8,8 +8,9 @@ export const roleSidebarItems = {
     { icon: 'dashboard', label: 'Dashboard', path: '/admin/dashboard' },
     { icon: 'group', label: 'Users', path: '/admin/users' },
     // ADDED: Admin Analytics & Booking Requests
-    { icon: 'analytics', label: 'Booking Analytics', path: '/admin/analytics' },
+   
     { icon: 'list_alt', label: 'Booking Requests', path: '/admin/bookings' },
+    { icon: 'analytics', label: 'Booking Analytics', path: '/admin/analytics' },
     { icon: 'cloud_upload', label: 'Storage Test', path: '/admin/storage-test' },
   ],
   TECHNICIAN: [
