@@ -20,6 +20,8 @@ public class ResourceResponseDTO {
     private ResourceStatus status;
     private String description;
     private String availabilityWindow;
+    private String imageKey;
+    private String imageUrl;
     private Instant createdAt;
     private Instant updatedAt;
 }

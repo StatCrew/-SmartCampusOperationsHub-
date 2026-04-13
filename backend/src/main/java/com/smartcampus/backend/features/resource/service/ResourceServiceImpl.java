@@ -1,14 +1,15 @@
 package com.smartcampus.backend.features.resource.service;
 
+import com.smartcampus.backend.features.admin.service.AdminStorageTestService;
 import com.smartcampus.backend.features.resource.dto.ResourceRequestDTO;
 import com.smartcampus.backend.features.resource.dto.ResourceResponseDTO;
 import com.smartcampus.backend.features.resource.model.Resource;
 import com.smartcampus.backend.features.resource.repository.ResourceRepository;
-import com.smartcampus.backend.features.resource.service.ResourceService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Instant;
 import java.util.List;
@@ -19,6 +20,7 @@ import java.util.stream.Collectors;
 public class ResourceServiceImpl implements ResourceService {
 
     private final ResourceRepository resourceRepository;
+    private final AdminStorageTestService storageService;
 
     @Override
     @Transactional
@@ -60,7 +62,7 @@ public class ResourceServiceImpl implements ResourceService {
         Resource existingResource = resourceRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Resource not found with id: " + id));
 
-        // Update fields
+        // Update fields (imageKey is managed separately via uploadResourceImage)
         existingResource.setName(dto.getName());
         existingResource.setType(dto.getType());
         existingResource.setCapacity(dto.getCapacity());
@@ -83,8 +85,26 @@ public class ResourceServiceImpl implements ResourceService {
         resourceRepository.deleteById(id);
     }
 
-    // Helper method for mapping (Manual mapping for now)
+    @Override
+    @Transactional
+    public ResourceResponseDTO uploadResourceImage(Long id, MultipartFile file) {
+        Resource resource = resourceRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Resource not found with id: " + id));
+        String key = storageService.uploadTestImage(file).key();
+        resource.setImageKey(key);
+        resource.setUpdatedAt(Instant.now());
+        return mapToResponseDTO(resourceRepository.save(resource));
+    }
+
     private ResourceResponseDTO mapToResponseDTO(Resource resource) {
+        String imageUrl = null;
+        if (resource.getImageKey() != null) {
+            try {
+                imageUrl = storageService.generatePresignedUrl(resource.getImageKey()).url();
+            } catch (Exception ignored) {
+                // S3 not configured or key missing — return null url gracefully
+            }
+        }
         return ResourceResponseDTO.builder()
                 .id(resource.getId())
                 .name(resource.getName())
@@ -94,6 +114,8 @@ public class ResourceServiceImpl implements ResourceService {
                 .status(resource.getStatus())
                 .description(resource.getDescription())
                 .availabilityWindow(resource.getAvailabilityWindow())
+                .imageKey(resource.getImageKey())
+                .imageUrl(imageUrl)
                 .createdAt(resource.getCreatedAt())
                 .updatedAt(resource.getUpdatedAt())
                 .build();
