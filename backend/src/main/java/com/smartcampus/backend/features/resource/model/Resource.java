@@ -42,4 +42,7 @@ public class Resource {
     // Added this field back
     @Column(name = "availability_window")
     private String availabilityWindow;
+
+    @Column(name = "image_key")
+    private String imageKey;
 }
