@@ -14,6 +14,12 @@ import TechnicianDashboardPage from '../pages/dashboard/technician/TechnicianDas
 import UserDashboard from '../pages/dashboard/UserDashboard'
 import UserProfile from '../pages/dashboard/UserProfile'
 import ProtectedRoute from './ProtectedRoute'
+import AdminBookingAnalyticsPage from '../pages/dashboard/admin/AdminBookingAnalyticsPage'
+import AdminBookingsPage from '../pages/dashboard/admin/AdminBookingsPage'
+import AdminResourceAnalyticsPage from '../pages/dashboard/admin/AdminResourceAnalyticsPage'
+import UserBookingsPage from '../pages/dashboard/user/UserBookingsPage'
+import AdminResourcesPage   from '../pages/dashboard/admin/AdminResourcesPage'
+import UserResourcesPage    from '../pages/dashboard/user/UserResourcesPage'
 
 
 function HomeRedirect() {
@@ -56,7 +62,10 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<HomeRedirect />} />
-
+      <Route path="/admin/resources" element={<AdminResourcesPage />} />   {/* ← ADD */}
+      <Route element={<ProtectedRoute allowedRoles={['USER', 'ADMIN', 'TECHNICIAN']} />}>
+      <Route path="/dashboard/user/resources" element={<UserResourcesPage />} />  {/* ← ADD */}
+      </Route>
       <Route
         path="/signin"
         element={
@@ -96,6 +105,9 @@ function AppRoutes() {
         <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
         <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
         <Route path="/admin/users" element={<AdminUsersPage />} />
+        <Route path="/admin/bookings" element={<AdminBookingsPage />} />
+        <Route path="/admin/analytics" element={<AdminBookingAnalyticsPage />} />
+        <Route path="/admin/resource-analytics" element={<AdminResourceAnalyticsPage />} />
         <Route path="/admin/users/create" element={<CreateUserPage />} />
         <Route path="/admin/storage-test" element={<AdminStorageTestPage />} />
       </Route>
@@ -106,10 +118,13 @@ function AppRoutes() {
 
       <Route path="/user-dashboard" element={<Navigate to="/dashboard/user" replace />} />
       <Route path="/user-dashboard/profile" element={<Navigate to="/dashboard/user/profile" replace />} />
+      <Route path="/dashboard/user/bookings" element={<UserBookingsPage />} />
       <Route path="/admin-dashboard" element={<Navigate to="/admin/dashboard" replace />} />
       <Route path="/technician-dashboard" element={<Navigate to="/dashboard/technician" replace />} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
+
+      
     </Routes>
   )
 }

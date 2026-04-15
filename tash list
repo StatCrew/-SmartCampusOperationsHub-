@@ -1,0 +1,43 @@
+[33mdbe62cf[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mfeature/Resource[m[33m)[m Merge branch 'main' of https://github.com/StatCrew/-SmartCampusOperationsHub- into feature/Resource
+[33m4ba7508[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Merge pull request #13 from StatCrew/develop
+[33m56a8a27[m feat(config): config s3 and test use pre-signed S3 URLs for private image uploads
+[33md5eb4ea[m Implemented the availabillity window in resource feature
+[33m05583b5[m[33m ([m[1;31morigin/feature/Resource[m[33m)[m Merge branch 'develop' into feature/Resource
+[33mf870bbd[m application.properties
+[33m403ac1c[m Merge pull request #12 from StatCrew/develop
+[33m5666f6d[m[33m ([m[1;31morigin/develop[m[33m, [m[1;32mdevelop[m[33m)[m feat(dashboard): update header actions and simplify sidebar nav
+[33m21862dd[m Merge pull request #11 from StatCrew/develop
+[33m4becab7[m feat(admin): add real account status + admin CRUD with search/filter/pagination
+[33m237d298[m Merge pull request #10 from StatCrew/develop
+[33m4b351ae[m feat(profile): allow LOCAL users to update name/email with email-change verification flow
+[33m835032e[m Merge pull request #9 from StatCrew/develop
+[33m8e181e0[m feat(admin-auth): add admin dashboard flow, generic user creation, and OAuth/token cleanup fixes
+[33m7f0e5dd[m Merge pull request #8 from StatCrew/develop
+[33m1c01077[m[33m ([m[1;31morigin/feature/user-service[m[33m)[m feat(users): Implement role-based dashboards and admin user management
+[33md1f1634[m Merge pull request #7 from StatCrew/develop
+[33m682a7a4[m[33m ([m[1;31morigin/feature/security-oauth-jwt[m[33m)[m refactor(dashboard): modularize user dashboard with fixed routing and sidebar navigation
+[33mbfb7ba8[m Merge pull request #6 from StatCrew/develop
+[33m6ae0917[m feat(auth): integrate forgot password flow with OTP reset UI and routes
+[33mec24aa4[m Resource module modification implementations
+[33mf9fc536[m Merge pull request #5 from StatCrew/develop
+[33ma45e0d0[m feat(auth): implement forgot-password OTP reset flow -  backend
+[33m985a394[m Merge pull request #4 from StatCrew/develop
+[33m13b96b5[m feat(auth): add OTP email verification and Google OAuth callback flow across frontend/backend
+[33ma88986d[m implemented changes in  resource model
+[33m52c6a77[m Merge branch 'main' of https://github.com/StatCrew/-SmartCampusOperationsHub- into feature/Resource
+[33m538a23e[m Merge pull request #3 from StatCrew/develop
+[33m535b5a7[m feat(auth): Email verification implemented
+[33m2e45c3f[m Implemented ResourceModel for resource Management
+[33m371baf3[m Initialize  resource management module structure
+[33me1dc97c[m Setup resource feature structure with controllers, services, dtos
+[33me848b55[m[33m ([m[1;32mmain[m[33m)[m Merge pull request #2 from StatCrew/develop
+[33m41211f7[m feat(auth): JWT refresh token flow and logout revocation implemented
+[33md3a5a10[m Merge pull request #1 from StatCrew/develop
+[33med33db3[m feat(auth): add JWT + Google OAuth2 auth with secured /api/v1/auth endpoints
+[33m4e13b86[m chore(css): setup tailwind css
+[33m376a1b2[m fix: update SecurityConfig to permit all requests
+[33m23b2b47[m chore(docker):updated backend dockerfile
+[33mbe863aa[m chore(ci): update artifact actions to v4 to fix deprecation
+[33m94769bd[m chore: initial project setup with backend, frontend, and Docker
+[33mb347621[m Initialize Springbootbackend and React frontend
+[33m2691cea[m Initial commit
