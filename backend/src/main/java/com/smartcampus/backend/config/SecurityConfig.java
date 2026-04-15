@@ -80,6 +80,7 @@ public class SecurityConfig {
                                 "/api/v1/auth/forgot-password/reset")
                         .permitAll()
                         .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
+                        .requestMatchers("/ws-notifications", "/ws-notifications/**").permitAll()
                         .requestMatchers("/h2-console/**").permitAll()
                         .requestMatchers("/error").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/auth/me").authenticated()

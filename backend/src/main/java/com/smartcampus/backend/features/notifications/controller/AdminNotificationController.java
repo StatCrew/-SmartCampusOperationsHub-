@@ -1,7 +1,9 @@
 package com.smartcampus.backend.features.notifications.controller;
 
 import com.smartcampus.backend.features.notifications.model.NotificationSeverity;
+import com.smartcampus.backend.features.notifications.model.NotificationCategory;
 import com.smartcampus.backend.features.notifications.service.NotificationEventPublisher;
+import com.smartcampus.backend.features.user.model.Role;
 import com.smartcampus.backend.features.user.model.User;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -41,7 +43,30 @@ public class AdminNotificationController {
                 request.actionUrl(),
                 "admin",
                 user == null || user.getId() == null ? null : String.valueOf(user.getId()),
-                null);
+                null,
+                request.category());
+
+        return ResponseEntity.accepted().build();
+    }
+
+    @PostMapping("/broadcast")
+    public ResponseEntity<Void> sendRoleBroadcast(@Valid @RequestBody AdminBroadcastNotificationRequest request,
+                                                  @AuthenticationPrincipal User user) {
+        String title = request.title() == null || request.title().isBlank()
+                ? "Admin announcement"
+                : request.title().trim();
+
+        notificationEventPublisher.publishToRole(
+                request.recipientRole(),
+                "ADMIN_BROADCAST",
+                title,
+                request.message().trim(),
+                NotificationSeverity.INFO,
+                request.actionUrl(),
+                "admin",
+                user == null || user.getId() == null ? null : String.valueOf(user.getId()),
+                null,
+                request.category());
 
         return ResponseEntity.accepted().build();
     }
@@ -50,7 +75,17 @@ public class AdminNotificationController {
             @NotNull Long recipientUserId,
             String title,
             @NotBlank String message,
-            String actionUrl
+            String actionUrl,
+            NotificationCategory category
+    ) {
+    }
+
+    public record AdminBroadcastNotificationRequest(
+            @NotNull Role recipientRole,
+            String title,
+            @NotBlank String message,
+            String actionUrl,
+            NotificationCategory category
     ) {
     }
 }
