@@ -48,6 +48,10 @@ public class Notification {
     @Column(nullable = false, length = 60)
     private String type;
 
+    @Enumerated(EnumType.STRING)
+    @Column(length = 30)
+    private NotificationCategory category;
+
     @Column(nullable = false, length = 160)
     private String title;
 

@@ -124,3 +124,8 @@ export async function sendAdminTestNotification(payload) {
   return response.data
 }
 
+export async function sendAdminRoleBroadcast(payload) {
+  const response = await apiClient.post(`${ADMIN_NOTIFICATIONS_PREFIX}/broadcast`, payload)
+  return response.data
+}
+
