@@ -5,6 +5,7 @@ import org.springframework.hateoas.RepresentationModel;
 import com.smartcampus.backend.features.ticket.model.Ticket;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import lombok.Getter;
 
@@ -28,6 +29,9 @@ public class TicketResponse extends RepresentationModel<TicketResponse> {
     private Long technicianId;
     private String technicianEmail;
 
+    // attachments (file URLs)
+    private List<String> attachments;
+
     // constructor
     public TicketResponse(Ticket ticket) {
     this.id = ticket.getId();
@@ -41,7 +45,14 @@ public class TicketResponse extends RepresentationModel<TicketResponse> {
     this.userId = ticket.getUser().getId();
     this.userEmail = ticket.getUser().getEmail();
     this.technicianId = ticket.getTechnician() != null ? ticket.getTechnician().getId() : null; // Handle null technician
-    this.technicianEmail = ticket.getTechnician() != null ? ticket.getTechnician().getEmail() : null; 
+    this.technicianEmail = ticket.getTechnician() != null ? ticket.getTechnician().getEmail() : null;
+    this.attachments = ticket.getAttachments() == null
+            ? List.of()
+            : ticket.getAttachments()
+                    .stream()
+                    .map(a -> a.getFileUrl())
+                    .toList(); 
     }   
     
 }
+

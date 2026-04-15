@@ -1,8 +1,11 @@
 package com.smartcampus.backend.features.ticket.service;
 
+import com.smartcampus.backend.features.storage.service.S3Service;
 import com.smartcampus.backend.features.ticket.model.Ticket;
+import com.smartcampus.backend.features.ticket.model.TicketAttachment;
 import com.smartcampus.backend.features.ticket.model.TicketComment;
 import com.smartcampus.backend.features.ticket.model.TicketStatus;
+import com.smartcampus.backend.features.ticket.repository.TicketAttachmentRepository;
 import com.smartcampus.backend.features.ticket.repository.TicketCommentRepository;
 import com.smartcampus.backend.features.ticket.repository.TicketRepository;
 import com.smartcampus.backend.features.user.model.User;
@@ -14,6 +17,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -25,7 +29,8 @@ public class TicketService {
     private final TicketRepository ticketRepository;
     private final UserRepository userRepository;
     private final TicketCommentRepository commentRepository;
-
+    private final S3Service s3Service;
+    private final TicketAttachmentRepository attachmentRepository;
 
 
     // Create Ticket
@@ -222,6 +227,24 @@ public class TicketService {
 
         // Only tickets assigned to this technician
         return ticketRepository.findByTechnicianId(technician.getId());
+    }
+
+    public void saveAttachments(Ticket ticket, java.util.List<MultipartFile> files) {
+
+        if (files.size() > 3) {
+            throw new RuntimeException("Maximum 3 attachments allowed");
+        }
+
+        for (MultipartFile file : files) {
+
+            String url = s3Service.uploadFile(file);
+
+            TicketAttachment attachment = new TicketAttachment();
+            attachment.setFileUrl(url);
+            attachment.setTicket(ticket);
+
+            attachmentRepository.save(attachment);
+        }
     }
 
 

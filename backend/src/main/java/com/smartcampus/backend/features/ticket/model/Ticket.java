@@ -4,6 +4,7 @@ import com.smartcampus.backend.features.user.model.User;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Table(name = "tickets")
@@ -44,6 +45,9 @@ public class Ticket {
     @ManyToOne
     @JoinColumn(name = "technician_id")
     private User technician;
+
+    @OneToMany(mappedBy = "ticket", cascade = CascadeType.ALL)
+    private List<TicketAttachment> attachments;
 
 
 }

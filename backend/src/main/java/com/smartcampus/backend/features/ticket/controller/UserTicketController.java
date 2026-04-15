@@ -8,6 +8,7 @@ import java.util.Map;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.smartcampus.backend.features.ticket.dto.TicketResponse;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
@@ -23,18 +24,20 @@ public class UserTicketController {
     private final TicketService ticketService;
 
     // Create Ticket
-    @PostMapping
-    public TicketResponse createTicket(@RequestBody Ticket ticket) {
+    @PostMapping(consumes = "multipart/form-data")
+    public TicketResponse createTicket(
+            @RequestPart("ticket") Ticket ticket,
+            @RequestPart(value = "files", required = false) java.util.List<MultipartFile> files
+    ){
 
-    Ticket saved = ticketService.createTicket(ticket);
+        Ticket saved = ticketService.createTicket(ticket);
 
-    TicketResponse response = new TicketResponse(saved);
+        if (files != null && !files.isEmpty()) {
+            ticketService.saveAttachments(saved, files);
+        }
 
-    response.add(linkTo(methodOn(UserTicketController.class)
-            .getTicketById(saved.getId())).withSelfRel());
-
-    return response;
-}
+        return new TicketResponse(saved);
+    }
 
 
 // Get logged-in user's tickets    
