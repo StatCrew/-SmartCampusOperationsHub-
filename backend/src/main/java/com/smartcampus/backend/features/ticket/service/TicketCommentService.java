@@ -43,4 +43,34 @@ public class TicketCommentService {
     public List<TicketComment> getComments(Long ticketId) {
         return commentRepository.findByTicketIdOrderByCreatedAtAsc(ticketId);
     }
+
+
+    public TicketComment updateComment(Long commentId, String message, User user) {
+
+        TicketComment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new RuntimeException("Comment not found"));
+
+        //OWNER CHECK
+        if (!comment.getCreatedBy().equals(user.getEmail())) {
+            throw new RuntimeException("You can only edit your own comment");
+        }
+
+        comment.setMessage(message);
+        comment.setUpdatedAt(java.time.LocalDateTime.now());
+
+        return commentRepository.save(comment);
+    }
+
+    public void deleteComment(Long commentId, User user) {
+
+        TicketComment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new RuntimeException("Comment not found"));
+
+        if (!comment.getCreatedBy().equals(user.getEmail())) {
+            throw new RuntimeException("Not allowed to delete this comment");
+        }
+
+        commentRepository.delete(comment);
+    }
+
 }

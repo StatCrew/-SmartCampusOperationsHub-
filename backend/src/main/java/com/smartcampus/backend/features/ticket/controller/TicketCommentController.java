@@ -17,7 +17,7 @@ public class TicketCommentController {
 
     private final TicketCommentService commentService;
 
-    // Add comment (User/Admin/Technician)
+    // Add comment
     @PostMapping
     public TicketComment addComment(
             @PathVariable Long ticketId,
@@ -27,9 +27,30 @@ public class TicketCommentController {
         return commentService.addComment(ticketId, message, user);
     }
 
-    //  Get comments
+    // Get comments
     @GetMapping
     public List<TicketComment> getComments(@PathVariable Long ticketId) {
         return commentService.getComments(ticketId);
+    }
+
+    // Update comments
+    @PutMapping("/{commentId}")
+    public TicketComment updateComment(
+            @PathVariable Long ticketId,
+            @PathVariable Long commentId,
+            @RequestParam String message,
+            @AuthenticationPrincipal User user
+    ) {
+        return commentService.updateComment(commentId, message, user);
+    }
+
+    // Delete comments
+    @DeleteMapping("/{commentId}")
+    public void deleteComment(
+            @PathVariable Long ticketId,
+            @PathVariable Long commentId,
+            @AuthenticationPrincipal User user
+    ) {
+        commentService.deleteComment(commentId, user);
     }
 }

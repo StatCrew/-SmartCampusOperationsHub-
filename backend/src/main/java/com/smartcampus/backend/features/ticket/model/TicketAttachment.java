@@ -21,4 +21,5 @@ public class TicketAttachment {
     @ManyToOne
     @JoinColumn(name = "ticket_id")
     private Ticket ticket;
+
 }

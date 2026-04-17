@@ -21,15 +21,21 @@ public class TicketComment {
 
     private String message;
 
+    private String createdBy;
+
     private LocalDateTime createdAt;
 
-    // 🔗 Ticket
+    private LocalDateTime updatedAt;
+
+    // Ticket
     @ManyToOne
     @JoinColumn(name = "ticket_id")
     private Ticket ticket;
 
-    // 🔗 Who wrote comment
+    // Who wrote comment
     @ManyToOne
     @JoinColumn(name = "user_id")
     private User user;
+
+    
 }
