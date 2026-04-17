@@ -1,9 +1,13 @@
 package com.smartcampus.backend.features.notifications.controller;
 
 import com.smartcampus.backend.features.notifications.dto.NotificationResponse;
+import com.smartcampus.backend.features.notifications.dto.NotificationPreferenceResponse;
 import com.smartcampus.backend.features.notifications.dto.UnreadCountResponse;
+import com.smartcampus.backend.features.notifications.dto.UpdateNotificationPreferencesRequest;
 import com.smartcampus.backend.features.notifications.service.NotificationService;
 import com.smartcampus.backend.features.user.model.User;
+import jakarta.validation.Valid;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -16,6 +20,8 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 
 @RestController
 @RequestMapping("/api/v1/notifications")
@@ -48,6 +54,18 @@ public class NotificationController {
     public ResponseEntity<UnreadCountResponse> markAllAsRead(@AuthenticationPrincipal User user) {
         notificationService.markAllAsRead(user);
         return ResponseEntity.ok(new UnreadCountResponse(0));
+    }
+
+    @GetMapping("/me/preferences")
+    public ResponseEntity<List<NotificationPreferenceResponse>> getMyPreferences(@AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(notificationService.getMyPreferences(user));
+    }
+
+    @PutMapping("/me/preferences")
+    public ResponseEntity<List<NotificationPreferenceResponse>> updateMyPreferences(
+            @AuthenticationPrincipal User user,
+            @Valid @RequestBody UpdateNotificationPreferencesRequest request) {
+        return ResponseEntity.ok(notificationService.updateMyPreferences(user, request));
     }
 }
 

@@ -29,3 +29,16 @@ export async function markAllNotificationsRead() {
   return response.data
 }
 
+export async function getNotificationPreferences() {
+  const response = await apiClient.get(`${NOTIFICATIONS_PREFIX}/me/preferences`)
+  return Array.isArray(response.data) ? response.data : []
+}
+
+export async function updateNotificationPreferences(preferences) {
+  const response = await apiClient.put(`${NOTIFICATIONS_PREFIX}/me/preferences`, {
+    preferences,
+  })
+
+  return Array.isArray(response.data) ? response.data : []
+}
+

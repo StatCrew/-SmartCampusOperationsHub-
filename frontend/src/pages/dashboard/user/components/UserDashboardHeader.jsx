@@ -19,7 +19,7 @@ function getInitials(nameOrEmail) {
 
 function UserDashboardHeader({ eyebrow = 'Student Profile', title = 'My Account' }) {
   const navigate = useNavigate()
-  const { role, user, getApiErrorMessage } = useAuth()
+  const { role, token, user, getApiErrorMessage } = useAuth()
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
   const dropdownRef = useRef(null)
 
@@ -28,9 +28,13 @@ function UserDashboardHeader({ eyebrow = 'Student Profile', title = 'My Account'
     unreadCount,
     isLoading,
     errorMessage,
+    isSocketConnected,
+    preferences,
+    isSavingPreferences,
     markOneAsRead,
     markAllAsRead,
-  } = useNotifications({ getApiErrorMessage })
+    togglePreference,
+  } = useNotifications({ role, token, getApiErrorMessage })
 
   const avatarUrl = user?.imageUrl || user?.avatarUrl || user?.profileImageUrl || null
   const avatarFallback = getInitials(user?.fullName || user?.email)
@@ -107,13 +111,22 @@ function UserDashboardHeader({ eyebrow = 'Student Profile', title = 'My Account'
             <div className="absolute right-0 z-50 mt-2 w-80 rounded-xl border border-slate-200 bg-white p-3 shadow-xl">
               <div className="mb-2 flex items-center justify-between">
                 <p className="text-sm font-semibold text-slate-900">Notifications</p>
-                <button
-                  type="button"
-                  onClick={markAllAsRead}
-                  className="text-xs font-medium text-indigo-600 transition hover:text-indigo-700"
-                >
-                  Mark all read
-                </button>
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                      isSocketConnected ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                    }`}
+                  >
+                    {isSocketConnected ? 'Live' : 'Polling'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={markAllAsRead}
+                    className="text-xs font-medium text-indigo-600 transition hover:text-indigo-700"
+                  >
+                    Mark all read
+                  </button>
+                </div>
               </div>
 
               {errorMessage ? <p className="mb-2 text-xs text-red-600">{errorMessage}</p> : null}
@@ -138,6 +151,30 @@ function UserDashboardHeader({ eyebrow = 'Student Profile', title = 'My Account'
                     <p className="mt-1 text-[11px] text-slate-400">{new Date(notification.createdAt).toLocaleString()}</p>
                   </button>
                 ))}
+              </div>
+
+              <div className="mt-3 border-t border-slate-100 pt-3">
+                <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  Preferences
+                </p>
+
+                <div className="grid grid-cols-2 gap-2">
+                  {preferences.map((item) => (
+                    <button
+                      key={item.category}
+                      type="button"
+                      onClick={() => togglePreference(item.category)}
+                      disabled={isSavingPreferences}
+                      className={`rounded-lg border px-2 py-1.5 text-left text-[11px] font-medium transition ${
+                        item.enabled
+                          ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                          : 'border-slate-200 bg-slate-50 text-slate-500'
+                      }`}
+                    >
+                      {item.category}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           ) : null}
