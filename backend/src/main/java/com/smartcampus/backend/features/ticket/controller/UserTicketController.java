@@ -3,6 +3,8 @@ package com.smartcampus.backend.features.ticket.controller;
 import com.smartcampus.backend.features.ticket.model.Ticket;
 import com.smartcampus.backend.features.ticket.service.TicketService;
 import lombok.RequiredArgsConstructor;
+import tools.jackson.databind.ObjectMapper;
+
 import java.util.Map;
 
 import org.springframework.hateoas.EntityModel;
@@ -74,20 +76,30 @@ public class UserTicketController {
     
 
     // Update Ticket (only if OPEN)
-    @PutMapping("/{id}")
-    public TicketResponse updateTicket(@PathVariable Long id,
-                                        @RequestBody Ticket ticket) {
+    @PutMapping(value = "/{id}/with-files", consumes = "multipart/form-data")
+    public TicketResponse updateTicketWithFiles(
+            @PathVariable Long id,
+            @RequestPart("ticket") String ticketJson,
+            @RequestPart(value = "files", required = false) List<MultipartFile> files
+    ) throws Exception {
+
+        ObjectMapper mapper = new ObjectMapper();
+        Ticket ticket = mapper.readValue(ticketJson, Ticket.class);
 
         Ticket updated = ticketService.updateTicket(id, ticket);
 
+        if (files != null && !files.isEmpty()) {
+            ticketService.saveAttachments(updated, files);
+        }
+
         TicketResponse response = new TicketResponse(updated);
 
-        // HATEOAS links
+        // HATEOAS 
         response.add(linkTo(methodOn(UserTicketController.class)
-                .getTicketById(updated.getId())).withSelfRel());
+            .getTicketById(updated.getId())).withSelfRel());
 
         response.add(linkTo(methodOn(UserTicketController.class)
-                .getMyTickets()).withRel("all"));
+            .getMyTickets()).withRel("all"));
 
         return response;
     }
@@ -100,8 +112,12 @@ public class UserTicketController {
         ticketService.deleteTicket(id);
 
         EntityModel<Map<String, Object>> response =
-            EntityModel.of(Map.of("message", "Ticket deleted successfully"));
+                EntityModel.of(Map.of(
+                    "message", "Ticket deleted successfully",
+                    "deletedId", id
+                ));
 
+        //HATEOAS
         response.add(linkTo(methodOn(UserTicketController.class)
                 .getMyTickets()).withRel("my-tickets"));
 

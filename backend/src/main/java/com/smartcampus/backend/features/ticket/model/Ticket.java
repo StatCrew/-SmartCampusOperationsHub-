@@ -46,7 +46,7 @@ public class Ticket {
     @JoinColumn(name = "technician_id")
     private User technician;
 
-    @OneToMany(mappedBy = "ticket", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "ticket", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private List<TicketAttachment> attachments;
 
 
