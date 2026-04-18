@@ -3,6 +3,7 @@ package com.smartcampus.backend.features.resource.dto;
 import com.smartcampus.backend.features.resource.model.ResourceStatus;
 import com.smartcampus.backend.features.resource.model.ResourceType;
 import lombok.*;
+import org.springframework.hateoas.RepresentationModel;
 
 import java.time.Instant;
 
@@ -10,8 +11,9 @@ import java.time.Instant;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ResourceResponseDTO {
-    
+@EqualsAndHashCode(callSuper = false)
+public class ResourceResponseDTO extends RepresentationModel<ResourceResponseDTO> {
+
     private Long id;
     private String name;
     private ResourceType type;
