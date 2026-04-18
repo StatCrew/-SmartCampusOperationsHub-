@@ -5,6 +5,8 @@ export const roleSidebarItems = {
     { icon: 'book_online', label: 'My Bookings', path: '/dashboard/user/bookings' },
     //resource 
     { icon: 'inventory_2', label: 'Resources', path: '/dashboard/user/resources' },
+    //Ticketing system
+    { icon: 'report_problem', label: 'My Tickets', path: '/dashboard/user/tickets' },
 
   ],
   ADMIN: [
@@ -18,11 +20,16 @@ export const roleSidebarItems = {
     { icon: 'cloud_upload', label: 'Storage Test', path: '/admin/storage-test' },
     { icon: 'inventory_2', label: 'Resources', path: '/admin/resources' },
 
+    // Admin Ticketing system
+    { icon: 'report_problem', label: 'Manage Tickets', path: '/admin/tickets' },
+
   ],
   TECHNICIAN: [
     { icon: 'dashboard', label: 'Dashboard', path: '/dashboard/technician' },
     { icon: 'inventory_2', label: 'Resources',  path: '/dashboard/user/resources' }, // ← ADD
 
+    // Technician Ticketing system
+    { icon: 'build', label: 'Assigned Tickets', path: '/dashboard/technician/tickets' },
   ],
 }
 

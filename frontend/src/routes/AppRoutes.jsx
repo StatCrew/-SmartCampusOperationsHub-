@@ -20,6 +20,7 @@ import AdminResourceAnalyticsPage from '../pages/dashboard/admin/AdminResourceAn
 import UserBookingsPage from '../pages/dashboard/user/UserBookingsPage'
 import AdminResourcesPage   from '../pages/dashboard/admin/AdminResourcesPage'
 import UserResourcesPage    from '../pages/dashboard/user/UserResourcesPage'
+import UserTicketsPage from '../pages/dashboard/user/UserTicketsPage'
 
 
 function HomeRedirect() {
@@ -95,6 +96,7 @@ function AppRoutes() {
 
       <Route element={<ProtectedRoute allowedRoles={['USER']} />}>
         <Route path="/dashboard/user" element={<UserDashboard />} />
+        <Route path="/dashboard/user/tickets" element={<UserTicketsPage />} />
       </Route>
 
       <Route element={<ProtectedRoute allowedRoles={['USER', 'ADMIN', 'TECHNICIAN']} />}>
