@@ -8,7 +8,7 @@ import UserSidebar from '../user/components/UserSidebar'
 
 // ── Status config ────────────────────────────────────────────────────────────
 const STATUS = {
-  PENDING:   { label: 'Pending',   bg: 'bg-amber-50',   text: 'text-amber-700',   border: 'border-amber-200',   dot: 'bg-amber-400',   ring: 'ring-amber-100' },
+  PENDING:   { label: 'Pending',  bg: 'bg-amber-50',   text: 'text-amber-700',   border: 'border-amber-200',   dot: 'bg-amber-400',   ring: 'ring-amber-100' },
   APPROVED:  { label: 'Approved',  bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', dot: 'bg-emerald-400', ring: 'ring-emerald-100' },
   REJECTED:  { label: 'Rejected',  bg: 'bg-red-50',     text: 'text-red-700',     border: 'border-red-200',     dot: 'bg-red-400',     ring: 'ring-red-100' },
   CANCELLED: { label: 'Cancelled', bg: 'bg-slate-50',   text: 'text-slate-500',   border: 'border-slate-200',   dot: 'bg-slate-300',   ring: 'ring-slate-100' },
@@ -48,6 +48,10 @@ function FilterPill({ label, active, onClick, count, color }) {
 function ConfirmModal({ open, action, booking, onConfirm, onCancel, loading }) {
   if (!open) return null
   const isApprove = action === 'APPROVED'
+  
+  // Safely extract date for the modal
+  const displayDate = booking?.startTime ? booking.startTime.split('T')[0] : '—'
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onCancel} />
@@ -67,7 +71,7 @@ function ConfirmModal({ open, action, booking, onConfirm, onCancel, loading }) {
           <div className="mt-4 rounded-2xl bg-slate-50 border border-slate-100 p-4 space-y-1 text-xs text-slate-600">
             <div><span className="font-semibold">Booking ID:</span> #{booking.id}</div>
             <div><span className="font-semibold">Resource:</span> #{booking.resourceId}</div>
-            <div><span className="font-semibold">Date:</span> {booking.bookingDate}</div>
+            <div><span className="font-semibold">Date:</span> {displayDate}</div>
           </div>
         )}
         <div className="mt-6 flex gap-3">
@@ -98,6 +102,12 @@ function BookingCard({ booking, onAction, processingId, index }) {
   const isProcessing = processingId === booking.id
   const s = STATUS[booking.status] ?? STATUS.CANCELLED
 
+  // Safely extract the exact details from the Spring Boot JSON format
+  const displayDate = booking.startTime ? booking.startTime.split('T')[0] : '—'
+  const displayStartTime = booking.startTime ? booking.startTime.split('T')[1].substring(0, 5) : '—'
+  const displayEndTime = booking.endTime ? booking.endTime.split('T')[1].substring(0, 5) : '—'
+  const displayUser = booking.user?.id || booking.userId || 'System'
+
   return (
     <div
       className="group relative rounded-2xl bg-white border border-slate-100 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 overflow-hidden"
@@ -124,8 +134,8 @@ function BookingCard({ booking, onAction, processingId, index }) {
         {/* Details grid */}
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
           <div className="rounded-xl bg-slate-50 p-3">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">User</p>
-            <p className="mt-0.5 text-sm font-semibold text-slate-700 truncate">{booking.userId ?? '—'}</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">User ID</p>
+            <p className="mt-0.5 text-sm font-semibold text-slate-700 truncate">{displayUser}</p>
           </div>
           <div className="rounded-xl bg-slate-50 p-3">
             <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Resource</p>
@@ -133,7 +143,7 @@ function BookingCard({ booking, onAction, processingId, index }) {
           </div>
           <div className="rounded-xl bg-slate-50 p-3 col-span-2 sm:col-span-1">
             <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Date</p>
-            <p className="mt-0.5 text-sm font-semibold text-slate-700">{booking.bookingDate ?? '—'}</p>
+            <p className="mt-0.5 text-sm font-semibold text-slate-700">{displayDate}</p>
           </div>
         </div>
 
@@ -141,9 +151,9 @@ function BookingCard({ booking, onAction, processingId, index }) {
         {(booking.startTime || booking.endTime) && (
           <div className="mt-3 flex items-center gap-2 text-xs text-slate-500">
             <span className="text-slate-300">🕐</span>
-            <span className="font-medium">{booking.startTime}</span>
+            <span className="font-medium">{displayStartTime}</span>
             <span className="text-slate-300">→</span>
-            <span className="font-medium">{booking.endTime}</span>
+            <span className="font-medium">{displayEndTime}</span>
           </div>
         )}
 
@@ -252,16 +262,22 @@ function AdminBookingsPage() {
     [location.pathname, role],
   )
 
-  // Filter & search
+  // Filter & search (UPDATED LOGIC)
   const filtered = useMemo(() => {
     return bookings.filter(b => {
       const matchStatus = statusFilter === 'ALL' || b.status === statusFilter
       const q = search.toLowerCase()
+      
+      // Extract exact data to search against
+      const dateStr = b.startTime ? b.startTime.split('T')[0] : ''
+      const userIdStr = String(b.user?.id || b.userId || '').toLowerCase()
+
       const matchSearch = !q
         || String(b.id).includes(q)
-        || String(b.userId ?? '').toLowerCase().includes(q)
+        || userIdStr.includes(q)
         || String(b.resourceId ?? '').includes(q)
-        || String(b.bookingDate ?? '').includes(q)
+        || dateStr.includes(q)
+
       return matchStatus && matchSearch
     })
   }, [bookings, statusFilter, search])
