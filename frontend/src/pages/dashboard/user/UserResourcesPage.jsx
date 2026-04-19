@@ -354,15 +354,15 @@ function UserResourcesPage() {
                             View Schedule
                           </button>
                           
-                          {/* Booking Button */}
                           <button
-                            type="button"
-                            onClick={() => setBookingTarget(resource)}
-                            disabled={resource.status === 'OUT_OF_SERVICE'}
-                            className="rounded-lg bg-indigo-600 px-3 py-1 text-xs font-bold text-white transition hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            Book Room
-                          </button>
+                         type="button"
+                         
+                         onClick={() => navigate(`/dashboard/user/resources/${resource.id}`)}
+                         disabled={resource.status === 'OUT_OF_SERVICE'}
+                         className="rounded-lg bg-indigo-600 px-3 py-1 text-xs font-bold text-white transition hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                       >
+                         Book Room
+                       </button>
                         </td>
                         <td className="px-5 py-4">
                           <StatusBadge status={resource.status} />

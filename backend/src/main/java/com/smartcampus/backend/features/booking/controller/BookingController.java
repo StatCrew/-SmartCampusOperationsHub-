@@ -25,6 +25,7 @@ public class BookingController {
 
     // 1. POST: Create a new booking
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
     public ResponseEntity<Booking> createBooking(
             @Valid @RequestBody BookingRequest request,
             @AuthenticationPrincipal User currentUser) {
@@ -34,28 +35,37 @@ public class BookingController {
 
     // 2. GET: View a specific user's bookings
     @GetMapping("/user/{userId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
     public ResponseEntity<List<Booking>> getUserBookings(
             @PathVariable Long userId,
-            // These catch the ?page=0&size=8 from React so Spring doesn't panic
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "100") int size) {
         List<Booking> userBookings = bookingService.getUserBookings(userId);
         return ResponseEntity.ok(userBookings);
     }
 
-    // 3. GET: View ALL bookings (Admin Table)
+    // 3. GET: View ALL bookings (Admins for table, Users to check free slots)
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN')") // <--- Fixed to exactly match Member 4
+    @PreAuthorize("hasAnyRole('ADMIN', 'USER')")  // FIX: hasAnyRole() adds ROLE_ prefix automatically
     public ResponseEntity<List<Booking>> getAllBookings(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "100") int size) {
+            @RequestParam(defaultValue = "100") int size,
+            @RequestParam(required = false) Long resourceId) {  // FIX: accept resourceId from React
         List<Booking> allBookings = bookingService.getAllBookings();
+
+        // Filter by resourceId if provided (so React gets only relevant bookings)
+        if (resourceId != null) {
+            allBookings = allBookings.stream()
+                    .filter(b -> b.getResourceId() != null && b.getResourceId().equals(resourceId))
+                    .toList();
+        }
+
         return ResponseEntity.ok(allBookings);
     }
 
-    // 4. PATCH: Update workflow status
+    // 4. PATCH: Update workflow status (Strictly Admin Only)
     @PatchMapping("/{id}/status")
-    @PreAuthorize("hasRole('ADMIN')") // <--- Fixed to exactly match Member 4
+    @PreAuthorize("hasRole('ADMIN')")  // FIX: hasRole() instead of hasAuthority()
     public ResponseEntity<Booking> updateStatus(
             @PathVariable Long id,
             @RequestBody Map<String, String> payload) {
@@ -66,14 +76,15 @@ public class BookingController {
 
     // 5. DELETE: Remove a booking
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
     public ResponseEntity<Void> deleteBooking(@PathVariable Long id) {
         bookingService.deleteBooking(id);
         return ResponseEntity.noContent().build();
     }
 
-    // 6. GET: Admin Analytics Dashboard
+    // 6. GET: Admin Analytics Dashboard (Strictly Admin Only)
     @GetMapping("/analytics")
-    @PreAuthorize("hasRole('ADMIN')") // <--- Fixed to exactly match Member 4
+    @PreAuthorize("hasRole('ADMIN')")  // FIX: hasRole() instead of hasAuthority()
     public ResponseEntity<AnalyticsResponse> getAnalytics() {
         return ResponseEntity.ok(bookingService.getBookingAnalytics());
     }
