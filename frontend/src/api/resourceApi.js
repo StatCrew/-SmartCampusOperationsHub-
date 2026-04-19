@@ -68,6 +68,18 @@ export async function uploadResourceImage(id, file) {
   return response.data
 }
 
+// GET /api/resources/:id/availability-slots   — all authenticated users
+export async function getAvailabilitySlots(resourceId) {
+  const response = await apiClient.get(`/api/resources/${resourceId}/availability-slots`)
+  return Array.isArray(response.data) ? response.data : []
+}
+
+// PUT /api/resources/:id/availability-slots   — ADMIN only
+export async function replaceAvailabilitySlots(resourceId, slots) {
+  const response = await apiClient.put(`/api/resources/${resourceId}/availability-slots`, slots)
+  return Array.isArray(response.data) ? response.data : []
+}
+
 export const RESOURCE_TYPES    = ['LECTURE_HALL', 'LAB', 'MEETING_ROOM', 'EQUIPMENT']
 export const RESOURCE_STATUSES = ['ACTIVE', 'OUT_OF_SERVICE']
 
