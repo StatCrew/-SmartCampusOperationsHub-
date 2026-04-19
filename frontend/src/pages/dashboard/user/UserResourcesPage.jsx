@@ -10,6 +10,8 @@ import useAuth from '../../../context/useAuth'
 import { getHeaderLabelsByRole, getSidebarItemsByRole } from '../constants'
 import UserDashboardHeader from '../user/components/UserDashboardHeader'
 import UserSidebar from '../user/components/UserSidebar'
+// Add booking modal to the imports
+import CreateBookingModal from './components/CreateBookingModal'
 
 // ─── Schedule grid constants ──────────────────────────────────────────────────
 const DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY']
@@ -166,6 +168,9 @@ function UserResourcesPage() {
 
   // Schedule view modal
   const [scheduleViewTarget, setScheduleViewTarget] = useState(null)
+  
+  // Booking modal
+  const [bookingTarget, setBookingTarget] = useState(null)
 
   // Filters
   const [search,       setSearch]       = useState('')
@@ -339,13 +344,24 @@ function UserResourcesPage() {
                         <td className="px-5 py-4 text-slate-600">{formatResourceType(resource.type)}</td>
                         <td className="px-5 py-4 text-slate-600">{resource.location}</td>
                         <td className="px-5 py-4 text-slate-600">{resource.capacity}</td>
-                        <td className="px-5 py-4">
+                        {/* 👇 FIXED BUTTONS CONTAINER 👇 */}
+                        <td className="px-5 py-4 flex gap-2">
                           <button
                             type="button"
                             onClick={() => setScheduleViewTarget(resource)}
                             className="rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100"
                           >
                             View Schedule
+                          </button>
+                          
+                          {/* Booking Button */}
+                          <button
+                            type="button"
+                            onClick={() => setBookingTarget(resource)}
+                            disabled={resource.status === 'OUT_OF_SERVICE'}
+                            className="rounded-lg bg-indigo-600 px-3 py-1 text-xs font-bold text-white transition hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            Book Room
                           </button>
                         </td>
                         <td className="px-5 py-4">
@@ -375,6 +391,13 @@ function UserResourcesPage() {
           ) : null}
         </main>
       </div>
+      {/* adding booking modal */}
+      <CreateBookingModal 
+        isOpen={!!bookingTarget} 
+        selectedResource={bookingTarget} // Pass the selected resource data!
+        onClose={() => setBookingTarget(null)} 
+        onSuccess={() => navigate('/dashboard/user/bookings')} // Send them to see their booking!
+      />
     </div>
   )
 }

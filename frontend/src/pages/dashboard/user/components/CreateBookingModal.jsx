@@ -2,15 +2,6 @@ import { useState, useEffect, useRef } from 'react'
 import { createBooking } from '../../../../api/bookingApi'
 import useAuth from '../../../../context/useAuth'
 
-const mockCreateBooking = async (payload) => {
-  await new Promise(r => setTimeout(r, 1500))
-  if (payload.resourceId === 999) {
-    const err = new Error('Conflict')
-    err.response = { status: 409, data: { message: 'Resource 999 is booked 10:00–12:00. Next available slot: 12:30 PM.' } }
-    throw err
-  }
-}
-
 // --- Step definitions ---
 const STEPS = [
   { id: 1, label: 'Resource',  icon: '🏢' },
@@ -28,9 +19,8 @@ const fmtDuration = (s, e) => {
 }
 
 // ─── Main Component ───────────────────────────────────────────────
-export default function CreateBookingModal({ isOpen, onClose, onSuccess }) {
+export default function CreateBookingModal({ isOpen, onClose, onSuccess, selectedResource }) {
   const { getApiErrorMessage } = useAuth()
-  //const getApiErrorMessage = () => 'Something went wrong. Please try again.'
 
   const [step, setStep] = useState(1)
   const [formData, setFormData] = useState({
@@ -44,12 +34,16 @@ export default function CreateBookingModal({ isOpen, onClose, onSuccess }) {
   const [animating, setAnimating] = useState(false)
   const overlayRef = useRef(null)
 
+  // 👇 PRE-FILL AND LOCK DATA WHEN MODAL OPENS 👇
   useEffect(() => {
     if (isOpen) {
       setStep(1); setSubmitted(false); setError(''); setConflictMessage('')
-      setFormData({ resourceId: '', bookingDate: '', startTime: '', endTime: '', purpose: '', attendees: 1 })
+      setFormData({ 
+        resourceId: selectedResource?.id || '', // Auto-set ID from catalog
+        bookingDate: '', startTime: '', endTime: '', purpose: '', attendees: 1 
+      })
     }
-  }, [isOpen])
+  }, [isOpen, selectedResource])
 
   if (!isOpen) return null
 
@@ -172,19 +166,47 @@ export default function CreateBookingModal({ isOpen, onClose, onSuccess }) {
 
           {step === 1 && (
             <div className="step-body">
-              <FieldLabel>Resource ID</FieldLabel>
-              <input
-                type="number" name="resourceId" value={formData.resourceId}
-                onChange={handleChange} placeholder="e.g. 101"
-                className="field-input" required
-              />
-              <p className="field-hint">Enter the unique ID of the facility or room you wish to book.</p>
+              <FieldLabel>Resource</FieldLabel>
+              
+              {/* 👇 LOCKED INPUT BASED ON CATALOG SELECTION 👇 */}
+              {selectedResource ? (
+                <>
+                  <input
+                    type="text" 
+                    value={`${selectedResource.name} (ID: ${selectedResource.id})`}
+                    className="field-input bg-slate-100 text-slate-500 font-semibold cursor-not-allowed" 
+                    readOnly 
+                  />
+                  <p className="field-hint text-indigo-600 font-medium mt-1">You are requesting this specific facility.</p>
+                </>
+              ) : (
+                <>
+                  <input
+                    type="number" name="resourceId" value={formData.resourceId}
+                    onChange={handleChange} placeholder="e.g. 101"
+                    className="field-input" required
+                  />
+                  <p className="field-hint">Enter the unique ID of the facility or room you wish to book.</p>
+                </>
+              )}
 
-              <FieldLabel>Number of Attendees</FieldLabel>
+              {/* 👇 MAX CAPACITY ENFORCEMENT 👇 */}
+              <FieldLabel>
+                Number of Attendees {selectedResource && `(Max: ${selectedResource.capacity})`}
+              </FieldLabel>
               <div className="attendee-row">
-                <button className="attendee-btn" onClick={() => setFormData(p => ({ ...p, attendees: Math.max(1, +p.attendees - 1) }))}>−</button>
+                <button 
+                  className="attendee-btn" 
+                  onClick={() => setFormData(p => ({ ...p, attendees: Math.max(1, +p.attendees - 1) }))}
+                >−</button>
+                
                 <span className="attendee-count">{formData.attendees}</span>
-                <button className="attendee-btn" onClick={() => setFormData(p => ({ ...p, attendees: +p.attendees + 1 }))}>+</button>
+                
+                <button 
+                  className="attendee-btn" 
+                  onClick={() => setFormData(p => ({ ...p, attendees: Math.min(selectedResource?.capacity || 999, +p.attendees + 1) }))}
+                >+</button>
+                
                 <span className="attendee-label">
                   {formData.attendees === 1 ? 'person' : 'people'}
                 </span>
