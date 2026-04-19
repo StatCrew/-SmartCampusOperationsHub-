@@ -60,6 +60,30 @@ function toTicketFormData(ticketPayload, files = []) {
   return formData
 }
 
+async function normalizeResponse(response) {
+  return response.data
+}
+
+export async function getTicketComments(ticketId) {
+  const response = await apiClient.get(`${USER_TICKETS_PREFIX}/${ticketId}/comments`)
+  return Array.isArray(response.data) ? response.data : []
+}
+
+export async function createTicketComment(ticketId, message) {
+  const response = await apiClient.post(`${USER_TICKETS_PREFIX}/${ticketId}/comments`, { message })
+  return normalizeResponse(response)
+}
+
+export async function updateTicketComment(ticketId, commentId, message) {
+  const response = await apiClient.put(`${USER_TICKETS_PREFIX}/${ticketId}/comments/${commentId}`, { message })
+  return normalizeResponse(response)
+}
+
+export async function deleteTicketComment(ticketId, commentId) {
+  const response = await apiClient.delete(`${USER_TICKETS_PREFIX}/${ticketId}/comments/${commentId}`)
+  return normalizeResponse(response)
+}
+
 export async function getUserTickets(params = {}) {
   const response = await apiClient.get(`${USER_TICKETS_PREFIX}/my`, { params: buildParams(params) })
   return normalizeCollection(response.data)
@@ -67,6 +91,13 @@ export async function getUserTickets(params = {}) {
 
 export async function getUserTicketById(id) {
   const response = await apiClient.get(`${USER_TICKETS_PREFIX}/${id}`)
+  return response.data
+}
+
+export async function getUserTicketAttachmentUrl(id, key) {
+  const response = await apiClient.get(`${USER_TICKETS_PREFIX}/${id}/attachments/file-url`, {
+    params: { key },
+  })
   return response.data
 }
 
@@ -105,11 +136,23 @@ export async function getAdminTicketById(id) {
   return response.data
 }
 
+export async function getAdminTicketAttachmentUrl(id, key) {
+  const response = await apiClient.get(`${ADMIN_TICKETS_PREFIX}/${id}/attachments/file-url`, {
+    params: { key },
+  })
+  return response.data
+}
+
 export async function updateAdminTicketStatus(id, status) {
   const response = await apiClient.put(`${ADMIN_TICKETS_PREFIX}/${id}/status`, null, {
     params: { status },
   })
 
+  return response.data
+}
+
+export async function assignAdminTicket(id, technicianId) {
+  const response = await apiClient.put(`${ADMIN_TICKETS_PREFIX}/${id}/assign`, { technicianId })
   return response.data
 }
 
@@ -120,6 +163,13 @@ export async function getTechnicianTickets(params = {}) {
 
 export async function getTechnicianTicketById(id) {
   const response = await apiClient.get(`${TECHNICIAN_TICKETS_PREFIX}/${id}`)
+  return response.data
+}
+
+export async function getTechnicianTicketAttachmentUrl(id, key) {
+  const response = await apiClient.get(`${TECHNICIAN_TICKETS_PREFIX}/${id}/attachments/file-url`, {
+    params: { key },
+  })
   return response.data
 }
 

@@ -5,6 +5,7 @@ export const roleSidebarItems = {
     { icon: 'book_online', label: 'My Bookings', path: '/dashboard/user/bookings' },
     //resource 
     { icon: 'inventory_2', label: 'Resources', path: '/dashboard/user/resources' },
+    { icon: 'confirmation_number', label: 'Tickets', path: '/dashboard/user/tickets' },
 
   ],
   ADMIN: [
@@ -13,6 +14,7 @@ export const roleSidebarItems = {
     // ADDED: Admin Analytics & Booking Requests
    
     { icon: 'list_alt', label: 'Booking Requests', path: '/admin/bookings' },
+    { icon: 'confirmation_number', label: 'Tickets', path: '/admin/tickets' },
     { icon: 'analytics', label: 'Booking Analytics', path: '/admin/analytics' },
     { icon: 'bar_chart', label: 'Resource Analytics', path: '/admin/resource-analytics' },
     // { icon: 'cloud_upload', label: 'Storage Test', path: '/admin/storage-test' },
@@ -21,6 +23,7 @@ export const roleSidebarItems = {
   ],
   TECHNICIAN: [
     { icon: 'dashboard', label: 'Dashboard', path: '/dashboard/technician' },
+    { icon: 'confirmation_number', label: 'Tickets', path: '/dashboard/technician/tickets' },
     { icon: 'inventory_2', label: 'Resources',  path: '/dashboard/user/resources' }, // ← ADD
 
   ],

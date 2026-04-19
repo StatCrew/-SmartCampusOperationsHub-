@@ -39,7 +39,7 @@ public class Ticket {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = TicketStatusAttributeConverter.class)
     private TicketStatus status; // OPEN, IN_PROGRESS, RESOLVED, CLOSED
 
     @ManyToOne
@@ -48,6 +48,9 @@ public class Ticket {
 
     @OneToMany(mappedBy = "ticket", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private List<TicketAttachment> attachments;
+
+    @OneToMany(mappedBy = "ticket", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    private List<TicketComment> comments;
 
 
 }

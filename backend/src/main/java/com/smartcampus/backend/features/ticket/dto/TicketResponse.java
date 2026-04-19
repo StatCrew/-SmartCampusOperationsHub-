@@ -2,6 +2,7 @@ package com.smartcampus.backend.features.ticket.dto;
 
 import org.springframework.hateoas.RepresentationModel;
 
+import com.smartcampus.backend.features.ticket.dto.TicketCommentResponse;
 import com.smartcampus.backend.features.ticket.model.Ticket;
 import com.smartcampus.backend.features.ticket.model.TicketAttachment;
 import com.smartcampus.backend.features.user.model.User;
@@ -34,6 +35,9 @@ public class TicketResponse extends RepresentationModel<TicketResponse> {
     // attachments (file URLs)
     private List<String> attachments;
 
+    // ticket history/comments
+    private List<TicketCommentResponse> comments;
+
     // constructor
     public TicketResponse(Ticket ticket) {
     this.id = ticket.getId();
@@ -60,6 +64,14 @@ public class TicketResponse extends RepresentationModel<TicketResponse> {
                     .filter(java.util.Objects::nonNull)
                     .map(TicketAttachment::getFileUrl)
                     .filter(java.util.Objects::nonNull)
+                    .toList();
+
+    this.comments = ticket.getComments() == null
+            ? List.of()
+            : ticket.getComments()
+                    .stream()
+                    .filter(java.util.Objects::nonNull)
+                    .map(TicketCommentResponse::from)
                     .toList();
     }   
     
