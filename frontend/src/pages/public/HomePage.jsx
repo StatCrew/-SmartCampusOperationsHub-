@@ -1,8 +1,5 @@
 import { Link } from 'react-router-dom'
-
-const LOGO_URL =
-  import.meta.env.VITE_APP_LOGO_URL ||
-  'https://smart-campus-bucket-prod.s3.ap-south-1.amazonaws.com/public-images/smartcampus-logo.png'
+import { LOGO_URL } from '../../constants/branding'
 
 const featureCards = [
   {
@@ -36,27 +33,34 @@ function HomePage() {
     <div className="min-h-screen bg-white text-slate-900" style={{ fontFamily: 'Poppins, sans-serif' }}>
       {/* Navigation */}
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white">
-        <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <Link to="/" className="flex items-center gap-2">
-            <img src={LOGO_URL} alt="Smart Campus logo" className="h-9 w-9 rounded object-cover" loading="lazy" />
-            <span className="text-lg font-bold text-slate-900">Campus Hub</span>
+        <div className="mx-auto flex h-20 w-full max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+
+          <Link to="/" className="flex items-center">
+            <img
+                src={LOGO_URL}
+                alt="Smart Campus logo"
+                className="h-20 w-auto rounded-lg object-contain md:h-24"
+                loading="lazy"
+            />
           </Link>
+
           <div className="flex items-center gap-3">
             <Link
-              to="/signin"
-              className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 transition"
+                to="/signin"
+                className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 transition"
             >
               Sign In
             </Link>
             <Link
-              to="/signup"
-              className="rounded-lg bg-indigo-600 px-6 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700"
+                to="/signup"
+                className="rounded-lg bg-indigo-600 px-6 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700"
             >
               Get Started
             </Link>
           </div>
         </div>
       </header>
+
 
       <main>
         {/* Hero Section */}
@@ -164,9 +168,7 @@ function HomePage() {
             <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4 mb-8">
               <div>
                 <div className="flex items-center gap-2 mb-3">
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center text-white text-xs font-bold">
-                    CH
-                  </div>
+                  <img src={LOGO_URL} alt="Smart Campus logo" className="h-10 w-auto rounded-md object-contain" loading="lazy" />
                   <span className="font-bold text-slate-900">Campus Hub</span>
                 </div>
                 <p className="text-sm text-slate-600">Simplifying campus operations for modern institutions.</p>
