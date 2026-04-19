@@ -15,7 +15,7 @@ export const roleSidebarItems = {
     { icon: 'list_alt', label: 'Booking Requests', path: '/admin/bookings' },
     { icon: 'analytics', label: 'Booking Analytics', path: '/admin/analytics' },
     { icon: 'bar_chart', label: 'Resource Analytics', path: '/admin/resource-analytics' },
-    { icon: 'cloud_upload', label: 'Storage Test', path: '/admin/storage-test' },
+    // { icon: 'cloud_upload', label: 'Storage Test', path: '/admin/storage-test' },
     { icon: 'inventory_2', label: 'Resources', path: '/admin/resources' },
 
   ],

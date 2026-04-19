@@ -1,13 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { getGoogleLoginUrl } from '../../api/authService'
+import { LOGO_URL } from '../../constants/branding'
 import { getDashboardPathByRole } from '../../context/authRoles'
 import useAuth from '../../context/useAuth'
 import useToast from '../../context/useToast'
-
-const LOGO_URL =
-  import.meta.env.VITE_APP_LOGO_URL ||
-  'https://smart-campus-bucket-prod.s3.ap-south-1.amazonaws.com/public-images/smartcampus-logo.png'
 const AUTH_ILLUSTRATION_URL =
   import.meta.env.VITE_AUTH_SIGNIN_ILLUSTRATION_URL ||
   'https://smart-campus-bucket-prod.s3.ap-south-1.amazonaws.com/public-images/signup-ilusstration.jpg'
@@ -37,14 +34,14 @@ function isLikelyUnverifiedLogin(error, message) {
 // Simple illustration placeholder
 function AuthIllustration() {
   return (
-    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+
       <img
         src={AUTH_ILLUSTRATION_URL}
         alt="Sign in illustration"
         className="h-full w-full rounded-lg object-cover"
         loading="lazy"
       />
-    </div>
+
   )
 }
 
@@ -127,7 +124,12 @@ function SignIn() {
       <div className="w-full max-w-6xl">
         {/* Header */}
         <Link to="/" className="flex items-center gap-2 mb-8 md:absolute md:top-8 md:left-8">
-          <img src={LOGO_URL} alt="Smart Campus logo" className="h-15 w-30 rounded object-cover" loading="lazy" />
+          <img
+              src={LOGO_URL}
+              alt="Smart Campus logo"
+              className="h-24 w-auto rounded-lg object-contain md:h-28"
+              loading="lazy"
+          />
         </Link>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
