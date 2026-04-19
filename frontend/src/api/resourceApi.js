@@ -5,10 +5,16 @@ const RESOURCE_PREFIX = '/api/v1/resources'
 // Normalize various response shapes (array, page, HATEOAS)
 function normalizeCollection(payload) {
   if (Array.isArray(payload)) return payload
-  if (Array.isArray(payload?._embedded?.resourceResponseList))
-    return payload._embedded.resourceResponseList
-  if (Array.isArray(payload?._embedded?.resources))
-    return payload._embedded.resources
+
+  if (payload?._embedded) {
+    const embeddedValues = Object.values(payload._embedded)
+    for (const value of embeddedValues) {
+      if (Array.isArray(value)) {
+        return value
+      }
+    }
+  }
+
   if (Array.isArray(payload?.content)) return payload.content
   return []
 }

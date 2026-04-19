@@ -12,4 +12,5 @@ public interface ResourceService {
     ResourceResponseDTO updateResource(Long id, ResourceRequestDTO dto);
     void deleteResource(Long id);
     ResourceResponseDTO uploadResourceImage(Long id, MultipartFile file);
+    String getResourceClientScript(Long id);
 }
