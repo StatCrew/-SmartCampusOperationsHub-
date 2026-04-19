@@ -3,11 +3,12 @@ package com.smartcampus.backend.features.ticket.controller;
 import com.smartcampus.backend.features.ticket.model.Ticket;
 import com.smartcampus.backend.features.ticket.service.TicketService;
 import lombok.RequiredArgsConstructor;
-import tools.jackson.databind.ObjectMapper;
+
 
 import java.util.Map;
 
 import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.CollectionModel;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -44,25 +45,16 @@ public class UserTicketController {
 
 // Get logged-in user's tickets    
     @GetMapping("/my")
-    public List<TicketResponse> getMyTickets() {
+    public CollectionModel<TicketResponse> getMyTickets() {
 
         List<Ticket> tickets = ticketService.getMyTickets();
 
-        return tickets.stream().map(ticket -> {
+        List<TicketResponse> responses = tickets.stream()
+                .map(TicketResponse::new)
+                .toList();
 
-        TicketResponse response = new TicketResponse(ticket);
-
-        // self link
-        response.add(linkTo(methodOn(UserTicketController.class)
-                .getTicketById(ticket.getId())).withSelfRel());
-
-        // list link
-        response.add(linkTo(methodOn(UserTicketController.class)
-                .getMyTickets()).withRel("all"));
-
-        return response;
-
-        }).toList();
+        return CollectionModel.of(responses,
+                linkTo(methodOn(UserTicketController.class).getMyTickets()).withSelfRel());
     }
 
 
@@ -79,12 +71,9 @@ public class UserTicketController {
     @PutMapping(value = "/{id}/with-files", consumes = "multipart/form-data")
     public TicketResponse updateTicketWithFiles(
             @PathVariable Long id,
-            @RequestPart("ticket") String ticketJson,
+            @RequestPart("ticket") Ticket ticket,
             @RequestPart(value = "files", required = false) List<MultipartFile> files
-    ) throws Exception {
-
-        ObjectMapper mapper = new ObjectMapper();
-        Ticket ticket = mapper.readValue(ticketJson, Ticket.class);
+    ) {
 
         Ticket updated = ticketService.updateTicket(id, ticket);
 

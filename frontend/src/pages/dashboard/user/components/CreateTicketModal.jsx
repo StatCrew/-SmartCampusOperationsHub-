@@ -13,28 +13,37 @@ export default function CreateTicketModal({ onClose, onSuccess }) {
   const [files, setFiles] = useState([]);
 
   const handleSubmit = async () => {
-    try {
-      const formData = new FormData();
+  try {
+    const formData = new FormData();
 
-      // IMPORTANT: backend expects "ticket" as JSON string
-      formData.append("ticket", JSON.stringify(form));
+    // create ticketData 
+    const ticketData = {
+      ...form,
+      resourceId: form.resourceId ? Number(form.resourceId) : null,
+    };
 
-      // max 3 files
-      const selectedFiles = Array.from(files).slice(0, 3);
+    // send as STRING 
+    formData.append("ticket", JSON.stringify(ticketData));
 
-      selectedFiles.forEach((file) => {
-        formData.append("files", file);
-      });
+    // files already array
+    const selectedFiles = files.slice(0, 3);
 
-      await createTicket(formData);
+    selectedFiles.forEach((file) => {
+      formData.append("files", file);
+    });
 
-      onSuccess(); // refresh list
-      onClose();   // close modal
-    } catch (err) {
-      console.error(err);
-      alert("Failed to create ticket");
-    }
-  };
+    // DEBUG 
+    console.log("FILES:", selectedFiles);
+
+    await createTicket(formData);
+
+    onSuccess();
+    onClose();
+  } catch (err) {
+    console.error(err);
+    alert("Failed to create ticket");
+  }
+};
 
   return (
     <div className="fixed inset-0 bg-black/40 flex justify-center items-center z-50">

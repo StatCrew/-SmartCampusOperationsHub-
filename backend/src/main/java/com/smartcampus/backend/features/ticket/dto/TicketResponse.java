@@ -20,6 +20,7 @@ public class TicketResponse extends RepresentationModel<TicketResponse> {
     private String status;
     private Long resourceId;
     private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 
     // user info (SAFE)
     private Long userId;
@@ -39,17 +40,19 @@ public class TicketResponse extends RepresentationModel<TicketResponse> {
     this.description = ticket.getDescription();
     this.category = ticket.getCategory();
     this.priority = ticket.getPriority();
-    this.status = ticket.getStatus().toString();
+    this.status = ticket.getStatus() != null ? ticket.getStatus().toString() : null;
     this.resourceId = ticket.getResourceId();
     this.createdAt = ticket.getCreatedAt();
-    this.userId = ticket.getUser().getId();
-    this.userEmail = ticket.getUser().getEmail();
+    this.updatedAt = ticket.getUpdatedAt();
+    this.userId = ticket.getUser() != null ? ticket.getUser().getId() : null;
+    this.userEmail = ticket.getUser() != null ? ticket.getUser().getEmail() : null;
     this.technicianId = ticket.getTechnician() != null ? ticket.getTechnician().getId() : null; // Handle null technician
     this.technicianEmail = ticket.getTechnician() != null ? ticket.getTechnician().getEmail() : null;
     this.attachments = ticket.getAttachments() == null
             ? List.of()
             : ticket.getAttachments()
                     .stream()
+                    .filter(a -> a != null && a.getFileUrl() != null)
                     .map(a -> a.getFileUrl())
                     .toList(); 
     }   

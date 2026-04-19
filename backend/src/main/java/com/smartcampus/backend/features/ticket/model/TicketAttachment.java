@@ -2,6 +2,7 @@ package com.smartcampus.backend.features.ticket.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 @Entity
 @Table(name = "ticket_attachments")
@@ -20,6 +21,7 @@ public class TicketAttachment {
 
     @ManyToOne
     @JoinColumn(name = "ticket_id")
+    @JsonIgnore
     private Ticket ticket;
 
 }

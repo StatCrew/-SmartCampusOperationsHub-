@@ -64,7 +64,7 @@ public class TicketService {
         }        
 
         // Only allow updates if status is OPEN
-        else if (!existing.getStatus().equals("OPEN")) {
+        else if (existing.getStatus() != TicketStatus.OPEN) {
             throw new RuntimeException("Cannot update ticket. Already in progress or closed.");
         }
 
@@ -95,7 +95,7 @@ public class TicketService {
         }        
 
         // Only allow delete if status is OPEN
-        else if (!existing.getStatus().equals("OPEN")) {
+        else if (existing.getStatus() != TicketStatus.OPEN) {
             throw new RuntimeException("Cannot delete ticket. Already in progress or closed.");
         }
 
