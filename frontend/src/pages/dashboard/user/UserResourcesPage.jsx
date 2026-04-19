@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
   getAllResources,
+  getAvailabilitySlots,
   RESOURCE_TYPES,
   formatResourceType,
 } from '../../../api/resourceApi'
@@ -9,6 +10,135 @@ import useAuth from '../../../context/useAuth'
 import { getHeaderLabelsByRole, getSidebarItemsByRole } from '../constants'
 import UserDashboardHeader from '../user/components/UserDashboardHeader'
 import UserSidebar from '../user/components/UserSidebar'
+
+// ─── Schedule grid constants ──────────────────────────────────────────────────
+const DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY']
+const DAY_SHORT = { MONDAY: 'Mon', TUESDAY: 'Tue', WEDNESDAY: 'Wed', THURSDAY: 'Thu', FRIDAY: 'Fri', SATURDAY: 'Sat', SUNDAY: 'Sun' }
+const HOURS = ['08', '09', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19']
+
+function slotsToKeys(slots) {
+  const keys = new Set()
+  slots.forEach(s => {
+    const hour = s.startTime.slice(0, 2)
+    if (HOURS.includes(hour)) keys.add(`${s.dayOfWeek}-${hour}`)
+  })
+  return keys
+}
+
+// ─── Read-only schedule view modal ───────────────────────────────────────────
+function ScheduleViewModal({ resource, onClose }) {
+  const [activeKeys, setActiveKeys] = useState(new Set())
+  const [loading, setLoading]       = useState(true)
+
+  useEffect(() => {
+    setLoading(true)
+    getAvailabilitySlots(resource.id)
+      .then(slots => setActiveKeys(slotsToKeys(slots)))
+      .catch(() => setActiveKeys(new Set()))
+      .finally(() => setLoading(false))
+  }, [resource.id])
+
+  const hasAnySlot = activeKeys.size > 0
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4">
+      <div className="flex w-full max-w-2xl max-h-[90vh] flex-col rounded-2xl bg-white shadow-2xl">
+        {/* Header */}
+        <div className="flex flex-shrink-0 items-center justify-between border-b border-slate-100 px-6 py-4">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">Availability Schedule</h2>
+            <p className="text-xs text-slate-500 mt-0.5">{resource.name} · weekly recurring slots</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="grid h-8 w-8 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+          >
+            <span className="material-symbols-outlined text-base">close</span>
+          </button>
+        </div>
+
+        {/* Grid body */}
+        <div className="overflow-auto px-6 py-5 flex-1">
+          {loading ? (
+            <div className="py-12 text-center text-sm text-slate-400">Loading schedule...</div>
+          ) : !hasAnySlot ? (
+            <div className="py-12 text-center">
+              <span className="material-symbols-outlined text-3xl text-slate-300">calendar_month</span>
+              <p className="mt-2 text-sm text-slate-400">No availability schedule set for this resource.</p>
+            </div>
+          ) : (
+            <>
+              {/* Legend */}
+              <div className="mb-3 flex items-center gap-4 text-xs text-slate-500">
+                <span className="flex items-center gap-1.5">
+                  <span className="inline-block h-4 w-4 rounded bg-emerald-500" /> Available
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="inline-block h-4 w-4 rounded border border-slate-200 bg-slate-100" /> Not available
+                </span>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="border-separate border-spacing-1">
+                  <thead>
+                    <tr>
+                      <th className="w-12" />
+                      {HOURS.map(h => (
+                        <th key={h} className="w-9 text-center text-[10px] font-semibold text-slate-400 pb-1">
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {DAYS.map(day => (
+                      <tr key={day}>
+                        <td className="pr-2 text-right text-xs font-semibold text-slate-500 whitespace-nowrap">
+                          {DAY_SHORT[day]}
+                        </td>
+                        {HOURS.map(hour => {
+                          const active = activeKeys.has(`${day}-${hour}`)
+                          return (
+                            <td key={hour}>
+                              <div
+                                title={active ? `${DAY_SHORT[day]} ${hour}:00–${String(+hour+1).padStart(2,'0')}:00` : undefined}
+                                className={`h-7 w-9 rounded ${
+                                  active
+                                    ? 'bg-emerald-500'
+                                    : 'bg-slate-100 border border-slate-200'
+                                }`}
+                              />
+                            </td>
+                          )
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <p className="mt-3 text-xs text-slate-400">
+                Hour labels are start times (08 = 08:00–09:00). Green slots repeat every week.
+              </p>
+            </>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex flex-shrink-0 justify-end border-t border-slate-100 px-6 py-4 bg-slate-50 rounded-b-2xl">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 // ─── Status badge helper ──────────────────────────────────────────────────────
 function StatusBadge({ status }) {
@@ -33,6 +163,9 @@ function UserResourcesPage() {
   const [resources, setResources]                 = useState([])
   const [loading, setLoading]                     = useState(true)
   const [errorMessage, setErrorMessage]           = useState('')
+
+  // Schedule view modal
+  const [scheduleViewTarget, setScheduleViewTarget] = useState(null)
 
   // Filters
   const [search,       setSearch]       = useState('')
@@ -81,6 +214,13 @@ function UserResourcesPage() {
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900">
+      {scheduleViewTarget ? (
+        <ScheduleViewModal
+          resource={scheduleViewTarget}
+          onClose={() => setScheduleViewTarget(null)}
+        />
+      ) : null}
+
       <UserSidebar
         isSidebarExpanded={isSidebarExpanded}
         onCollapse={() => setIsSidebarExpanded(false)}
@@ -162,7 +302,7 @@ function UserResourcesPage() {
                     <th className="px-5 py-3 text-left">Type</th>
                     <th className="px-5 py-3 text-left">Location</th>
                     <th className="px-5 py-3 text-left">Capacity</th>
-                    <th className="px-5 py-3 text-left">Availability</th>
+                    <th className="px-5 py-3 text-left">Schedule</th>
                     <th className="px-5 py-3 text-left">Status</th>
                   </tr>
                 </thead>
@@ -199,7 +339,15 @@ function UserResourcesPage() {
                         <td className="px-5 py-4 text-slate-600">{formatResourceType(resource.type)}</td>
                         <td className="px-5 py-4 text-slate-600">{resource.location}</td>
                         <td className="px-5 py-4 text-slate-600">{resource.capacity}</td>
-                        <td className="px-5 py-4 text-slate-500 text-xs">{resource.availabilityWindow || '—'}</td>
+                        <td className="px-5 py-4">
+                          <button
+                            type="button"
+                            onClick={() => setScheduleViewTarget(resource)}
+                            className="rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100"
+                          >
+                            View Schedule
+                          </button>
+                        </td>
                         <td className="px-5 py-4">
                           <StatusBadge status={resource.status} />
                         </td>
