@@ -25,6 +25,7 @@ public class ResourceServiceImpl implements ResourceService {
     @Override
     @Transactional
     public ResourceResponseDTO createResource(ResourceRequestDTO dto) {
+        Instant now = Instant.now();
         Resource resource = Resource.builder()
                 .name(dto.getName())
                 .type(dto.getType())
@@ -33,7 +34,8 @@ public class ResourceServiceImpl implements ResourceService {
                 .status(dto.getStatus())
                 .description(dto.getDescription())
                 .availabilityWindow(dto.getAvailabilityWindow())
-                .createdAt(Instant.now()) // Manual timestamp if not using JPA Auditing
+                .createdAt(now)
+                .updatedAt(now)
                 .build();
 
         Resource savedResource = resourceRepository.save(resource);
@@ -83,6 +85,56 @@ public class ResourceServiceImpl implements ResourceService {
             throw new EntityNotFoundException("Cannot delete: Resource not found with id: " + id);
         }
         resourceRepository.deleteById(id);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public String getResourceClientScript(Long id) {
+        Resource resource = resourceRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Resource not found with id: " + id));
+
+        String resourceJson = buildResourceJson(resource);
+        return "const resourceData = " + resourceJson + ";\n"
+                + "function renderResource(containerId) {\n"
+                + "  const container = document.getElementById(containerId);\n"
+                + "  if (!container) { throw new Error('Container not found: ' + containerId); }\n"
+                + "  container.innerHTML = `"
+                + "<div class='resource-card'>"
+                + "  <h2>${resourceData.name}</h2>"
+                + "  <p><strong>Type:</strong> ${resourceData.type}</p>"
+                + "  <p><strong>Capacity:</strong> ${resourceData.capacity}</p>"
+                + "  <p><strong>Location:</strong> ${resourceData.location}</p>"
+                + "  <p><strong>Status:</strong> ${resourceData.status}</p>"
+                + "  <p><strong>Description:</strong> ${resourceData.description || 'N/A'}</p>"
+                + "  <p><strong>Availability:</strong> ${resourceData.availabilityWindow || 'Unknown'}</p>"
+                + "</div>`;\n"
+                + "}\n"
+                + "window.resourceData = resourceData;\n"
+                + "window.renderResource = renderResource;\n"
+                + "console.log('Resource script loaded for id: ' + resourceData.id);\n";
+    }
+
+    private String buildResourceJson(Resource resource) {
+        return "{"
+                + "\"id\":" + resource.getId() + ","
+                + "\"name\":\"" + escapeJs(resource.getName()) + "\"," 
+                + "\"type\":\"" + escapeJs(String.valueOf(resource.getType())) + "\"," 
+                + "\"capacity\":" + (resource.getCapacity() != null ? resource.getCapacity() : 0) + ","
+                + "\"location\":\"" + escapeJs(resource.getLocation()) + "\"," 
+                + "\"status\":\"" + escapeJs(String.valueOf(resource.getStatus())) + "\"," 
+                + "\"description\":\"" + escapeJs(resource.getDescription()) + "\"," 
+                + "\"availabilityWindow\":\"" + escapeJs(resource.getAvailabilityWindow()) + "\""
+                + "}";
+    }
+
+    private String escapeJs(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r");
     }
 
     @Override

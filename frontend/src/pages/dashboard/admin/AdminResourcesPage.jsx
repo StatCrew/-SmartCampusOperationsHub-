@@ -4,6 +4,8 @@ import {
   createResource,
   deleteResource,
   getAllResources,
+  getAvailabilitySlots,
+  replaceAvailabilitySlots,
   RESOURCE_STATUSES,
   RESOURCE_TYPES,
   updateResource,
@@ -16,15 +18,38 @@ import { getHeaderLabelsByRole, getSidebarItemsByRole } from '../constants'
 import UserDashboardHeader from '../user/components/UserDashboardHeader'
 import UserSidebar from '../user/components/UserSidebar'
 
+// ─── Schedule grid constants ──────────────────────────────────────────────────
+const DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY']
+const DAY_SHORT = { MONDAY: 'Mon', TUESDAY: 'Tue', WEDNESDAY: 'Wed', THURSDAY: 'Thu', FRIDAY: 'Fri', SATURDAY: 'Sat', SUNDAY: 'Sun' }
+const HOURS = ['08', '09', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19']
+
+function slotKey(day, hour) { return `${day}-${hour}` }
+
+function slotsToKeys(slots) {
+  const keys = new Set()
+  slots.forEach(s => {
+    const hour = s.startTime.slice(0, 2)
+    if (HOURS.includes(hour)) keys.add(slotKey(s.dayOfWeek, hour))
+  })
+  return keys
+}
+
+function keysToPayload(keys) {
+  return Array.from(keys).map(key => {
+    const [day, hour] = key.split('-')
+    const next = String(+hour + 1).padStart(2, '0')
+    return { dayOfWeek: day, startTime: `${hour}:00`, endTime: `${next}:00` }
+  })
+}
+
 // ─── Initial form state ───────────────────────────────────────────────────────
 const emptyForm = {
-  name:               '',
-  type:               'LECTURE_HALL',
-  capacity:           '',
-  location:           '',
-  status:             'ACTIVE',
-  description:        '',
-  availabilityWindow: '',
+  name:        '',
+  type:        'LECTURE_HALL',
+  capacity:    '',
+  location:    '',
+  status:      'ACTIVE',
+  description: '',
 }
 
 // ─── Status badge helper ──────────────────────────────────────────────────────
@@ -44,13 +69,12 @@ function StatusBadge({ status }) {
 function ResourceModal({ initialData, onClose, onSaved, getApiErrorMessage }) {
   const isEditing = Boolean(initialData?.id)
   const [form, setForm]           = useState(initialData ? {
-    name:               initialData.name               ?? '',
-    type:               initialData.type               ?? 'LECTURE_HALL',
-    capacity:           initialData.capacity           ?? '',
-    location:           initialData.location           ?? '',
-    status:             initialData.status             ?? 'ACTIVE',
-    description:        initialData.description        ?? '',
-    availabilityWindow: initialData.availabilityWindow ?? '',
+    name:        initialData.name        ?? '',
+    type:        initialData.type        ?? 'LECTURE_HALL',
+    capacity:    initialData.capacity    ?? '',
+    location:    initialData.location    ?? '',
+    status:      initialData.status      ?? 'ACTIVE',
+    description: initialData.description ?? '',
   } : emptyForm)
   const [formError, setFormError] = useState('')
   const [saving, setSaving]       = useState(false)
@@ -87,13 +111,12 @@ function ResourceModal({ initialData, onClose, onSaved, getApiErrorMessage }) {
 
     try {
       const payload = {
-        name:               form.name,
-        type:               form.type,
-        capacity:           Number(form.capacity),
-        location:           form.location,
-        status:             form.status,
-        description:        form.description        || null,
-        availabilityWindow: form.availabilityWindow || null,
+        name:        form.name,
+        type:        form.type,
+        capacity:    Number(form.capacity),
+        location:    form.location,
+        status:      form.status,
+        description: form.description || null,
       }
 
       let saved = isEditing
@@ -113,7 +136,6 @@ function ResourceModal({ initialData, onClose, onSaved, getApiErrorMessage }) {
   }
 
   return (
-    // Backdrop
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4">
       <div className="flex w-full max-w-lg max-h-[90vh] flex-col rounded-2xl bg-white shadow-2xl">
         {/* Sticky header */}
@@ -208,21 +230,6 @@ function ResourceModal({ initialData, onClose, onSaved, getApiErrorMessage }) {
             </div>
           </div>
 
-          {/* Availability Window */}
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">
-              Availability Window
-              <span className="ml-1 text-xs font-normal text-slate-400">(optional)</span>
-            </label>
-            <input
-              name="availabilityWindow"
-              value={form.availabilityWindow}
-              onChange={handleChange}
-              placeholder="e.g. Mon–Fri 08:00–18:00"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-            />
-          </div>
-
           {/* Description */}
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700">
@@ -291,6 +298,153 @@ function ResourceModal({ initialData, onClose, onSaved, getApiErrorMessage }) {
   )
 }
 
+// ─── Schedule editor modal (admin) ────────────────────────────────────────────
+function ScheduleModal({ resource, onClose, getApiErrorMessage, showSuccess, showError }) {
+  const [activeKeys, setActiveKeys] = useState(new Set())
+  const [loading, setLoading]       = useState(true)
+  const [saving, setSaving]         = useState(false)
+
+  useEffect(() => {
+    setLoading(true)
+    getAvailabilitySlots(resource.id)
+      .then(slots => setActiveKeys(slotsToKeys(slots)))
+      .catch(() => setActiveKeys(new Set()))
+      .finally(() => setLoading(false))
+  }, [resource.id])
+
+  const toggleCell = (day, hour) => {
+    const key = slotKey(day, hour)
+    setActiveKeys(prev => {
+      const next = new Set(prev)
+      next.has(key) ? next.delete(key) : next.add(key)
+      return next
+    })
+  }
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      await replaceAvailabilitySlots(resource.id, keysToPayload(activeKeys))
+      showSuccess(`Schedule saved for "${resource.name}".`)
+      onClose()
+    } catch (err) {
+      showError(getApiErrorMessage(err))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4">
+      <div className="flex w-full max-w-2xl max-h-[90vh] flex-col rounded-2xl bg-white shadow-2xl">
+        {/* Header */}
+        <div className="flex flex-shrink-0 items-center justify-between border-b border-slate-100 px-6 py-4">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">Availability Schedule</h2>
+            <p className="text-xs text-slate-500 mt-0.5">{resource.name} · click cells to toggle 1-hour slots</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="grid h-8 w-8 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+          >
+            <span className="material-symbols-outlined text-base">close</span>
+          </button>
+        </div>
+
+        {/* Grid body */}
+        <div className="overflow-auto px-6 py-5 flex-1">
+          {loading ? (
+            <div className="py-12 text-center text-sm text-slate-400">Loading schedule...</div>
+          ) : (
+            <>
+              {/* Legend */}
+              <div className="mb-3 flex items-center gap-4 text-xs text-slate-500">
+                <span className="flex items-center gap-1.5">
+                  <span className="inline-block h-4 w-4 rounded bg-indigo-500" /> Available
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="inline-block h-4 w-4 rounded border border-slate-200 bg-slate-100" /> Unavailable
+                </span>
+              </div>
+
+              {/* Hour header row */}
+              <div className="overflow-x-auto">
+                <table className="border-separate border-spacing-1">
+                  <thead>
+                    <tr>
+                      <th className="w-12" />
+                      {HOURS.map(h => (
+                        <th key={h} className="w-9 text-center text-[10px] font-semibold text-slate-400 pb-1">
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {DAYS.map(day => (
+                      <tr key={day}>
+                        <td className="pr-2 text-right text-xs font-semibold text-slate-500 whitespace-nowrap">
+                          {DAY_SHORT[day]}
+                        </td>
+                        {HOURS.map(hour => {
+                          const active = activeKeys.has(slotKey(day, hour))
+                          return (
+                            <td key={hour}>
+                              <button
+                                type="button"
+                                title={`${DAY_SHORT[day]} ${hour}:00–${String(+hour+1).padStart(2,'0')}:00`}
+                                onClick={() => toggleCell(day, hour)}
+                                className={`h-7 w-9 rounded transition-colors ${
+                                  active
+                                    ? 'bg-indigo-500 hover:bg-indigo-600'
+                                    : 'bg-slate-100 hover:bg-slate-200 border border-slate-200'
+                                }`}
+                              />
+                            </td>
+                          )
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <p className="mt-3 text-xs text-slate-400">
+                Hour labels are start times (08 = 08:00–09:00). Each cell = one bookable slot.
+              </p>
+            </>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex flex-shrink-0 justify-between items-center border-t border-slate-100 px-6 py-4 bg-slate-50 rounded-b-2xl">
+          <span className="text-xs text-slate-500">
+            {activeKeys.size} slot{activeKeys.size !== 1 ? 's' : ''} selected
+          </span>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving || loading}
+              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              {saving ? 'Saving...' : 'Save Schedule'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 function AdminResourcesPage() {
   const navigate  = useNavigate()
@@ -303,9 +457,12 @@ function AdminResourcesPage() {
   const [loading, setLoading]                     = useState(true)
   const [errorMessage, setErrorMessage]           = useState('')
 
-  // Modal state
+  // Resource CRUD modal
   const [modalOpen, setModalOpen]     = useState(false)
-  const [editTarget, setEditTarget]   = useState(null) // null → create, object → edit
+  const [editTarget, setEditTarget]   = useState(null)
+
+  // Schedule editor modal
+  const [scheduleTarget, setScheduleTarget] = useState(null)
 
   // Filters
   const [search,       setSearch]       = useState('')
@@ -335,19 +492,16 @@ function AdminResourcesPage() {
     navigate('/signin', { replace: true })
   }
 
-  // Open create modal
   const handleOpenCreate = () => {
     setEditTarget(null)
     setModalOpen(true)
   }
 
-  // Open edit modal
   const handleOpenEdit = (resource) => {
     setEditTarget(resource)
     setModalOpen(true)
   }
 
-  // Modal saved callback
   const handleModalSaved = (saved, wasEditing) => {
     if (wasEditing) {
       setResources((prev) => prev.map((r) => (r.id === saved.id ? saved : r)))
@@ -360,7 +514,6 @@ function AdminResourcesPage() {
     setEditTarget(null)
   }
 
-  // Delete
   const handleDelete = async (id) => {
     setDeletingId(id)
     try {
@@ -374,7 +527,6 @@ function AdminResourcesPage() {
     }
   }
 
-  // Filtered list (client-side for instant UX)
   const filtered = useMemo(() => {
     return resources.filter((r) => {
       const q = search.toLowerCase()
@@ -403,6 +555,16 @@ function AdminResourcesPage() {
           onClose={() => { setModalOpen(false); setEditTarget(null) }}
           onSaved={handleModalSaved}
           getApiErrorMessage={getApiErrorMessage}
+        />
+      ) : null}
+
+      {scheduleTarget ? (
+        <ScheduleModal
+          resource={scheduleTarget}
+          onClose={() => setScheduleTarget(null)}
+          getApiErrorMessage={getApiErrorMessage}
+          showSuccess={showSuccess}
+          showError={showError}
         />
       ) : null}
 
@@ -497,7 +659,7 @@ function AdminResourcesPage() {
                     <th className="px-5 py-3 text-left">Type</th>
                     <th className="px-5 py-3 text-left">Location</th>
                     <th className="px-5 py-3 text-left">Capacity</th>
-                    <th className="px-5 py-3 text-left">Availability</th>
+                    <th className="px-5 py-3 text-left">Schedule</th>
                     <th className="px-5 py-3 text-left">Status</th>
                     <th className="px-5 py-3 text-right">Actions</th>
                   </tr>
@@ -535,7 +697,15 @@ function AdminResourcesPage() {
                         <td className="px-5 py-4 text-slate-600">{formatResourceType(resource.type)}</td>
                         <td className="px-5 py-4 text-slate-600">{resource.location}</td>
                         <td className="px-5 py-4 text-slate-600">{resource.capacity}</td>
-                        <td className="px-5 py-4 text-slate-500 text-xs">{resource.availabilityWindow || '—'}</td>
+                        <td className="px-5 py-4">
+                          <button
+                            type="button"
+                            onClick={() => setScheduleTarget(resource)}
+                            className="rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-100"
+                          >
+                            Edit Schedule
+                          </button>
+                        </td>
                         <td className="px-5 py-4">
                           <StatusBadge status={resource.status} />
                         </td>

@@ -18,8 +18,9 @@ import AdminBookingAnalyticsPage from '../pages/dashboard/admin/AdminBookingAnal
 import AdminBookingsPage from '../pages/dashboard/admin/AdminBookingsPage'
 import AdminResourceAnalyticsPage from '../pages/dashboard/admin/AdminResourceAnalyticsPage'
 import UserBookingsPage from '../pages/dashboard/user/UserBookingsPage'
-import AdminResourcesPage   from '../pages/dashboard/admin/AdminResourcesPage'
-import UserResourcesPage    from '../pages/dashboard/user/UserResourcesPage'
+import AdminResourcesPage from '../pages/dashboard/admin/AdminResourcesPage'
+import UserResourcesPage from '../pages/dashboard/user/UserResourcesPage'
+import HomePage from '../pages/public/HomePage'
 
 
 function HomeRedirect() {
@@ -34,7 +35,7 @@ function HomeRedirect() {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/signin" replace />
+    return <HomePage />
   }
 
   return <Navigate to={getDashboardPathByRole(role)} replace />
@@ -62,9 +63,9 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<HomeRedirect />} />
-      <Route path="/admin/resources" element={<AdminResourcesPage />} />   {/* ← ADD */}
+      <Route path="/admin/resources" element={<AdminResourcesPage />} />
       <Route element={<ProtectedRoute allowedRoles={['USER', 'ADMIN', 'TECHNICIAN']} />}>
-      <Route path="/dashboard/user/resources" element={<UserResourcesPage />} />  {/* ← ADD */}
+        <Route path="/dashboard/user/resources" element={<UserResourcesPage />} />
       </Route>
       <Route
         path="/signin"
@@ -123,8 +124,6 @@ function AppRoutes() {
       <Route path="/technician-dashboard" element={<Navigate to="/dashboard/technician" replace />} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
-
-      
     </Routes>
   )
 }
