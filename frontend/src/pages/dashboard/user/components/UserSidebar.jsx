@@ -1,3 +1,5 @@
+import { LOGO_URL } from '../../../../constants/branding'
+
 function UserSidebar({
   isSidebarExpanded,
   onCollapse,
@@ -14,9 +16,7 @@ function UserSidebar({
     >
       <div className="mb-6 flex items-center justify-between gap-2 px-2 py-2">
         <div className={`flex items-center gap-2 overflow-hidden ${isSidebarExpanded ? 'opacity-100' : 'justify-center'}`}>
-          <div className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-lg bg-indigo-600 text-white">
-            <span className="material-symbols-outlined text-base">school</span>
-          </div>
+          <img src={LOGO_URL} alt="Smart Campus logo" className="h-10 w-auto flex-shrink-0 rounded-md object-contain" loading="lazy" />
           {isSidebarExpanded ? <span className="text-sm font-bold text-slate-900">Campus Hub</span> : null}
         </div>
 
