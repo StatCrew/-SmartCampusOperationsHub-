@@ -97,4 +97,32 @@ public class BookingController {
         Booking cancelledBooking = bookingService.updateBookingStatus(id, "CANCELLED");
         return ResponseEntity.ok(cancelledBooking);
     }
+
+    // 8. POST: Verify a QR Code Ticket (Acceptable Innovation - Security/Admin Use)
+    @PostMapping("/{id}/verify")
+    @PreAuthorize("hasRole('ADMIN')") // Only security/admins should be scanning tickets
+    public ResponseEntity<Map<String, Object>> verifyBookingTicket(@PathVariable Long id) {
+        
+        // 1. Fetch the booking
+        Booking booking = bookingService.getBookingById(id); // Ensure you have a getBookingById method in your service!
+        
+        // 2. Business Logic Validation
+        if (!"APPROVED".equals(booking.getStatus())) {
+            return ResponseEntity.badRequest().body(Map.of(
+                "valid", false,
+                "message", "Access Denied: Booking is currently " + booking.getStatus() + "."
+            ));
+        }
+        
+        // Optional: You could add logic here to check if the booking.getStartTime() is happening TODAY.
+        
+        // 3. Return Success
+        return ResponseEntity.ok(Map.of(
+            "valid", true,
+            "message", "Access Granted.",
+            "bookingId", booking.getId(),
+            "resourceId", booking.getResourceId(),
+            "startTime", booking.getStartTime()
+        ));
+    }
 } // <--- The class closes HERE now!

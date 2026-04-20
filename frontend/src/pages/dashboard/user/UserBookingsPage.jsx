@@ -4,8 +4,8 @@ import useAuth from '../../../context/useAuth'
 import { getHeaderLabelsByRole, getSidebarItemsByRole } from '../constants'
 import UserDashboardHeader from './components/UserDashboardHeader'
 import UserSidebar from './components/UserSidebar'
-// 👇 REMOVED CreateBookingModal import since we navigate away now!
-import { getUserBookings, cancelBookingReq, deleteBooking } from '../../../api/bookingApi' // 👇 Added deleteBooking
+import { getUserBookings, cancelBookingReq, deleteBooking } from '../../../api/bookingApi'
+import QRCodeTicketModal from './components/QRCodeTicketModal'
 
 // ── Status config
 const STATUS_CONFIG = {
@@ -51,9 +51,12 @@ export default function UserBookingsPage() {
   const [cancelTarget, setCancelTarget] = useState(null)
   const [isCancelling, setIsCancelling] = useState(false)
   
-  // 👇 NEW: State for deleting
+  // State for deleting
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  
+  // State for the QR Ticket Modal
+  const [ticketTarget, setTicketTarget] = useState(null)
 
   const loadBookings = useCallback(async () => {
     if (!user?.id) return
@@ -102,7 +105,7 @@ export default function UserBookingsPage() {
     }
   }
 
-  // 👇 NEW LOGIC: Handle permanent deletion
+  // Handle permanent deletion
   const handleDeleteBooking = async () => {
     if (!deleteTarget) return;
     setIsDeleting(true);
@@ -191,7 +194,6 @@ export default function UserBookingsPage() {
 
           {errorMessage && <div className="error-banner"><span>⚠️</span> {errorMessage}</div>}
 
-          {/* ── Page title + CTA ── */}
           <div className="page-fade" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.75rem', gap: '1rem', flexWrap: 'wrap' }}>
             <div>
               <p style={{ fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', color: '#2193b0', margin: '0 0 0.35rem' }}>
@@ -204,13 +206,11 @@ export default function UserBookingsPage() {
                 View and manage your campus facility bookings.
               </p>
             </div>
-            {/* 👇 FIX 1: Directing this button to the Resource Page instead of the modal */}
             <button className="request-btn" onClick={() => navigate('/dashboard/user/resources')}>
               <span style={{ fontSize: '1rem' }}>＋</span> Request Room
             </button>
           </div>
 
-          {/* ── Stat Cards ── */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '1rem', marginBottom: '1.75rem' }}>
             <StatCard label="Total Bookings" value={stats.total}    color="#2193b0" bg="linear-gradient(135deg, #2193b0, #6dd5ed)" icon="📋" loading={loading} />
             <StatCard label="Approved"       value={stats.approved} color="#0ea5e9" bg="#f0f9ff" textColor="#0369a1" icon="✅" loading={loading} />
@@ -218,7 +218,6 @@ export default function UserBookingsPage() {
             <StatCard label="Rejected"       value={stats.rejected} color="#e53e3e" bg="#fef2f2" textColor="#c53030" icon="✗"  loading={loading} />
           </div>
 
-          {/* ── Table Card ── */}
           <div className="page-fade" style={{ animationDelay: '0.25s', background: '#fff', borderRadius: 12, border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
 
             <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', background: '#f8fafc' }}>
@@ -266,8 +265,7 @@ export default function UserBookingsPage() {
                     filtered.map((booking, idx) => {
                       const st = getStatus(booking.status)
                       
-                      // 👇 FIX 2: Check permissions based on status
-                      // Active bookings can be modified/cancelled. Dead bookings can be permanently deleted.
+                      // 👇 FIX 1: ADDED MISSING VARIABLES
                       const canCancel = booking.status === 'PENDING' || booking.status === 'APPROVED';
                       const canDelete = booking.status === 'CANCELLED' || booking.status === 'REJECTED';
 
@@ -323,7 +321,18 @@ export default function UserBookingsPage() {
                           <td style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
                             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
                               
-                              {/* Show Modify/Cancel for Active Bookings */}
+                              {/* 👇 FIX 2: TICKET BUTTON */}
+                              {booking.status === 'APPROVED' && (
+                                <button 
+                                  className="action-btn" 
+                                  style={{ color: '#0ea5e9', borderColor: '#bae6fd', background: '#f0f9ff' }}
+                                  onClick={() => setTicketTarget(booking)}
+                                  title="Show QR Code for Entry"
+                                >
+                                  🎟️ Ticket
+                                </button>
+                              )}
+
                               {canCancel && (
                                 <>
                                   <button 
@@ -342,7 +351,6 @@ export default function UserBookingsPage() {
                                 </>
                               )}
 
-                              {/* 👇 FIX 3: Show Delete for dead bookings (Cancelled/Rejected) */}
                               {canDelete && (
                                 <button 
                                   className="action-btn cancel" 
@@ -366,7 +374,6 @@ export default function UserBookingsPage() {
         </main>
       </div>
 
-      {/* Cancellation Confirmation Modal */}
       {cancelTarget && (
         <div className="cancel-overlay">
           <div className="cancel-box">
@@ -375,26 +382,13 @@ export default function UserBookingsPage() {
               Are you sure you want to cancel this booking? This action cannot be undone. If it was approved, the slot will be released back to the public.
             </p>
             <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-              <button 
-                onClick={() => setCancelTarget(null)} 
-                disabled={isCancelling}
-                style={{ padding: '0.5rem 1rem', borderRadius: 6, border: '1px solid #cbd5e1', background: '#fff', color: '#475569', fontWeight: 500, cursor: 'pointer' }}
-              >
-                Keep Booking
-              </button>
-              <button 
-                onClick={handleCancelBooking} 
-                disabled={isCancelling}
-                style={{ padding: '0.5rem 1rem', borderRadius: 6, border: 'none', background: '#ef4444', color: '#fff', fontWeight: 500, cursor: 'pointer' }}
-              >
-                {isCancelling ? 'Cancelling...' : 'Yes, Cancel it'}
-              </button>
+              <button onClick={() => setCancelTarget(null)} disabled={isCancelling} style={{ padding: '0.5rem 1rem', borderRadius: 6, border: '1px solid #cbd5e1', background: '#fff', color: '#475569', fontWeight: 500, cursor: 'pointer' }}>Keep Booking</button>
+              <button onClick={handleCancelBooking} disabled={isCancelling} style={{ padding: '0.5rem 1rem', borderRadius: 6, border: 'none', background: '#ef4444', color: '#fff', fontWeight: 500, cursor: 'pointer' }}>{isCancelling ? 'Cancelling...' : 'Yes, Cancel it'}</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* 👇 FIX 4: Deletion Confirmation Modal */}
       {deleteTarget && (
         <div className="cancel-overlay">
           <div className="cancel-box">
@@ -403,24 +397,19 @@ export default function UserBookingsPage() {
               Are you sure you want to permanently delete this record from your history? <strong>This cannot be undone.</strong>
             </p>
             <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-              <button 
-                onClick={() => setDeleteTarget(null)} 
-                disabled={isDeleting}
-                style={{ padding: '0.5rem 1rem', borderRadius: 6, border: '1px solid #cbd5e1', background: '#fff', color: '#475569', fontWeight: 500, cursor: 'pointer' }}
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={handleDeleteBooking} 
-                disabled={isDeleting}
-                style={{ padding: '0.5rem 1rem', borderRadius: 6, border: 'none', background: '#ef4444', color: '#fff', fontWeight: 500, cursor: 'pointer' }}
-              >
-                {isDeleting ? 'Deleting...' : 'Yes, Delete it'}
-              </button>
+              <button onClick={() => setDeleteTarget(null)} disabled={isDeleting} style={{ padding: '0.5rem 1rem', borderRadius: 6, border: '1px solid #cbd5e1', background: '#fff', color: '#475569', fontWeight: 500, cursor: 'pointer' }}>Cancel</button>
+              <button onClick={handleDeleteBooking} disabled={isDeleting} style={{ padding: '0.5rem 1rem', borderRadius: 6, border: 'none', background: '#ef4444', color: '#fff', fontWeight: 500, cursor: 'pointer' }}>{isDeleting ? 'Deleting...' : 'Yes, Delete it'}</button>
             </div>
           </div>
         </div>
       )}
+
+      {/* 👇 FIX 3: ADDED MODAL TO THE UI */}
+      <QRCodeTicketModal 
+        isOpen={!!ticketTarget} 
+        booking={ticketTarget} 
+        onClose={() => setTicketTarget(null)} 
+      />
 
     </div>
   )
