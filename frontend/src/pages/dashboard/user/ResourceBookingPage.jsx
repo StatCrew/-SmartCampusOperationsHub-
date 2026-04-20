@@ -77,6 +77,14 @@ export default function ResourceBookingPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
+  // 👇 NEW: Catch the booking data passed from the Bookings page
+  const modifyData = location.state?.modifyBooking || null;
+  // 👇 NEW: Automatically open the modal if we are modifying a booking
+  useEffect(() => {
+    if (modifyData && resource && !isModalOpen) {
+      setIsModalOpen(true);
+    }
+  }, [modifyData, resource]);
 
   // 👇 NEW: Controls which week the calendar is currently looking at
   const [weekOffset, setWeekOffset] = useState(0)
@@ -321,7 +329,32 @@ export default function ResourceBookingPage() {
         </main>
       </div>
 
-      <CreateBookingModal isOpen={isModalOpen} selectedResource={resource} activeKeys={activeKeys} onClose={() => setIsModalOpen(false)} onSuccess={() => setIsModalOpen(false)} />
+     <CreateBookingModal 
+        isOpen={isModalOpen} 
+        selectedResource={resource} 
+        activeKeys={activeKeys} 
+        modifyData={modifyData} 
+        onClose={() => { 
+          setIsModalOpen(false); 
+          // 👇 FIX: If they were modifying, take them back to the bookings page!
+          if (modifyData) {
+            navigate('/dashboard/user/bookings');
+          } else {
+            navigate(location.pathname, { replace: true, state: {} }); 
+          }
+        }} 
+        onSuccess={() => { 
+          setIsModalOpen(false); 
+          // 👇 FIX: Take them back to see their new booking, or reload the page
+          if (modifyData) {
+            navigate('/dashboard/user/bookings');
+          } else {
+            navigate(location.pathname, { replace: true, state: {} });
+            loadData(); 
+          }
+        }} 
+      
+      />
     </div>
   )
 }

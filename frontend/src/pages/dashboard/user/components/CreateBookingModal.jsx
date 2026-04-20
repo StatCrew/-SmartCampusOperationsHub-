@@ -17,7 +17,8 @@ const fmtDuration = (s, e) => {
   return h && m ? `${h}h ${m}m` : h ? `${h}h` : `${m}m`
 }
 
-export default function CreateBookingModal({ isOpen, onClose, onSuccess, selectedResource, activeKeys }) {
+// 👇 NEW: Added modifyData to the props
+export default function CreateBookingModal({ isOpen, onClose, onSuccess, selectedResource, activeKeys, modifyData }) {
   const { getApiErrorMessage } = useAuth()
   const [step, setStep] = useState(1)
   const [formData, setFormData] = useState({ resourceId:'', bookingDate:'', startTime:'', endTime:'', purpose:'', attendees:1 })
@@ -28,12 +29,29 @@ export default function CreateBookingModal({ isOpen, onClose, onSuccess, selecte
   const [direction, setDirection] = useState(1)
   const [animating, setAnimating] = useState(false)
 
+  // 👇 NEW: Pre-fills the form if modifyData is provided
   useEffect(() => {
     if (isOpen) {
       setStep(1); setSubmitted(false); setError(''); setConflictMessage('')
-      setFormData({ resourceId: selectedResource?.id||'', bookingDate:'', startTime:'', endTime:'', purpose:'', attendees:1 })
+      
+      if (modifyData) {
+        // Extract date and times from the existing booking
+        const [startDate, startTimeStr] = modifyData.startTime.split('T')
+        const [, endTimeStr] = modifyData.endTime.split('T')
+        
+        setFormData({
+          resourceId: selectedResource?.id || modifyData.resourceId || '',
+          bookingDate: startDate,
+          startTime: startTimeStr.substring(0, 5),
+          endTime: endTimeStr.substring(0, 5),
+          purpose: modifyData.purpose || '',
+          attendees: modifyData.attendees || 1
+        })
+      } else {
+        setFormData({ resourceId: selectedResource?.id||'', bookingDate:'', startTime:'', endTime:'', purpose:'', attendees:1 })
+      }
     }
-  }, [isOpen, selectedResource])
+  }, [isOpen, selectedResource, modifyData])
 
   if (!isOpen) return null
 
@@ -106,7 +124,7 @@ export default function CreateBookingModal({ isOpen, onClose, onSuccess, selecte
             <polyline points="22 4 12 14.01 9 11.01"></polyline>
           </svg>
         </div>
-        <h2 className="cbm-success-title">Booking Requested</h2>
+        <h2 className="cbm-success-title">{modifyData ? 'Modification Requested' : 'Booking Requested'}</h2>
         <p className="cbm-success-sub">Your facility request has been submitted and is pending approval.</p>
         <div className="cbm-success-badge">
           Resource #{formData.resourceId} • {formData.bookingDate} • {formData.startTime} – {formData.endTime}
@@ -123,7 +141,7 @@ export default function CreateBookingModal({ isOpen, onClose, onSuccess, selecte
         {/* ── Header ── */}
         <div className="cbm-header">
           <p className="cbm-eyebrow">Facility Booking</p>
-          <h3 className="cbm-title">Request a Space</h3>
+          <h3 className="cbm-title">{modifyData ? 'Modify Reservation' : 'Request a Space'}</h3>
           <button className="cbm-close" onClick={onClose} aria-label="Close">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
               <path d="M2 2l12 12M14 2L2 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
@@ -168,6 +186,13 @@ export default function CreateBookingModal({ isOpen, onClose, onSuccess, selecte
 
           {step === 1 && (
             <div className="cbm-step-body">
+              {/* 👇 NEW: Hint specifically for modifications */}
+              {modifyData && (
+                <div style={{ marginBottom: '1.25rem', padding: '0.75rem', background: '#f0f9ff', borderRadius: '8px', border: '1px solid #bae6fd', fontSize: '0.8rem', color: '#0369a1' }}>
+                  <strong>Note:</strong> Submitting this will create a new booking request for approval. You must manually cancel your old booking from your dashboard.
+                </div>
+              )}
+            
               <label className="cbm-lbl">Selected Resource</label>
               {selectedResource ? (
                 <>
@@ -255,7 +280,7 @@ export default function CreateBookingModal({ isOpen, onClose, onSuccess, selecte
           {step < 3
             ? <button className="cbm-btn-primary" onClick={() => goTo(step+1)} disabled={!stepValid()}>Continue</button>
             : <button className="cbm-btn-primary" onClick={handleSubmit} disabled={loading || !stepValid()}>
-                {loading ? <span className="cbm-dots"><span/><span/><span/></span> : 'Submit Request'}
+                {loading ? <span className="cbm-dots"><span/><span/><span/></span> : (modifyData ? 'Submit Modification' : 'Submit Request')}
               </button>
           }
         </div>

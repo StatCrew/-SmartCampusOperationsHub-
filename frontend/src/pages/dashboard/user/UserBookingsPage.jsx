@@ -4,10 +4,10 @@ import useAuth from '../../../context/useAuth'
 import { getHeaderLabelsByRole, getSidebarItemsByRole } from '../constants'
 import UserDashboardHeader from './components/UserDashboardHeader'
 import UserSidebar from './components/UserSidebar'
-import CreateBookingModal from './components/CreateBookingModal'
-import { getUserBookings, cancelBookingReq } from '../../../api/bookingApi'
+// 👇 REMOVED CreateBookingModal import since we navigate away now!
+import { getUserBookings, cancelBookingReq, deleteBooking } from '../../../api/bookingApi' // 👇 Added deleteBooking
 
-// ── Status config (UPDATED TO MATCH LOGO COLORS) ───────────────
+// ── Status config
 const STATUS_CONFIG = {
   APPROVED:  { color: '#0ea5e9', bg: 'rgba(14, 165, 233, 0.1)',  border: 'rgba(14, 165, 233, 0.25)', dot: '#0ea5e9',  label: 'Approved'  },
   REJECTED:  { color: '#e53e3e', bg: 'rgba(229,62,62,0.08)',  border: 'rgba(229,62,62,0.2)',   dot: '#e53e3e',  label: 'Rejected'  },
@@ -44,20 +44,22 @@ export default function UserBookingsPage() {
   const [bookings,      setBookings]      = useState([])
   const [loading,       setLoading]       = useState(true)
   const [errorMessage,  setErrorMessage]  = useState('')
-  const [isModalOpen,   setIsModalOpen]   = useState(false)
   const [filterStatus,  setFilterStatus]  = useState('ALL')
   const [hoveredRow,    setHoveredRow]    = useState(null)
 
-  // State for the Cancellation Confirm Dialog
+  // State for the Action Dialogs
   const [cancelTarget, setCancelTarget] = useState(null)
   const [isCancelling, setIsCancelling] = useState(false)
+  
+  // 👇 NEW: State for deleting
+  const [deleteTarget, setDeleteTarget] = useState(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const loadBookings = useCallback(async () => {
     if (!user?.id) return
     setLoading(true); setErrorMessage('')
     try {
       const data = await getUserBookings(user.id)
-      // Sort bookings so newest are at the top
       const sortedData = (data?.content || data || []).sort((a, b) => new Date(b.startTime) - new Date(a.startTime))
       setBookings(sortedData)
     } catch (error) {
@@ -90,18 +92,30 @@ export default function UserBookingsPage() {
     setIsCancelling(true);
     try {
       await cancelBookingReq(cancelTarget);
-      
-      // Update UI on success
       setBookings(prev => prev.map(b => b.id === cancelTarget ? { ...b, status: 'CANCELLED' } : b))
       setCancelTarget(null);
     } catch (err) {
-      // Show the error banner
       setErrorMessage(getApiErrorMessage(err));
-      
-      // 👇 FIX: Force the modal to close so you can actually read the error!
       setCancelTarget(null); 
     } finally {
       setIsCancelling(false);
+    }
+  }
+
+  // 👇 NEW LOGIC: Handle permanent deletion
+  const handleDeleteBooking = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    try {
+      await deleteBooking(deleteTarget);
+      // Remove it from the list immediately
+      setBookings(prev => prev.filter(b => b.id !== deleteTarget))
+      setDeleteTarget(null);
+    } catch (err) {
+      setErrorMessage(getApiErrorMessage(err));
+      setDeleteTarget(null); 
+    } finally {
+      setIsDeleting(false);
     }
   }
 
@@ -190,7 +204,8 @@ export default function UserBookingsPage() {
                 View and manage your campus facility bookings.
               </p>
             </div>
-            <button className="request-btn" onClick={() => setIsModalOpen(true)}>
+            {/* 👇 FIX 1: Directing this button to the Resource Page instead of the modal */}
+            <button className="request-btn" onClick={() => navigate('/dashboard/user/resources')}>
               <span style={{ fontSize: '1rem' }}>＋</span> Request Room
             </button>
           </div>
@@ -206,7 +221,6 @@ export default function UserBookingsPage() {
           {/* ── Table Card ── */}
           <div className="page-fade" style={{ animationDelay: '0.25s', background: '#fff', borderRadius: 12, border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
 
-            {/* Table header bar */}
             <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', background: '#f8fafc' }}>
               <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#334155' }}>
                 {filtered.length} {filtered.length === 1 ? 'Booking' : 'Bookings'} {filterStatus !== 'ALL' && `(${filterStatus.toLowerCase()})`}
@@ -251,7 +265,11 @@ export default function UserBookingsPage() {
                   ) : (
                     filtered.map((booking, idx) => {
                       const st = getStatus(booking.status)
+                      
+                      // 👇 FIX 2: Check permissions based on status
+                      // Active bookings can be modified/cancelled. Dead bookings can be permanently deleted.
                       const canCancel = booking.status === 'PENDING' || booking.status === 'APPROVED';
+                      const canDelete = booking.status === 'CANCELLED' || booking.status === 'REJECTED';
 
                       return (
                         <tr
@@ -304,21 +322,37 @@ export default function UserBookingsPage() {
                           </td>
                           <td style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
                             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                              <button 
-                                className="action-btn" 
-                                disabled={!canCancel}
-                                onClick={() => navigate(`/dashboard/user/resources/${booking.resourceId}`)}
-                                title="Go to Resource to modify"
-                              >
-                                Modify
-                              </button>
-                              <button 
-                                className="action-btn cancel" 
-                                disabled={!canCancel}
-                                onClick={() => setCancelTarget(booking.id)}
-                              >
-                                Cancel
-                              </button>
+                              
+                              {/* Show Modify/Cancel for Active Bookings */}
+                              {canCancel && (
+                                <>
+                                  <button 
+                                    className="action-btn" 
+                                    onClick={() => navigate(`/dashboard/user/resources/${booking.resourceId}`, { state: { modifyBooking: booking } })}
+                                    title="Modify this booking"
+                                  >
+                                    Modify
+                                  </button>
+                                  <button 
+                                    className="action-btn cancel" 
+                                    onClick={() => setCancelTarget(booking.id)}
+                                  >
+                                    Cancel
+                                  </button>
+                                </>
+                              )}
+
+                              {/* 👇 FIX 3: Show Delete for dead bookings (Cancelled/Rejected) */}
+                              {canDelete && (
+                                <button 
+                                  className="action-btn cancel" 
+                                  onClick={() => setDeleteTarget(booking.id)}
+                                  title="Permanently remove from history"
+                                >
+                                  Delete
+                                </button>
+                              )}
+
                             </div>
                           </td>
                         </tr>
@@ -332,12 +366,7 @@ export default function UserBookingsPage() {
         </main>
       </div>
 
-      <CreateBookingModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSuccess={() => { setIsModalOpen(false); loadBookings(); }}
-      />
-
+      {/* Cancellation Confirmation Modal */}
       {cancelTarget && (
         <div className="cancel-overlay">
           <div className="cancel-box">
@@ -364,6 +393,35 @@ export default function UserBookingsPage() {
           </div>
         </div>
       )}
+
+      {/* 👇 FIX 4: Deletion Confirmation Modal */}
+      {deleteTarget && (
+        <div className="cancel-overlay">
+          <div className="cancel-box">
+            <h3 style={{ margin: '0 0 0.5rem', fontSize: '1.25rem', color: '#0f172a' }}>Delete Record?</h3>
+            <p style={{ margin: '0 0 1.5rem', fontSize: '0.875rem', color: '#64748b', lineHeight: 1.5 }}>
+              Are you sure you want to permanently delete this record from your history? <strong>This cannot be undone.</strong>
+            </p>
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+              <button 
+                onClick={() => setDeleteTarget(null)} 
+                disabled={isDeleting}
+                style={{ padding: '0.5rem 1rem', borderRadius: 6, border: '1px solid #cbd5e1', background: '#fff', color: '#475569', fontWeight: 500, cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleDeleteBooking} 
+                disabled={isDeleting}
+                style={{ padding: '0.5rem 1rem', borderRadius: 6, border: 'none', background: '#ef4444', color: '#fff', fontWeight: 500, cursor: 'pointer' }}
+              >
+                {isDeleting ? 'Deleting...' : 'Yes, Delete it'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }
