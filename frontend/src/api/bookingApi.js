@@ -100,3 +100,9 @@ export async function getBookingAnalytics() {
   const response = await apiClient.get(`${BOOKING_PREFIX}/analytics`)
   return response.data
 }
+
+// 7. Safely Cancel a Booking (User Action)
+export async function cancelBookingReq(id) {
+  const response = await apiClient.patch(`${BOOKING_PREFIX}/${id}/cancel`)
+  return response.data
+}

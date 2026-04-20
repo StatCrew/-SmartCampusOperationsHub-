@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { getUserBookings } from '../../../api/bookingApi'
 import useAuth from '../../../context/useAuth'
 import { getHeaderLabelsByRole, getSidebarItemsByRole } from '../constants'
 import UserDashboardHeader from './components/UserDashboardHeader'
 import UserSidebar from './components/UserSidebar'
 import CreateBookingModal from './components/CreateBookingModal'
+import { getUserBookings, cancelBookingReq } from '../../../api/bookingApi'
 
 // ── Status config (UPDATED TO MATCH LOGO COLORS) ───────────────
 const STATUS_CONFIG = {
@@ -85,23 +85,22 @@ export default function UserBookingsPage() {
     rejected: bookings.filter(b => b.status === 'REJECTED').length,
   }), [bookings])
 
-  // 👇 NEW LOGIC: Handle Cancellation
   const handleCancelBooking = async () => {
     if (!cancelTarget) return;
     setIsCancelling(true);
     try {
-      // NOTE: You must build this specific PATCH endpoint in your Spring Boot Backend!
-      // Example: fetch(`/api/v1/bookings/${cancelTarget}/status`, { method: 'PATCH', body: JSON.stringify({ status: 'CANCELLED' }) })
+      await cancelBookingReq(cancelTarget);
       
-      // Simulating a successful cancellation for the UI:
-      setTimeout(() => {
-        setBookings(prev => prev.map(b => b.id === cancelTarget ? { ...b, status: 'CANCELLED' } : b))
-        setCancelTarget(null);
-        setIsCancelling(false);
-      }, 800)
-
+      // Update UI on success
+      setBookings(prev => prev.map(b => b.id === cancelTarget ? { ...b, status: 'CANCELLED' } : b))
+      setCancelTarget(null);
     } catch (err) {
-      setErrorMessage(getApiErrorMessage(err))
+      // Show the error banner
+      setErrorMessage(getApiErrorMessage(err));
+      
+      // 👇 FIX: Force the modal to close so you can actually read the error!
+      setCancelTarget(null); 
+    } finally {
       setIsCancelling(false);
     }
   }
@@ -123,7 +122,6 @@ export default function UserBookingsPage() {
         .stat-card:nth-child(3) { animation-delay: 0.15s }
         .stat-card:nth-child(4) { animation-delay: 0.2s  }
 
-        /* Re-styled to match SmartCampus Blues */
         .request-btn {
           background: linear-gradient(135deg, #2193b0 0%, #6dd5ed 100%);
           color: #fff; border: none; cursor: pointer;
@@ -161,13 +159,11 @@ export default function UserBookingsPage() {
           margin-bottom: 1.5rem; display:flex; align-items:center; gap:0.5rem;
         }
 
-        /* Action Buttons */
         .action-btn { background: none; border: 1px solid #cbd5e1; border-radius: 6px; padding: 0.35rem 0.75rem; font-size: 0.7rem; font-weight: 600; cursor: pointer; transition: all 0.2s; color: #475569; }
         .action-btn:hover:not(:disabled) { background: #f1f5f9; color: #0f172a; }
         .action-btn.cancel:hover:not(:disabled) { background: #fef2f2; color: #dc2626; border-color: #fca5a5; }
         .action-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-        /* Cancel Modal */
         .cancel-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.5); backdrop-filter: blur(2px); z-index: 1000; display: flex; align-items: center; justify-content: center; }
         .cancel-box { background: white; padding: 2rem; border-radius: 12px; max-width: 400px; width: 100%; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); animation: modalIn 0.2s ease-out; }
       `}</style>
@@ -255,7 +251,6 @@ export default function UserBookingsPage() {
                   ) : (
                     filtered.map((booking, idx) => {
                       const st = getStatus(booking.status)
-                      // Allow cancellation only if it's not already cancelled or rejected
                       const canCancel = booking.status === 'PENDING' || booking.status === 'APPROVED';
 
                       return (
@@ -269,7 +264,6 @@ export default function UserBookingsPage() {
                             background: hoveredRow === booking.id ? '#f8fafc' : 'transparent',
                           }}
                         >
-                          {/* Resource */}
                           <td style={{ padding: '1rem 1.5rem' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                               <div style={{ width: 36, height: 36, borderRadius: 8, background: '#f0f9ff', border: '1px solid #bae6fd', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', flexShrink: 0 }}>
@@ -285,13 +279,9 @@ export default function UserBookingsPage() {
                               </div>
                             </div>
                           </td>
-
-                          {/* Date */}
                           <td style={{ padding: '1rem 1.5rem' }}>
                             <div style={{ fontWeight: 500, color: '#334155' }}>{fmt(booking.startTime, 'date')}</div>
                           </td>
-
-                          {/* Time */}
                           <td style={{ padding: '1rem 1.5rem' }}>
                             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: 6, padding: '0.25rem 0.6rem' }}>
                               <span style={{ fontSize: '0.75rem', color: '#334155', fontWeight: 600 }}>{fmt(booking.startTime, 'time')}</span>
@@ -299,8 +289,6 @@ export default function UserBookingsPage() {
                               <span style={{ fontSize: '0.75rem', color: '#334155', fontWeight: 600 }}>{fmt(booking.endTime, 'time')}</span>
                             </div>
                           </td>
-
-                          {/* Status */}
                           <td style={{ padding: '1rem 1.5rem' }}>
                             <span style={{
                               display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
@@ -314,8 +302,6 @@ export default function UserBookingsPage() {
                               {st.label}
                             </span>
                           </td>
-
-                          {/* Actions */}
                           <td style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
                             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
                               <button 
@@ -352,7 +338,6 @@ export default function UserBookingsPage() {
         onSuccess={() => { setIsModalOpen(false); loadBookings(); }}
       />
 
-      {/* Cancellation Confirmation Modal */}
       {cancelTarget && (
         <div className="cancel-overlay">
           <div className="cancel-box">

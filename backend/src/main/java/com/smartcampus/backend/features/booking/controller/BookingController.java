@@ -88,4 +88,13 @@ public class BookingController {
     public ResponseEntity<AnalyticsResponse> getAnalytics() {
         return ResponseEntity.ok(bookingService.getBookingAnalytics());
     }
-}
+
+    // 7. PATCH: Safely cancel a booking (Allowed for both Users and Admins)
+    @PatchMapping("/{id}/cancel")
+    @PreAuthorize("hasAnyRole('ADMIN', 'USER')") // 👇 Moved INSIDE the class and updated security annotation!
+    public ResponseEntity<Booking> cancelBooking(@PathVariable Long id) {
+        // Automatically forces the status to CANCELLED so users can't cheat by sending other statuses
+        Booking cancelledBooking = bookingService.updateBookingStatus(id, "CANCELLED");
+        return ResponseEntity.ok(cancelledBooking);
+    }
+} // <--- The class closes HERE now!
