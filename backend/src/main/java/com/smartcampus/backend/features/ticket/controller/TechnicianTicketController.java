@@ -39,6 +39,7 @@ public class TechnicianTicketController {
         }).toList();
     }
 
+    // GET TICKET BY ID
     @GetMapping("/{id}")
     public TicketResponse getAssignedTicketById(@PathVariable Long id) {
         Ticket ticket = ticketService.getAssignedTicketById(id);
@@ -50,11 +51,11 @@ public class TechnicianTicketController {
         return response;
     }
 
+    // GET FILE URL
     @GetMapping("/{id}/attachments/file-url")
     public TicketPresignedUrlResponse getAttachmentUrl(
             @PathVariable Long id,
-            @RequestParam("key") String key
-    ) {
+            @RequestParam("key") String key) {
         return ticketService.getAssignedTicketAttachmentUrl(id, key);
     }
 }

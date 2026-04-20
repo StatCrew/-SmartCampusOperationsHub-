@@ -2,7 +2,7 @@ package com.smartcampus.backend.features.ticket.dto;
 
 import org.springframework.hateoas.RepresentationModel;
 
-import com.smartcampus.backend.features.ticket.dto.TicketCommentResponse;
+//import com.smartcampus.backend.features.ticket.dto.TicketCommentResponse;
 import com.smartcampus.backend.features.ticket.model.Ticket;
 import com.smartcampus.backend.features.ticket.model.TicketAttachment;
 import com.smartcampus.backend.features.user.model.User;
@@ -19,6 +19,7 @@ public class TicketResponse extends RepresentationModel<TicketResponse> {
     private String title;
     private String description;
     private String category;
+    private String contactNumber;
     private String priority;
     private String status;
     private Long resourceId;
@@ -45,6 +46,7 @@ public class TicketResponse extends RepresentationModel<TicketResponse> {
     this.title = ticket.getTitle();
     this.description = ticket.getDescription();
     this.category = ticket.getCategory();
+    this.contactNumber = ticket.getContactNumber();
     this.priority = ticket.getPriority();
     this.status = ticket.getStatus() != null ? ticket.getStatus() != null ? ticket.getStatus().toString() : null : "OPEN";
     this.resourceId = ticket.getResourceId();

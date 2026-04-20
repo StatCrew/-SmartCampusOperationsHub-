@@ -24,7 +24,7 @@ import UserResourcesPage from '../pages/dashboard/user/UserResourcesPage'
 import UserTicketsPage from '../pages/dashboard/user/UserTicketsPage'
 import TechnicianTicketsPage from '../pages/dashboard/technician/TechnicianTicketsPage'
 import HomePage from '../pages/public/HomePage'
-import UserTicketsPage from '../pages/dashboard/user/UserTicketsPage'
+
 
 
 function HomeRedirect() {

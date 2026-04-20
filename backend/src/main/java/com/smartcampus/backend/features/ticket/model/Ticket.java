@@ -26,6 +26,9 @@ public class Ticket {
 
     private String category;
 
+    @Column(length = 15)
+    private String contactNumber;
+
     private String priority; // LOW, MEDIUM, HIGH
 
     private Long resourceId;

@@ -73,6 +73,7 @@ function TechnicianTicketDetailsModal({
           <Detail label="Status" value={<TicketBadge status={ticket.status} />} />
           <Detail label="Priority" value={ticket.priority || '-'} />
           <Detail label="Category" value={ticket.category || '-'} />
+          <Detail label="Contact Number" value={ticket.contactNumber || '-'} />
           <Detail label="Reported By" value={ticket.userEmail || ticket.userId || '-'} />
           <Detail label="Created" value={formatDateTime(ticket.createdAt)} />
           <Detail label="Ticket ID" value={ticket.id} />

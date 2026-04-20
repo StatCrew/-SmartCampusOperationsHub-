@@ -81,6 +81,7 @@ public class TicketService {
         existing.setTitle(updatedTicket.getTitle());
         existing.setDescription(updatedTicket.getDescription());
         existing.setCategory(updatedTicket.getCategory());
+        existing.setContactNumber(updatedTicket.getContactNumber());
         existing.setPriority(updatedTicket.getPriority());
 
         // Update timestamp

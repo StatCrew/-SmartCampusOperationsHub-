@@ -57,6 +57,7 @@ function TicketFormModal({ open, mode, ticket, onClose, onSaved, getApiErrorMess
     category: 'GENERAL',
     priority: 'MEDIUM',
     resourceId: '',
+    contactNumber: '',
   })
   const [files, setFiles] = useState([])
 
@@ -73,6 +74,7 @@ function TicketFormModal({ open, mode, ticket, onClose, onSaved, getApiErrorMess
       category: ticket?.category || 'GENERAL',
       priority: ticket?.priority || 'MEDIUM',
       resourceId: ticket?.resourceId ? String(ticket.resourceId) : '',
+      contactNumber: ticket?.contactNumber || '',
     })
     setFiles([])
   }, [open, ticket, mode])
@@ -98,6 +100,7 @@ function TicketFormModal({ open, mode, ticket, onClose, onSaved, getApiErrorMess
         category: formData.category,
         priority: formData.priority,
         resourceId: formData.resourceId ? Number(formData.resourceId) : null,
+        contactNumber: formData.contactNumber.trim(),
       }
 
       if (mode === 'edit' && ticket?.id) {
@@ -210,6 +213,21 @@ function TicketFormModal({ open, mode, ticket, onClose, onSaved, getApiErrorMess
             />
           </div>
 
+          <div className="space-y-2">
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Contact Number</label>
+            <input
+              name="contactNumber"
+              value={formData.contactNumber}
+              onChange={handleChange}
+              type="tel"
+              pattern="^\d{10}$"
+              maxLength="10"
+              className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+              placeholder="e.g. 0712345678"
+              required
+            />
+          </div>
+
           <div className="space-y-2 md:col-span-2">
             <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Attachments</label>
             <input
@@ -318,6 +336,7 @@ function TicketDetailsModal({
               <Detail label="Status" value={<TicketBadge status={ticket.status} />} />
               <Detail label="Priority" value={ticket.priority || '-'} />
               <Detail label="Category" value={ticket.category || '-'} />
+              <Detail label="Contact Number" value={ticket.contactNumber || '-'} />
               <Detail label="Resource ID" value={ticket.resourceId ?? '-'} />
               <Detail label="Created" value={formatDateTime(ticket.createdAt)} />
               <Detail label="Ticket ID" value={ticket.id} />
