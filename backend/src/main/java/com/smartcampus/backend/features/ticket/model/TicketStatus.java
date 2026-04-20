@@ -6,7 +6,8 @@ public enum TicketStatus {
     OPEN,
     IN_PROGRESS,
     RESOLVED,
-    CLOSED;
+    CLOSED,
+    REJECTED;
 
     public static TicketStatus from(String raw) {
         if (raw == null || raw.isBlank()) {

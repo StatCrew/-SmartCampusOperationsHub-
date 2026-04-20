@@ -36,6 +36,18 @@ public class Ticket {
     private LocalDateTime createdAt;
 
     private LocalDateTime updatedAt;
+    
+    private LocalDateTime dueDate; // SLA Deadline
+
+    private String rejectionReason;
+
+    @Column(length = 2000)
+    private String resolutionNotes;
+
+    private Integer rating; // 1-5 stars
+
+    @Column(length = 1000)
+    private String feedback;
 
     //Relationship with User
     @ManyToOne

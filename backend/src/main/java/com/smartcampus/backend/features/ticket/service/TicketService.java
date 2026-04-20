@@ -30,7 +30,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -57,6 +56,9 @@ public class TicketService {
         ticket.setUser(user);
         ticket.setStatus(TicketStatus.OPEN);
         ticket.setCreatedAt(LocalDateTime.now());
+
+        // SLA CALCULATION (Innovation Feature)
+        calculateDueDate(ticket);
 
         Ticket saved = ticketRepository.save(ticket);
         assignBestTechnician(saved);
@@ -258,6 +260,91 @@ public class TicketService {
         }
 
     return ticketRepository.save(ticket);
+    }
+
+    private void calculateDueDate(Ticket ticket) {
+        LocalDateTime now = LocalDateTime.now();
+        String priority = ticket.getPriority() != null ? ticket.getPriority().toUpperCase(Locale.ROOT) : "MEDIUM";
+
+        ticket.setDueDate(switch (priority) {
+            case "URGENT" -> now.plusHours(4);
+            case "HIGH" -> now.plusHours(24);
+            case "MEDIUM" -> now.plusDays(3);
+            case "LOW" -> now.plusDays(7);
+            default -> now.plusDays(3);
+        });
+    }
+
+    public Ticket rejectTicket(Long ticketId, String reason, User admin) {
+        if (admin.getRole() != Role.ADMIN) {
+            throw new RuntimeException("Only admins can reject tickets");
+        }
+
+        Ticket ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new RuntimeException("Ticket not found"));
+
+        if (ticket.getStatus() != TicketStatus.OPEN) {
+            throw new RuntimeException("Only open tickets can be rejected");
+        }
+
+        ticket.setStatus(TicketStatus.REJECTED);
+        ticket.setRejectionReason(reason);
+        ticket.setUpdatedAt(LocalDateTime.now());
+
+        TicketComment comment = TicketComment.builder()
+                .message("Ticket REJECTED. Reason: " + reason)
+                .ticket(ticket)
+                .user(admin)
+                .createdAt(LocalDateTime.now())
+                .build();
+        commentRepository.save(comment);
+
+        return ticketRepository.save(ticket);
+    }
+
+    public Ticket resolveTicket(Long ticketId, String notes, User technician) {
+        Ticket ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new RuntimeException("Ticket not found"));
+
+        // Validate technician assignment
+        if (ticket.getTechnician() == null || !ticket.getTechnician().getId().equals(technician.getId())) {
+            throw new RuntimeException("You are not assigned to this ticket");
+        }
+
+        if (ticket.getStatus() != TicketStatus.IN_PROGRESS) {
+            throw new RuntimeException("Only tickets in progress can be resolved");
+        }
+
+        ticket.setStatus(TicketStatus.RESOLVED);
+        ticket.setResolutionNotes(notes);
+        ticket.setUpdatedAt(LocalDateTime.now());
+
+        TicketComment comment = TicketComment.builder()
+                .message("Issue RESOLVED. Technician Notes: " + notes)
+                .ticket(ticket)
+                .user(technician)
+                .createdAt(LocalDateTime.now())
+                .build();
+        commentRepository.save(comment);
+
+        return ticketRepository.save(ticket);
+    }
+
+    public Ticket rateTicket(Long ticketId, Integer rating, String feedback, User user) {
+        Ticket ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new RuntimeException("Ticket not found"));
+
+        if (!ticket.getUser().getId().equals(user.getId())) {
+            throw new RuntimeException("You can only rate your own tickets");
+        }
+
+        if (ticket.getStatus() != TicketStatus.RESOLVED && ticket.getStatus() != TicketStatus.CLOSED) {
+            throw new RuntimeException("You can only rate resolved or closed tickets");
+        }
+
+        ticket.setRating(rating);
+        ticket.setFeedback(feedback);
+        return ticketRepository.save(ticket);
     }
 
 

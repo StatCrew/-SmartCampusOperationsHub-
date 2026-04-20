@@ -1,6 +1,7 @@
 package com.smartcampus.backend.features.ticket.controller;
 
 import com.smartcampus.backend.features.ticket.dto.AssignTicketRequest;
+import com.smartcampus.backend.features.ticket.dto.RejectTicketRequest;
 import com.smartcampus.backend.features.ticket.dto.TicketPresignedUrlResponse;
 import com.smartcampus.backend.features.ticket.dto.TicketResponse;
 import com.smartcampus.backend.features.ticket.model.Ticket;
@@ -28,7 +29,7 @@ public class AdminTicketController {
     private final TicketService ticketService;
     private final UserRepository userRepository;
 
-    // GET ALL TICKETS
+    // Get all tickets
     @GetMapping
     public List<TicketResponse> getAllTickets() {
 
@@ -51,7 +52,7 @@ public class AdminTicketController {
         }).toList();
     }
 
-    // GET SINGLE TICKET
+    // Get a specific ticket by ID
     @GetMapping("/{id}")
     public TicketResponse getTicketById(@PathVariable Long id) {
 
@@ -68,6 +69,7 @@ public class AdminTicketController {
         return response;
     }
 
+    // Update ticket status
     @PutMapping("/{id}/status")
     public TicketResponse updateStatus(
             @PathVariable Long id,
@@ -85,6 +87,7 @@ public class AdminTicketController {
         return new TicketResponse(updated);
     }
 
+    // Assign a technician to a ticket
     @PutMapping("/{id}/assign")
     public TicketResponse assignTicket(
             @PathVariable Long id,
@@ -96,6 +99,17 @@ public class AdminTicketController {
         return new TicketResponse(updated);
     }
 
+    @PutMapping("/{id}/reject")
+    public TicketResponse rejectTicket(
+            @PathVariable Long id,
+            @RequestBody RejectTicketRequest request
+    ) {
+        User user = getAuthenticatedAdminUser();
+        Ticket updated = ticketService.rejectTicket(id, request.reason(), user);
+        return new TicketResponse(updated);
+    }
+
+    // Get a pre-signed URL for an attachment
     @GetMapping("/{id}/attachments/file-url")
     public TicketPresignedUrlResponse getAttachmentUrl(
             @PathVariable Long id,

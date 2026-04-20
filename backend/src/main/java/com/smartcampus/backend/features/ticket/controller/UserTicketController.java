@@ -1,22 +1,20 @@
 package com.smartcampus.backend.features.ticket.controller;
 
+import com.smartcampus.backend.features.ticket.dto.RateTicketRequest;
 import com.smartcampus.backend.features.ticket.dto.TicketPresignedUrlResponse;
 import com.smartcampus.backend.features.ticket.dto.TicketResponse;
 import com.smartcampus.backend.features.ticket.model.Ticket;
 import com.smartcampus.backend.features.ticket.service.TicketService;
+import com.smartcampus.backend.features.user.model.User;
+import com.smartcampus.backend.features.user.repository.UserRepository;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RequestPart;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -32,6 +30,7 @@ import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 public class UserTicketController {
 
     private final TicketService ticketService;
+    private final UserRepository userRepository;
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public TicketResponse createTicket(
@@ -98,6 +97,26 @@ public class UserTicketController {
                 .getTicketById(id)).withRel("self"));
 
         return response;
+    }
+
+    @PutMapping("/{id}/rate")
+    public TicketResponse rateTicket(
+            @PathVariable Long id,
+            @RequestBody RateTicketRequest request
+    ) {
+        User user = getAuthenticatedUser();
+        Ticket updated = ticketService.rateTicket(id, request.rating(), request.feedback(), user);
+        return toResponse(updated);
+    }
+
+    private User getAuthenticatedUser() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || auth.getName() == null) {
+            throw new RuntimeException("User not authenticated");
+        }
+
+        return userRepository.findByEmail(auth.getName())
+                .orElseThrow(() -> new RuntimeException("User not found"));
     }
 
     private TicketResponse toResponse(Ticket ticket) {

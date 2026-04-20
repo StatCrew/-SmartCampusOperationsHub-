@@ -25,6 +25,11 @@ public class TicketResponse extends RepresentationModel<TicketResponse> {
     private Long resourceId;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private LocalDateTime dueDate;
+    private String rejectionReason;
+    private String resolutionNotes;
+    private Integer rating;
+    private String feedback;
 
     // user info (SAFE)
     private Long userId;
@@ -51,6 +56,12 @@ public class TicketResponse extends RepresentationModel<TicketResponse> {
     this.status = ticket.getStatus() != null ? ticket.getStatus() != null ? ticket.getStatus().toString() : null : "OPEN";
     this.resourceId = ticket.getResourceId();
     this.createdAt = ticket.getCreatedAt();
+    this.updatedAt = ticket.getUpdatedAt();
+    this.dueDate = ticket.getDueDate();
+    this.rejectionReason = ticket.getRejectionReason();
+    this.resolutionNotes = ticket.getResolutionNotes();
+    this.rating = ticket.getRating();
+    this.feedback = ticket.getFeedback();
 
     User owner = ticket.getUser();
     this.userId = owner != null ? owner.getId() : null;

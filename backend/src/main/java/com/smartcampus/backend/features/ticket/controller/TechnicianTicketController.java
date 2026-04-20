@@ -1,13 +1,18 @@
 package com.smartcampus.backend.features.ticket.controller;
 
+import com.smartcampus.backend.features.ticket.dto.ResolveTicketRequest;
 import com.smartcampus.backend.features.ticket.dto.TicketPresignedUrlResponse;
 import com.smartcampus.backend.features.ticket.dto.TicketResponse;
 import com.smartcampus.backend.features.ticket.model.Ticket;
 import com.smartcampus.backend.features.ticket.service.TicketService;
+import com.smartcampus.backend.features.user.model.User;
+import com.smartcampus.backend.features.user.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.List;
 
@@ -20,6 +25,7 @@ import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
 public class TechnicianTicketController {
 
     private final TicketService ticketService;
+    private final UserRepository userRepository;
 
     // GET MY ASSIGNED TICKETS
     @GetMapping
@@ -57,5 +63,25 @@ public class TechnicianTicketController {
             @PathVariable Long id,
             @RequestParam("key") String key) {
         return ticketService.getAssignedTicketAttachmentUrl(id, key);
+    }
+
+    @PutMapping("/{id}/resolve")
+    public TicketResponse resolveTicket(
+            @PathVariable Long id,
+            @RequestBody ResolveTicketRequest request
+    ) {
+        User user = getAuthenticatedTechnicianUser();
+        Ticket updated = ticketService.resolveTicket(id, request.notes(), user);
+        return new TicketResponse(updated);
+    }
+
+    private User getAuthenticatedTechnicianUser() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || auth.getName() == null) {
+            throw new RuntimeException("User not authenticated");
+        }
+
+        return userRepository.findByEmail(auth.getName())
+                .orElseThrow(() -> new RuntimeException("User not found"));
     }
 }
