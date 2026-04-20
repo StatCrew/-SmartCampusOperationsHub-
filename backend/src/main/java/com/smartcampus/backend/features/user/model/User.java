@@ -50,6 +50,9 @@ public class User implements UserDetails {
     @Column(nullable = false, length = 20)
     private AuthProvider provider;
 
+    @Column(length = 500)
+    private String specialties;
+
     @Builder.Default
     @Column(nullable = false)
     private boolean emailVerified = false;

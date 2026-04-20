@@ -1,5 +1,7 @@
 package com.smartcampus.backend.features.ticket.service;
 
+import com.smartcampus.backend.features.ticket.dto.TicketCommentResponse;
+import com.smartcampus.backend.features.ticket.dto.CreateTicketCommentRequest;
 import com.smartcampus.backend.features.ticket.model.*;
 import com.smartcampus.backend.features.ticket.repository.*;
 import com.smartcampus.backend.features.user.model.User;
@@ -16,7 +18,7 @@ public class TicketCommentService {
     private final TicketCommentRepository commentRepository;
     private final TicketRepository ticketRepository;
 
-    public TicketComment addComment(Long ticketId, String message, User user) {
+    public TicketCommentResponse addComment(Long ticketId, CreateTicketCommentRequest request, User user) {
 
         Ticket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new RuntimeException("Ticket not found"));
@@ -31,42 +33,54 @@ public class TicketCommentService {
         }       
 
         TicketComment comment = TicketComment.builder()
-                .message(message)
+                .message(request.message().trim())
+                .createdBy(user.getEmail())
                 .createdAt(LocalDateTime.now())
                 .ticket(ticket)
                 .user(user)
                 .build();
 
-        return commentRepository.save(comment);
+        return TicketCommentResponse.from(commentRepository.save(comment));
     }
 
-    public List<TicketComment> getComments(Long ticketId) {
-        return commentRepository.findByTicketIdOrderByCreatedAtAsc(ticketId);
+    public List<TicketCommentResponse> getComments(Long ticketId) {
+        return commentRepository.findByTicketIdOrderByCreatedAtAsc(ticketId)
+                .stream()
+                .map(TicketCommentResponse::from)
+                .toList();
     }
 
 
-    public TicketComment updateComment(Long commentId, String message, User user) {
+    public TicketCommentResponse updateComment(Long ticketId, Long commentId, String message, User user) {
 
         TicketComment comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new RuntimeException("Comment not found"));
 
+        if (comment.getTicket() == null || comment.getTicket().getId() == null || !comment.getTicket().getId().equals(ticketId)) {
+            throw new RuntimeException("Comment does not belong to this ticket");
+        }
+
         //OWNER CHECK
-        if (!comment.getCreatedBy().equals(user.getEmail())) {
+        if (comment.getCreatedBy() == null || !comment.getCreatedBy().equals(user.getEmail())) {
             throw new RuntimeException("You can only edit your own comment");
         }
 
         comment.setMessage(message);
         comment.setUpdatedAt(java.time.LocalDateTime.now());
 
-        return commentRepository.save(comment);
+        return TicketCommentResponse.from(commentRepository.save(comment));
     }
 
-    public void deleteComment(Long commentId, User user) {
+    public void deleteComment(Long ticketId, Long commentId, User user) {
 
         TicketComment comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new RuntimeException("Comment not found"));
 
-        if (!comment.getCreatedBy().equals(user.getEmail())) {
+        if (comment.getTicket() == null || comment.getTicket().getId() == null || !comment.getTicket().getId().equals(ticketId)) {
+            throw new RuntimeException("Comment does not belong to this ticket");
+        }
+
+        if (comment.getCreatedBy() == null || !comment.getCreatedBy().equals(user.getEmail())) {
             throw new RuntimeException("Not allowed to delete this comment");
         }
 

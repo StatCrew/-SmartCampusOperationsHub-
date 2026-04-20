@@ -1,5 +1,7 @@
 package com.smartcampus.backend.features.ticket.controller;
 
+import com.smartcampus.backend.features.ticket.dto.AssignTicketRequest;
+import com.smartcampus.backend.features.ticket.dto.TicketPresignedUrlResponse;
 import com.smartcampus.backend.features.ticket.dto.TicketResponse;
 import com.smartcampus.backend.features.ticket.model.Ticket;
 import com.smartcampus.backend.features.ticket.model.TicketStatus;
@@ -8,6 +10,7 @@ import com.smartcampus.backend.features.user.model.User;
 import com.smartcampus.backend.features.user.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -19,6 +22,7 @@ import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
 @RestController
 @RequestMapping("/api/admin/tickets")
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('ADMIN')")
 public class AdminTicketController {
 
     private final TicketService ticketService;
@@ -70,18 +74,43 @@ public class AdminTicketController {
             @RequestParam String status
     ) {
 
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        String email = auth.getName();
-
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        User user = getAuthenticatedAdminUser();
 
         Ticket updated = ticketService.updateTicketStatus(
                 id,
-                TicketStatus.valueOf(status),
+                TicketStatus.from(status),
                 user
         );
 
         return new TicketResponse(updated);
+    }
+
+    @PutMapping("/{id}/assign")
+    public TicketResponse assignTicket(
+            @PathVariable Long id,
+            @RequestBody AssignTicketRequest request
+    ) {
+        User user = getAuthenticatedAdminUser();
+
+        Ticket updated = ticketService.assignTechnician(id, request.technicianId(), user);
+        return new TicketResponse(updated);
+    }
+
+    @GetMapping("/{id}/attachments/file-url")
+    public TicketPresignedUrlResponse getAttachmentUrl(
+            @PathVariable Long id,
+            @RequestParam("key") String key
+    ) {
+        return ticketService.getAdminTicketAttachmentUrl(id, key);
+    }
+
+    private User getAuthenticatedAdminUser() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || auth.getName() == null) {
+            throw new RuntimeException("User not authenticated");
+        }
+
+        return userRepository.findByEmail(auth.getName())
+                .orElseThrow(() -> new RuntimeException("User not found"));
     }
 }

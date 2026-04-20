@@ -7,6 +7,7 @@ export const roleSidebarItems = {
     { icon: 'inventory_2', label: 'Resources', path: '/dashboard/user/resources' },
     //Ticketing system
     { icon: 'report_problem', label: 'My Tickets', path: '/dashboard/user/tickets' },
+    { icon: 'confirmation_number', label: 'Tickets', path: '/dashboard/user/tickets' },
 
   ],
   ADMIN: [
@@ -15,9 +16,10 @@ export const roleSidebarItems = {
     // ADDED: Admin Analytics & Booking Requests
    
     { icon: 'list_alt', label: 'Booking Requests', path: '/admin/bookings' },
+    { icon: 'confirmation_number', label: 'Tickets', path: '/admin/tickets' },
     { icon: 'analytics', label: 'Booking Analytics', path: '/admin/analytics' },
     { icon: 'bar_chart', label: 'Resource Analytics', path: '/admin/resource-analytics' },
-    { icon: 'cloud_upload', label: 'Storage Test', path: '/admin/storage-test' },
+    // { icon: 'cloud_upload', label: 'Storage Test', path: '/admin/storage-test' },
     { icon: 'inventory_2', label: 'Resources', path: '/admin/resources' },
 
     // Admin Ticketing system
@@ -26,6 +28,7 @@ export const roleSidebarItems = {
   ],
   TECHNICIAN: [
     { icon: 'dashboard', label: 'Dashboard', path: '/dashboard/technician' },
+    { icon: 'confirmation_number', label: 'Tickets', path: '/dashboard/technician/tickets' },
     { icon: 'inventory_2', label: 'Resources',  path: '/dashboard/user/resources' }, // ← ADD
 
     // Technician Ticketing system

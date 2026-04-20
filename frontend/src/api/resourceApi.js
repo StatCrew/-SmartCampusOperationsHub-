@@ -5,10 +5,16 @@ const RESOURCE_PREFIX = '/api/v1/resources'
 // Normalize various response shapes (array, page, HATEOAS)
 function normalizeCollection(payload) {
   if (Array.isArray(payload)) return payload
-  if (Array.isArray(payload?._embedded?.resourceResponseList))
-    return payload._embedded.resourceResponseList
-  if (Array.isArray(payload?._embedded?.resources))
-    return payload._embedded.resources
+
+  if (payload?._embedded) {
+    const embeddedValues = Object.values(payload._embedded)
+    for (const value of embeddedValues) {
+      if (Array.isArray(value)) {
+        return value
+      }
+    }
+  }
+
   if (Array.isArray(payload?.content)) return payload.content
   return []
 }
@@ -60,6 +66,18 @@ export async function uploadResourceImage(id, file) {
     headers: { 'Content-Type': 'multipart/form-data' },
   })
   return response.data
+}
+
+// GET /api/resources/:id/availability-slots   — all authenticated users
+export async function getAvailabilitySlots(resourceId) {
+  const response = await apiClient.get(`/api/resources/${resourceId}/availability-slots`)
+  return Array.isArray(response.data) ? response.data : []
+}
+
+// PUT /api/resources/:id/availability-slots   — ADMIN only
+export async function replaceAvailabilitySlots(resourceId, slots) {
+  const response = await apiClient.put(`/api/resources/${resourceId}/availability-slots`, slots)
+  return Array.isArray(response.data) ? response.data : []
 }
 
 export const RESOURCE_TYPES    = ['LECTURE_HALL', 'LAB', 'MEETING_ROOM', 'EQUIPMENT']

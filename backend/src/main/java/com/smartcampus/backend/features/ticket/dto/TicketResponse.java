@@ -2,7 +2,10 @@ package com.smartcampus.backend.features.ticket.dto;
 
 import org.springframework.hateoas.RepresentationModel;
 
+import com.smartcampus.backend.features.ticket.dto.TicketCommentResponse;
 import com.smartcampus.backend.features.ticket.model.Ticket;
+import com.smartcampus.backend.features.ticket.model.TicketAttachment;
+import com.smartcampus.backend.features.user.model.User;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -33,6 +36,9 @@ public class TicketResponse extends RepresentationModel<TicketResponse> {
     // attachments (file URLs)
     private List<String> attachments;
 
+    // ticket history/comments
+    private List<TicketCommentResponse> comments;
+
     // constructor
     public TicketResponse(Ticket ticket) {
     this.id = ticket.getId();
@@ -40,21 +46,34 @@ public class TicketResponse extends RepresentationModel<TicketResponse> {
     this.description = ticket.getDescription();
     this.category = ticket.getCategory();
     this.priority = ticket.getPriority();
-    this.status = ticket.getStatus() != null ? ticket.getStatus().toString() : null;
+    this.status = ticket.getStatus() != null ? ticket.getStatus() != null ? ticket.getStatus().toString() : null : "OPEN";
     this.resourceId = ticket.getResourceId();
     this.createdAt = ticket.getCreatedAt();
-    this.updatedAt = ticket.getUpdatedAt();
-    this.userId = ticket.getUser() != null ? ticket.getUser().getId() : null;
-    this.userEmail = ticket.getUser() != null ? ticket.getUser().getEmail() : null;
-    this.technicianId = ticket.getTechnician() != null ? ticket.getTechnician().getId() : null; // Handle null technician
-    this.technicianEmail = ticket.getTechnician() != null ? ticket.getTechnician().getEmail() : null;
+
+    User owner = ticket.getUser();
+    this.userId = owner != null ? owner.getId() : null;
+    this.userEmail = owner != null ? owner.getEmail() : null;
+
+    User technician = ticket.getTechnician();
+    this.technicianId = technician != null ? technician.getId() : null;
+    this.technicianEmail = technician != null ? technician.getEmail() : null;
+
     this.attachments = ticket.getAttachments() == null
             ? List.of()
             : ticket.getAttachments()
                     .stream()
-                    .filter(a -> a != null && a.getFileUrl() != null)
-                    .map(a -> a.getFileUrl())
-                    .toList(); 
+                    .filter(java.util.Objects::nonNull)
+                    .map(TicketAttachment::getFileUrl)
+                    .filter(java.util.Objects::nonNull)
+                    .toList();
+
+    this.comments = ticket.getComments() == null
+            ? List.of()
+            : ticket.getComments()
+                    .stream()
+                    .filter(java.util.Objects::nonNull)
+                    .map(TicketCommentResponse::from)
+                    .toList();
     }   
     
 }
