@@ -17,6 +17,8 @@ export const roleSidebarItems = {
     { icon: 'bar_chart', label: 'Resource Analytics', path: '/admin/resource-analytics' },
     // { icon: 'cloud_upload', label: 'Storage Test', path: '/admin/storage-test' },
     { icon: 'inventory_2', label: 'Resources', path: '/admin/resources' },
+    
+    { label: 'QR Scanner', icon: 'qr_code_scanner', path: '/dashboard/admin/scanner' },
 
   ],
   TECHNICIAN: [

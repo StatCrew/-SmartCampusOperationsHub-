@@ -4,6 +4,11 @@ const BOOKING_PREFIX = '/api/v1/bookings'
 
 // --- Helper Functions (Matching Member 4's Architecture) ---
 
+// Verify a QR Code Ticket (Admin Only)
+export async function verifyBookingTicket(id) {
+  const response = await apiClient.post(`${BOOKING_PREFIX}/${id}/verify`)
+  return response.data
+}
 function normalizeCollection(payload) {
   if (Array.isArray(payload)) {
     return payload

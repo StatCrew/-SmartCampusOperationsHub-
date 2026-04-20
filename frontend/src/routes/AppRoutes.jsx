@@ -22,6 +22,7 @@ import AdminResourcesPage from '../pages/dashboard/admin/AdminResourcesPage'
 import UserResourcesPage from '../pages/dashboard/user/UserResourcesPage'
 import HomePage from '../pages/public/HomePage'
 import ResourceBookingPage from '../pages/dashboard/user/ResourceBookingPage'
+import AdminQRScannerPage from '../pages/dashboard/admin/AdminQRScannerPage';
 function HomeRedirect() {
   const { isInitializing, isAuthenticated, role } = useAuth()
 
@@ -110,6 +111,7 @@ function AppRoutes() {
         <Route path="/admin/resource-analytics" element={<AdminResourceAnalyticsPage />} />
         <Route path="/admin/users/create" element={<CreateUserPage />} />
         <Route path="/admin/storage-test" element={<AdminStorageTestPage />} />
+        <Route path="/dashboard/admin/scanner" element={<AdminQRScannerPage />} />
       </Route>
 
       <Route element={<ProtectedRoute allowedRoles={['TECHNICIAN']} />}>
