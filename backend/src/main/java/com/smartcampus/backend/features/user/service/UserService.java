@@ -145,11 +145,16 @@ public class UserService {
 
     @Transactional
     public UserResponse createTechnician(CreateTechnicianRequest request) {
-        return createUser(request.fullName(), request.email(), request.password(), Role.TECHNICIAN, true);
+        return createUser(request.fullName(), request.email(), request.password(), Role.TECHNICIAN, true, request.specialties());
     }
 
     @Transactional
     public UserResponse createUser(String fullName, String email, String password, Role role, Boolean active) {
+        return createUser(fullName, email, password, role, active, null);
+    }
+
+    @Transactional
+    public UserResponse createUser(String fullName, String email, String password, Role role, Boolean active, String specialties) {
         String normalizedEmail = normalizeEmail(email);
         if (userRepository.existsByEmail(normalizedEmail)) {
             throw new ResponseStatusException(BAD_REQUEST, "Email is already registered");
@@ -161,6 +166,7 @@ public class UserService {
                 .password(passwordEncoder.encode(password))
                 .role(role)
                 .provider(AuthProvider.LOCAL)
+                .specialties(normalizeSpecialties(specialties))
                 .emailVerified(Boolean.TRUE.equals(active))
                 .active(Boolean.TRUE.equals(active))
                 .createdAt(Instant.now())
@@ -388,6 +394,14 @@ public class UserService {
 
     private String normalizeSearch(String search) {
         return search == null || search.isBlank() ? null : search.trim();
+    }
+
+    private String normalizeSpecialties(String specialties) {
+        if (specialties == null || specialties.isBlank()) {
+            return null;
+        }
+
+        return specialties.trim();
     }
 
     private String hashToken(String token) {

@@ -16,13 +16,17 @@ import UserProfile from '../pages/dashboard/UserProfile'
 import ProtectedRoute from './ProtectedRoute'
 import AdminBookingAnalyticsPage from '../pages/dashboard/admin/AdminBookingAnalyticsPage'
 import AdminBookingsPage from '../pages/dashboard/admin/AdminBookingsPage'
+import AdminTicketsPage from '../pages/dashboard/admin/AdminTicketsPage'
 import AdminResourceAnalyticsPage from '../pages/dashboard/admin/AdminResourceAnalyticsPage'
 import UserBookingsPage from '../pages/dashboard/user/UserBookingsPage'
 import AdminResourcesPage from '../pages/dashboard/admin/AdminResourcesPage'
 import UserResourcesPage from '../pages/dashboard/user/UserResourcesPage'
+import UserTicketsPage from '../pages/dashboard/user/UserTicketsPage'
+import TechnicianTicketsPage from '../pages/dashboard/technician/TechnicianTicketsPage'
 import HomePage from '../pages/public/HomePage'
-import ResourceBookingPage from '../pages/dashboard/user/ResourceBookingPage'
-import AdminQRScannerPage from '../pages/dashboard/admin/AdminQRScannerPage';
+
+
+
 function HomeRedirect() {
   const { isInitializing, isAuthenticated, role } = useAuth()
 
@@ -96,6 +100,7 @@ function AppRoutes() {
 
       <Route element={<ProtectedRoute allowedRoles={['USER']} />}>
         <Route path="/dashboard/user" element={<UserDashboard />} />
+        <Route path="/dashboard/user/tickets" element={<UserTicketsPage />} />
       </Route>
 
       <Route element={<ProtectedRoute allowedRoles={['USER', 'ADMIN', 'TECHNICIAN']} />}>
@@ -107,6 +112,7 @@ function AppRoutes() {
         <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
         <Route path="/admin/users" element={<AdminUsersPage />} />
         <Route path="/admin/bookings" element={<AdminBookingsPage />} />
+        <Route path="/admin/tickets" element={<AdminTicketsPage />} />
         <Route path="/admin/analytics" element={<AdminBookingAnalyticsPage />} />
         <Route path="/admin/resource-analytics" element={<AdminResourceAnalyticsPage />} />
         <Route path="/admin/users/create" element={<CreateUserPage />} />
@@ -116,6 +122,7 @@ function AppRoutes() {
 
       <Route element={<ProtectedRoute allowedRoles={['TECHNICIAN']} />}>
         <Route path="/dashboard/technician" element={<TechnicianDashboardPage />} />
+        <Route path="/dashboard/technician/tickets" element={<TechnicianTicketsPage />} />
       </Route>
 
       <Route path="/user-dashboard" element={<Navigate to="/dashboard/user" replace />} />
