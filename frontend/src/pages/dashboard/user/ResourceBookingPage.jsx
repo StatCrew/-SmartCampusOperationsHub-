@@ -34,7 +34,6 @@ function slotsToKeys(slots) {
   return keys
 }
 
-// 👇 FIXED: Maps bookings to specific YYYY-MM-DD dates instead of generic Days of the Week
 function extractTakenData(bookings) {
   const takenMap = new Map();
   
@@ -77,16 +76,15 @@ export default function ResourceBookingPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
-  // 👇 NEW: Catch the booking data passed from the Bookings page
+  
   const modifyData = location.state?.modifyBooking || null;
-  // 👇 NEW: Automatically open the modal if we are modifying a booking
+  
   useEffect(() => {
     if (modifyData && resource && !isModalOpen) {
       setIsModalOpen(true);
     }
   }, [modifyData, resource]);
 
-  // 👇 NEW: Controls which week the calendar is currently looking at
   const [weekOffset, setWeekOffset] = useState(0)
 
   const loadData = useCallback(async () => {
@@ -127,7 +125,6 @@ export default function ResourceBookingPage() {
 
   const takenDataMap = useMemo(() => extractTakenData(takenBookings), [takenBookings]);
 
-  // 👇 NEW: Dynamically generate the 7 dates to display based on the offset
   const displayDates = useMemo(() => {
     const dates = [];
     const base = new Date();
@@ -236,7 +233,6 @@ export default function ResourceBookingPage() {
               <div>
                 <div className="rbp-card">
                   
-                  {/* 👇 NEW: Week Pagination Header 👇 */}
                   <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', marginBottom:'1.25rem' }}>
                     <div>
                       <p className="rbp-sec-title">Daily Availability</p>
@@ -276,14 +272,11 @@ export default function ResourceBookingPage() {
                           return (
                             <tr key={dateString}>
                               <td style={{ textAlign:'right', paddingRight:10, whiteSpace:'nowrap' }}>
-                                {/* 👇 Enhanced exact-date row labels 👇 */}
                                 <div style={{ fontSize:'0.65rem', fontWeight:800, color:'#1a6880', textTransform:'uppercase' }}>{displayDay}</div>
                                 <div style={{ fontSize:'0.55rem', fontWeight:600, color:'#5ab4cb' }}>{displayDateText}</div>
                               </td>
                               {HOURS.map(hour => {
-                                // Operating schedule relies on general day
                                 const isActive = activeKeys.has(`${dayOfWeek}-${hour}`);
-                                // Specific bookings rely on EXACT Date String!
                                 const segments = takenDataMap.get(`${dateString}-${hour}`) || [];
                                 
                                 const baseClass = isActive ? 'rbp-cell-on' : 'rbp-cell-off';
@@ -336,7 +329,6 @@ export default function ResourceBookingPage() {
         modifyData={modifyData} 
         onClose={() => { 
           setIsModalOpen(false); 
-          // 👇 FIX: If they were modifying, take them back to the bookings page!
           if (modifyData) {
             navigate('/dashboard/user/bookings');
           } else {
@@ -345,7 +337,6 @@ export default function ResourceBookingPage() {
         }} 
         onSuccess={() => { 
           setIsModalOpen(false); 
-          // 👇 FIX: Take them back to see their new booking, or reload the page
           if (modifyData) {
             navigate('/dashboard/user/bookings');
           } else {
@@ -353,7 +344,6 @@ export default function ResourceBookingPage() {
             loadData(); 
           }
         }} 
-      
       />
     </div>
   )
@@ -383,7 +373,6 @@ function RBPStyles() {
       .rbp-back-btn { display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #2193b0; background: rgba(255,255,255,0.75); border: 1px solid rgba(67,173,208,0.3); border-radius: 100px; padding: 0.45rem 1.1rem; cursor: pointer; margin-bottom: 1.75rem; box-shadow: 0 2px 10px rgba(33,147,176,0.1); transition: all 0.2s; }
       .rbp-back-btn:hover { background: #fff; border-color: #2193b0; color: #0083fe; transform: translateX(-3px); box-shadow: 0 4px 16px rgba(0,131,254,0.18); }
       
-      /* 👇 NEW: Buttons for navigating weeks 👇 */
       .rbp-btn-small { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 0.3rem 0.8rem; font-size: 0.7rem; font-weight: 700; color: #1a6880; cursor: pointer; transition: all 0.2s; font-family: 'Plus Jakarta Sans', sans-serif; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
       .rbp-btn-small:hover:not(:disabled) { background: #f0f9ff; color: #0083fe; border-color: #6dd5ed; transform: translateY(-1px); box-shadow: 0 2px 5px rgba(0,131,254,0.15); }
       .rbp-btn-small:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -393,31 +382,33 @@ function RBPStyles() {
       .rbp-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 1.5rem; align-items: start; }
       .rbp-left-col { display: flex; flex-direction: column; gap: 1.25rem; }
 
+      /* 👇 FIXED: Removed the ::before animated rainbow gradient entirely */
       .rbp-card { background: rgba(255,255,255,0.7); border: 1px solid rgba(67,173,208,0.25); border-radius: 22px; backdrop-filter: blur(20px); box-shadow: 0 4px 24px rgba(33,147,176,0.1), 0 1px 0 rgba(255,255,255,0.95) inset; padding: 1.5rem; position: relative; overflow: hidden; }
-      .rbp-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #0083fe, #2193b0, #43add0, #6dd5ed, #8bdeda, #00fff0, #6dd5ed, #43add0, #2193b0, #0083fe); background-size: 300%; animation: rbp-rainbow 5s linear infinite; }
-      @keyframes rbp-rainbow { 0%{background-position:0%} 100%{background-position:300%} }
 
       .rbp-img { width:100%; height:175px; object-fit:cover; border-radius:14px; margin-bottom:1.25rem; }
       .rbp-img-placeholder { width:100%; height:175px; border-radius:14px; margin-bottom:1.25rem; background: linear-gradient(135deg, rgba(0,131,254,0.07), rgba(109,213,237,0.15), rgba(139,222,218,0.1)); border: 1px solid rgba(67,173,208,0.2); display: flex; flex-direction:column; align-items:center; justify-content:center; gap:0.4rem; }
       .rbp-img-label { font-size:0.65rem; font-weight:700; color:#43add0; letter-spacing:0.12em; text-transform:uppercase; }
 
-      .rbp-res-name { font-size: 1.4rem; font-weight: 800; letter-spacing: -0.02em; margin: 0; background: linear-gradient(135deg, #0056b8 0%, #2193b0 50%, #43add0 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+      /* 👇 FIXED: Changed Text Gradients to Solid Colors */
+      .rbp-res-name { font-size: 1.4rem; font-weight: 800; letter-spacing: -0.02em; margin: 0; color: #0f172a; }
       .rbp-res-type { font-size:0.68rem; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:#43add0; margin-top:0.3rem; }
 
       .rbp-stats { margin-top:1.25rem; }
       .rbp-stat-row { display:flex; justify-content:space-between; align-items:center; padding:0.6rem 0; border-bottom:1px solid rgba(67,173,208,0.12); }
       .rbp-stat-lbl { font-size:0.65rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#7ec8da; }
       .rbp-stat-val { font-size:0.84rem; font-weight:700; color:#1a6070; }
-      .rbp-badge-on { font-size:0.63rem; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; color:#065f46; background:linear-gradient(135deg,#d1fae5,#a7f3d0); border:1px solid rgba(16,185,129,0.3); border-radius:100px; padding:0.22rem 0.8rem; }
+      
+      /* 👇 FIXED: Changed Badges to Solid Colors */
+      .rbp-badge-on { font-size:0.63rem; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; color:#065f46; background:#d1fae5; border:1px solid #10b981; border-radius:100px; padding:0.22rem 0.8rem; }
       .rbp-badge-off { font-size:0.63rem; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; color:#991b1b; background:#fee2e2; border:1px solid rgba(239,68,68,0.3); border-radius:100px; padding:0.22rem 0.8rem; }
 
-      .rbp-cta-btn { width:100%; margin-top:1.5rem; background: linear-gradient(135deg, #0083fe 0%, #2193b0 40%, #43add0 80%, #6dd5ed 100%); background-size: 200%; color:#fff; font-size:0.9rem; font-weight:800; letter-spacing:0.03em; padding:0.95rem; border-radius:14px; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:0.6rem; box-shadow: 0 8px 28px rgba(0,131,254,0.3), 0 1px 0 rgba(255,255,255,0.35) inset; transition: all 0.3s; position:relative; overflow:hidden; }
-      .rbp-cta-btn::after { content:''; position:absolute; inset:0; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent); transform: translateX(-120%); transition: transform 0.55s; }
-      .rbp-cta-btn:hover::after { transform:translateX(120%); }
-      .rbp-cta-btn:hover:not(:disabled) { transform:translateY(-2px); box-shadow:0 14px 38px rgba(0,131,254,0.42); }
-      .rbp-cta-btn:disabled { opacity:0.4; cursor:not-allowed; transform:none; }
+      /* 👇 FIXED: Changed Call to Action Button to Solid Blue */
+      .rbp-cta-btn { width:100%; margin-top:1.5rem; background: #2193b0; color:#fff; font-size:0.9rem; font-weight:800; letter-spacing:0.03em; padding:0.95rem; border-radius:14px; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:0.6rem; box-shadow: 0 4px 12px rgba(33,147,176,0.3); transition: all 0.3s; }
+      .rbp-cta-btn:hover:not(:disabled) { background: #1a7a93; transform:translateY(-2px); box-shadow:0 6px 16px rgba(33,147,176,0.4); }
+      .rbp-cta-btn:disabled { opacity:0.5; cursor:not-allowed; transform:none; }
 
-      .rbp-sec-title { font-size:1.05rem; font-weight:800; letter-spacing:-0.01em; margin:0; background:linear-gradient(135deg,#0056b8,#2193b0); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+      /* 👇 FIXED: Changed Text Gradients to Solid Colors */
+      .rbp-sec-title { font-size:1.05rem; font-weight:800; letter-spacing:-0.01em; margin:0; color: #0f172a; }
       .rbp-sec-sub { font-size:0.77rem; color:#5ab4cb; margin-top:0.25rem; font-weight:500; }
 
       .rbp-empty-state { text-align:center; padding:1.4rem 1rem; background:linear-gradient(135deg,rgba(109,213,237,0.08),rgba(139,222,218,0.06)); border:1px dashed rgba(67,173,208,0.3); border-radius:14px; }
@@ -425,19 +416,26 @@ function RBPStyles() {
 
       .rbp-res-item { display:flex; justify-content:space-between; align-items:center; padding:0.7rem 0.9rem; background:linear-gradient(135deg,rgba(109,213,237,0.1),rgba(139,222,218,0.07)); border:1px solid rgba(67,173,208,0.2); border-radius:12px; margin-bottom:0.55rem; transition:all 0.2s; }
       .rbp-res-item:hover { background:linear-gradient(135deg,rgba(109,213,237,0.18),rgba(139,222,218,0.13)); border-color:rgba(67,173,208,0.38); transform:translateX(3px); }
-      .rbp-day-badge { width:38px; height:38px; border-radius:10px; background:linear-gradient(135deg,#0083fe,#6dd5ed); display:flex; align-items:center; justify-content:center; font-size:0.82rem; font-weight:800; color:#fff; box-shadow:0 4px 12px rgba(0,131,254,0.28); flex-shrink:0; }
-      .rbp-pending-pill { font-size:0.6rem; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; color:#92400e; background:linear-gradient(135deg,#fef3c7,#fde68a); border:1px solid rgba(251,191,36,0.4); border-radius:100px; padding:0.2rem 0.65rem; white-space:nowrap; }
+      
+      /* 👇 FIXED: Changed Day Badge to Solid Blue */
+      .rbp-day-badge { width:38px; height:38px; border-radius:10px; background: #2193b0; display:flex; align-items:center; justify-content:center; font-size:0.82rem; font-weight:800; color:#fff; box-shadow:0 2px 8px rgba(33,147,176,0.2); flex-shrink:0; }
+      
+      /* 👇 FIXED: Changed Pending Pill to Solid Colors */
+      .rbp-pending-pill { font-size:0.6rem; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; color:#92400e; background: #fef3c7; border:1px solid #fcd34d; border-radius:100px; padding:0.2rem 0.65rem; white-space:nowrap; }
 
-      .rbp-cell-on { position:relative; overflow:hidden; height:30px; border-radius:6px; background:linear-gradient(135deg,#0083fe,#2193b0,#6dd5ed); box-shadow:0 2px 8px rgba(0,131,254,0.28); transition:transform 0.15s,box-shadow 0.15s; cursor:pointer;}
-      .rbp-cell-on:hover { transform:scaleY(1.2); box-shadow:0 4px 16px rgba(0,131,254,0.48); z-index:10; }
+      /* 👇 FIXED: Changed Available Cells to Solid Blue */
+      .rbp-cell-on { position:relative; overflow:hidden; height:30px; border-radius:6px; background: #2193b0; box-shadow:0 2px 4px rgba(33,147,176,0.2); transition:transform 0.15s,box-shadow 0.15s; cursor:pointer;}
+      .rbp-cell-on:hover { transform:scaleY(1.2); box-shadow:0 4px 12px rgba(33,147,176,0.4); z-index:10; }
       .rbp-cell-off { position:relative; overflow:hidden; height:30px; border-radius:6px; background:rgba(67,173,208,0.07); border:1px solid rgba(67,173,208,0.1); }
       
-      .rbp-cell-booked-block { position: absolute; top:0; bottom:0; background: linear-gradient(135deg,#f59e0b,#fbbf24); box-shadow:0 2px 8px rgba(245,158,11,0.4); opacity: 0.95; border-radius: 4px; z-index: 2; transition: filter 0.2s; }
+      /* 👇 FIXED: Changed Booked Block to Solid Orange */
+      .rbp-cell-booked-block { position: absolute; top:0; bottom:0; background: #f59e0b; box-shadow:0 2px 4px rgba(245,158,11,0.3); opacity: 0.95; border-radius: 4px; z-index: 2; transition: filter 0.2s; }
       .rbp-cell-booked-block:hover { filter: brightness(1.1); z-index: 15; }
 
-      .rbp-legend-on { width:14px; height:14px; border-radius:4px; background:linear-gradient(135deg,#0083fe,#6dd5ed); box-shadow:0 2px 6px rgba(0,131,254,0.32); }
+      /* 👇 FIXED: Changed Legends to Solid Colors */
+      .rbp-legend-on { width:14px; height:14px; border-radius:4px; background: #2193b0; box-shadow:0 2px 4px rgba(33,147,176,0.2); }
       .rbp-legend-off { width:14px; height:14px; border-radius:4px; background:rgba(67,173,208,0.1); border:1px solid rgba(67,173,208,0.2); }
-      .rbp-legend-taken { width:14px; height:14px; border-radius:4px; background:linear-gradient(135deg,#f59e0b,#fbbf24); box-shadow:0 2px 6px rgba(245,158,11,0.32); }
+      .rbp-legend-taken { width:14px; height:14px; border-radius:4px; background: #f59e0b; box-shadow:0 2px 4px rgba(245,158,11,0.2); }
 
       .rbp-grid-footer { margin-top:1.25rem; padding-top:0.9rem; border-top:1px solid rgba(67,173,208,0.15); display:flex; justify-content:space-between; }
       .rbp-grid-footer span { font-size:0.68rem; color:#8ec9d8; font-weight:600; }

@@ -5,6 +5,7 @@ import { getHeaderLabelsByRole, getSidebarItemsByRole } from '../constants'
 import UserDashboardHeader from './components/UserDashboardHeader'
 import UserSidebar from './components/UserSidebar'
 import { getUserBookings, cancelBookingReq, deleteBooking } from '../../../api/bookingApi'
+import { getAllResources } from '../../../api/resourceApi' // 👇 Added to fetch names!
 import QRCodeTicketModal from './components/QRCodeTicketModal'
 
 // ── Status config
@@ -42,29 +43,40 @@ export default function UserBookingsPage() {
 
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false)
   const [bookings,      setBookings]      = useState([])
+  const [resourceMap,   setResourceMap]   = useState({}) // 👇 Stores ID -> Name mappings
   const [loading,       setLoading]       = useState(true)
   const [errorMessage,  setErrorMessage]  = useState('')
   const [filterStatus,  setFilterStatus]  = useState('ALL')
   const [hoveredRow,    setHoveredRow]    = useState(null)
 
-  // State for the Action Dialogs
   const [cancelTarget, setCancelTarget] = useState(null)
   const [isCancelling, setIsCancelling] = useState(false)
   
-  // State for deleting
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [isDeleting, setIsDeleting] = useState(false)
   
-  // State for the QR Ticket Modal
   const [ticketTarget, setTicketTarget] = useState(null)
 
   const loadBookings = useCallback(async () => {
     if (!user?.id) return
     setLoading(true); setErrorMessage('')
     try {
-      const data = await getUserBookings(user.id)
-      const sortedData = (data?.content || data || []).sort((a, b) => new Date(b.startTime) - new Date(a.startTime))
+      // 👇 Fetch both bookings AND resources at the same time
+      const [bData, rData] = await Promise.all([
+        getUserBookings(user.id),
+        getAllResources().catch(() => []) // Failsafe if resources API fails
+      ])
+
+      const sortedData = (bData?.content || bData || []).sort((a, b) => new Date(b.startTime) - new Date(a.startTime))
       setBookings(sortedData)
+
+      // Build the mapping dictionary
+      const rMap = {}
+      if (Array.isArray(rData)) {
+        rData.forEach(r => rMap[r.id] = r.name)
+      }
+      setResourceMap(rMap)
+
     } catch (error) {
       setErrorMessage(getApiErrorMessage(error))
     } finally {
@@ -105,13 +117,11 @@ export default function UserBookingsPage() {
     }
   }
 
-  // Handle permanent deletion
   const handleDeleteBooking = async () => {
     if (!deleteTarget) return;
     setIsDeleting(true);
     try {
       await deleteBooking(deleteTarget);
-      // Remove it from the list immediately
       setBookings(prev => prev.filter(b => b.id !== deleteTarget))
       setDeleteTarget(null);
     } catch (err) {
@@ -176,9 +186,12 @@ export default function UserBookingsPage() {
           margin-bottom: 1.5rem; display:flex; align-items:center; gap:0.5rem;
         }
 
-        .action-btn { background: none; border: 1px solid #cbd5e1; border-radius: 6px; padding: 0.35rem 0.75rem; font-size: 0.7rem; font-weight: 600; cursor: pointer; transition: all 0.2s; color: #475569; }
-        .action-btn:hover:not(:disabled) { background: #f1f5f9; color: #0f172a; }
+        /* 👇 FIXED ACTION BUTTONS */
+        .action-btn { background: none; border: 1px solid #cbd5e1; border-radius: 6px; padding: 0.35rem 0.75rem; font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.2s; color: #475569; display: flex; align-items: center; gap: 0.25rem; white-space: nowrap; }
+        .action-btn:hover:not(:disabled) { background: #f1f5f9; color: #0f172a; border-color: #94a3b8; }
         .action-btn.cancel:hover:not(:disabled) { background: #fef2f2; color: #dc2626; border-color: #fca5a5; }
+        .action-btn.ticket { color: #0ea5e9; border-color: #bae6fd; background: #f0f9ff; }
+        .action-btn.ticket:hover:not(:disabled) { background: #e0f2fe; border-color: #7dd3fc; color: #0284c7; }
         .action-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
         .cancel-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.5); backdrop-filter: blur(2px); z-index: 1000; display: flex; align-items: center; justify-content: center; }
@@ -202,9 +215,6 @@ export default function UserBookingsPage() {
               <h2 style={{ fontSize: '1.75rem', fontWeight: 700, color: '#0f172a', margin: 0, lineHeight: 1.2 }}>
                 My Reservations
               </h2>
-              <p style={{ fontSize: '0.875rem', color: '#64748b', marginTop: '0.35rem' }}>
-                View and manage your campus facility bookings.
-              </p>
             </div>
             <button className="request-btn" onClick={() => navigate('/dashboard/user/resources')}>
               <span style={{ fontSize: '1rem' }}>＋</span> Request Room
@@ -213,8 +223,8 @@ export default function UserBookingsPage() {
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '1rem', marginBottom: '1.75rem' }}>
             <StatCard label="Total Bookings" value={stats.total}    color="#2193b0" bg="linear-gradient(135deg, #2193b0, #6dd5ed)" icon="📋" loading={loading} />
-            <StatCard label="Approved"       value={stats.approved} color="#0ea5e9" bg="#f0f9ff" textColor="#0369a1" icon="✅" loading={loading} />
-            <StatCard label="Pending"        value={stats.pending}  color="#d97706" bg="#fffbeb" textColor="#92400e" icon="⏳" loading={loading} />
+            <StatCard label="Approved"       value={stats.approved} color="#0ea5e9" bg="#f0f9ff" textColor="#0369a1" icon="" loading={loading} />
+            <StatCard label="Pending"        value={stats.pending}  color="#d97706" bg="#fffbeb" textColor="#92400e" icon="" loading={loading} />
             <StatCard label="Rejected"       value={stats.rejected} color="#e53e3e" bg="#fef2f2" textColor="#c53030" icon="✗"  loading={loading} />
           </div>
 
@@ -255,39 +265,27 @@ export default function UserBookingsPage() {
                           <p style={{ fontSize: '1.125rem', fontWeight: 600, color: '#0f172a', margin: '0 0 0.35rem' }}>
                             {filterStatus === 'ALL' ? 'No bookings found' : `No ${filterStatus.toLowerCase()} bookings`}
                           </p>
-                          <p style={{ fontSize: '0.875rem', color: '#64748b', margin: '0 0 1.25rem' }}>
-                            {filterStatus === 'ALL' ? 'Create a new request to reserve a room.' : 'Try selecting a different filter.'}
-                          </p>
                         </div>
                       </td>
                     </tr>
                   ) : (
                     filtered.map((booking, idx) => {
                       const st = getStatus(booking.status)
-                      
-                      // 👇 FIX 1: ADDED MISSING VARIABLES
                       const canCancel = booking.status === 'PENDING' || booking.status === 'APPROVED';
                       const canDelete = booking.status === 'CANCELLED' || booking.status === 'REJECTED';
 
+                      // 👇 Fetch the actual name from our map!
+                      const resName = resourceMap[booking.resourceId] || `Resource #${booking.resourceId}`
+
                       return (
-                        <tr
-                          key={booking.id}
-                          className="booking-row"
-                          onMouseEnter={() => setHoveredRow(booking.id)}
-                          onMouseLeave={() => setHoveredRow(null)}
-                          style={{
-                            borderBottom: idx < filtered.length - 1 ? '1px solid #e2e8f0' : 'none',
-                            background: hoveredRow === booking.id ? '#f8fafc' : 'transparent',
-                          }}
-                        >
+                        <tr key={booking.id} className="booking-row" onMouseEnter={() => setHoveredRow(booking.id)} onMouseLeave={() => setHoveredRow(null)} style={{ borderBottom: idx < filtered.length - 1 ? '1px solid #e2e8f0' : 'none', background: hoveredRow === booking.id ? '#f8fafc' : 'transparent' }}>
                           <td style={{ padding: '1rem 1.5rem' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                              <div style={{ width: 36, height: 36, borderRadius: 8, background: '#f0f9ff', border: '1px solid #bae6fd', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', flexShrink: 0 }}>
-                                🏢
-                              </div>
+                              <div style={{ width: 36, height: 36, borderRadius: 8, background: '#f0f9ff', border: '1px solid #bae6fd', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', flexShrink: 0 }}>🏢</div>
                               <div>
+                                {/* 👇 DISPLAY RESOURCE NAME */}
                                 <div style={{ fontWeight: 600, color: '#0f172a', fontSize: '0.875rem' }}>
-                                  Resource #{booking.resourceId}
+                                  {resName}
                                 </div>
                                 <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 2 }}>
                                   {booking.purpose ? booking.purpose.substring(0, 32) + (booking.purpose.length > 32 ? '…' : '') : 'No purpose specified'}
@@ -306,57 +304,34 @@ export default function UserBookingsPage() {
                             </div>
                           </td>
                           <td style={{ padding: '1rem 1.5rem' }}>
-                            <span style={{
-                              display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
-                              background: st.bg, color: st.color, border: `1px solid ${st.border}`,
-                              borderRadius: 100, padding: '0.25rem 0.75rem',
-                              fontSize: '0.75rem', fontWeight: 600,
-                            }}>
-                              <span style={{ width: 6, height: 6, borderRadius: '50%', background: st.dot, flexShrink: 0,
-                                ...(booking.status === 'PENDING' ? { animation: 'pulse 1.5s infinite' } : {})
-                              }} />
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: st.bg, color: st.color, border: `1px solid ${st.border}`, borderRadius: 100, padding: '0.25rem 0.75rem', fontSize: '0.75rem', fontWeight: 600 }}>
+                              <span style={{ width: 6, height: 6, borderRadius: '50%', background: st.dot, flexShrink: 0, ...(booking.status === 'PENDING' ? { animation: 'pulse 1.5s infinite' } : {}) }} />
                               {st.label}
                             </span>
                           </td>
-                          <td style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
+                          {/* 👇 FIXED ACTIONS COLUMN: nowrap prevents squishing */}
+                          <td style={{ padding: '1rem 1.5rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
                             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
                               
-                              {/* 👇 FIX 2: TICKET BUTTON */}
                               {booking.status === 'APPROVED' && (
-                                <button 
-                                  className="action-btn" 
-                                  style={{ color: '#0ea5e9', borderColor: '#bae6fd', background: '#f0f9ff' }}
-                                  onClick={() => setTicketTarget(booking)}
-                                  title="Show QR Code for Entry"
-                                >
-                                  🎟️ Ticket
+                                <button className="action-btn ticket" onClick={() => setTicketTarget(booking)} title="Show QR Code for Entry">
+                                  <span>🎟️</span> Ticket
                                 </button>
                               )}
 
                               {canCancel && (
                                 <>
-                                  <button 
-                                    className="action-btn" 
-                                    onClick={() => navigate(`/dashboard/user/resources/${booking.resourceId}`, { state: { modifyBooking: booking } })}
-                                    title="Modify this booking"
-                                  >
+                                  <button className="action-btn" onClick={() => navigate(`/dashboard/user/resources/${booking.resourceId}`, { state: { modifyBooking: booking } })}>
                                     Modify
                                   </button>
-                                  <button 
-                                    className="action-btn cancel" 
-                                    onClick={() => setCancelTarget(booking.id)}
-                                  >
+                                  <button className="action-btn cancel" onClick={() => setCancelTarget(booking.id)}>
                                     Cancel
                                   </button>
                                 </>
                               )}
 
                               {canDelete && (
-                                <button 
-                                  className="action-btn cancel" 
-                                  onClick={() => setDeleteTarget(booking.id)}
-                                  title="Permanently remove from history"
-                                >
+                                <button className="action-btn cancel" onClick={() => setDeleteTarget(booking.id)}>
                                   Delete
                                 </button>
                               )}
@@ -404,13 +379,7 @@ export default function UserBookingsPage() {
         </div>
       )}
 
-      {/* 👇 FIX 3: ADDED MODAL TO THE UI */}
-      <QRCodeTicketModal 
-        isOpen={!!ticketTarget} 
-        booking={ticketTarget} 
-        onClose={() => setTicketTarget(null)} 
-      />
-
+      <QRCodeTicketModal isOpen={!!ticketTarget} booking={ticketTarget} onClose={() => setTicketTarget(null)} />
     </div>
   )
 }
@@ -425,17 +394,10 @@ function StatCard({ label, value, bg, textColor = '#fff', icon, loading }) {
       display: 'flex', flexDirection: 'column', gap: '0.75rem',
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: isAccent ? 'rgba(255,255,255,0.9)' : '#64748b' }}>
-          {label}
-        </span>
+        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: isAccent ? 'rgba(255,255,255,0.9)' : '#64748b' }}>{label}</span>
         <span style={{ fontSize: '1.25rem', opacity: 0.9 }}>{icon}</span>
       </div>
-      {loading
-        ? <div style={{ height: 32, width: 48, borderRadius: 6, background: isAccent ? 'rgba(255,255,255,0.3)' : '#e2e8f0', animation: 'pulse 1.4s infinite' }} />
-        : <span style={{ fontSize: '2rem', fontWeight: 700, color: textColor, lineHeight: 1 }}>
-            {value}
-          </span>
-      }
+      {loading ? <div style={{ height: 32, width: 48, borderRadius: 6, background: isAccent ? 'rgba(255,255,255,0.3)' : '#e2e8f0', animation: 'pulse 1.4s infinite' }} /> : <span style={{ fontSize: '2rem', fontWeight: 700, color: textColor, lineHeight: 1 }}>{value}</span>}
     </div>
   )
 }

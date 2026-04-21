@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { createBooking } from '../../../../api/bookingApi'
+import { createBooking, updateFullBooking } from '../../../../api/bookingApi' // 👇 IMPORTED UPDATE API
 import useAuth from '../../../../context/useAuth'
 
 // --- Step definitions ---
@@ -17,7 +17,6 @@ const fmtDuration = (s, e) => {
   return h && m ? `${h}h ${m}m` : h ? `${h}h` : `${m}m`
 }
 
-// 👇 NEW: Added modifyData to the props
 export default function CreateBookingModal({ isOpen, onClose, onSuccess, selectedResource, activeKeys, modifyData }) {
   const { getApiErrorMessage } = useAuth()
   const [step, setStep] = useState(1)
@@ -29,7 +28,6 @@ export default function CreateBookingModal({ isOpen, onClose, onSuccess, selecte
   const [direction, setDirection] = useState(1)
   const [animating, setAnimating] = useState(false)
 
-  // 👇 NEW: Pre-fills the form if modifyData is provided
   useEffect(() => {
     if (isOpen) {
       setStep(1); setSubmitted(false); setError(''); setConflictMessage('')
@@ -89,16 +87,26 @@ export default function CreateBookingModal({ isOpen, onClose, onSuccess, selecte
     return true
   }
 
+  // 👇 FIX: Modified handleSubmit to use PUT instead of POST if modifyData exists
   const handleSubmit = async () => {
     setLoading(true); setError(''); setConflictMessage('')
     try {
-      await createBooking({
+      const payload = {
         resourceId: parseInt(formData.resourceId),
         startTime: `${formData.bookingDate}T${formData.startTime}:00`,
         endTime:   `${formData.bookingDate}T${formData.endTime}:00`,
         purpose:   formData.purpose,
         attendees: parseInt(formData.attendees)
-      })
+      }
+
+      if (modifyData) {
+        // Overwrite the existing booking
+        await updateFullBooking(modifyData.id, payload)
+      } else {
+        // Create a brand new booking
+        await createBooking(payload)
+      }
+
       setSubmitted(true)
       setTimeout(() => { onSuccess?.() }, 2000)
     } catch (err) {
@@ -186,13 +194,8 @@ export default function CreateBookingModal({ isOpen, onClose, onSuccess, selecte
 
           {step === 1 && (
             <div className="cbm-step-body">
-              {/* 👇 NEW: Hint specifically for modifications */}
-              {modifyData && (
-                <div style={{ marginBottom: '1.25rem', padding: '0.75rem', background: '#f0f9ff', borderRadius: '8px', border: '1px solid #bae6fd', fontSize: '0.8rem', color: '#0369a1' }}>
-                  <strong>Note:</strong> Submitting this will create a new booking request for approval. You must manually cancel your old booking from your dashboard.
-                </div>
-              )}
-            
+              {/* 👇 DELETED the confusing "Manually Cancel" note! */}
+              
               <label className="cbm-lbl">Selected Resource</label>
               {selectedResource ? (
                 <>

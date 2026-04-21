@@ -4,6 +4,11 @@ const BOOKING_PREFIX = '/api/v1/bookings'
 
 // --- Helper Functions (Matching Member 4's Architecture) ---
 
+export async function updateFullBooking(id, payload) {
+  const response = await apiClient.put(`/api/v1/bookings/${id}`, payload)
+  return response.data
+}
+
 // Verify a QR Code Ticket (Admin Only)
 export async function verifyBookingTicket(id) {
   const response = await apiClient.post(`${BOOKING_PREFIX}/${id}/verify`)

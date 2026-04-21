@@ -114,8 +114,6 @@ public class BookingController {
             ));
         }
         
-        // Optional: You could add logic here to check if the booking.getStartTime() is happening TODAY.
-        
         // 3. Return Success
         return ResponseEntity.ok(Map.of(
             "valid", true,
@@ -125,4 +123,18 @@ public class BookingController {
             "startTime", booking.getStartTime()
         ));
     }
-} // <--- The class closes HERE now!
+
+    // 9. PUT: Fully update/modify an existing booking
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
+    public ResponseEntity<Booking> fullyUpdateBooking(
+            @PathVariable Long id,
+            @Valid @RequestBody BookingRequest request,
+            @AuthenticationPrincipal User currentUser) {
+        
+        // Calls the service layer to overwrite the old booking with new details
+        Booking updatedBooking = bookingService.updateFullBooking(id, request, currentUser);
+        return ResponseEntity.ok(updatedBooking);
+    }
+
+} 
