@@ -126,6 +126,11 @@ export async function deleteTicket(id) {
   return response.data
 }
 
+export async function rateUserTicket(id, rating, feedback) {
+  const response = await apiClient.put(`${USER_TICKETS_PREFIX}/${id}/rate`, { rating, feedback })
+  return response.data
+}
+
 export async function getAdminTickets(params = {}) {
   const response = await apiClient.get(ADMIN_TICKETS_PREFIX, { params: buildParams(params) })
   return normalizeCollection(response.data)
@@ -156,6 +161,11 @@ export async function assignAdminTicket(id, technicianId) {
   return response.data
 }
 
+export async function rejectAdminTicket(id, reason) {
+  const response = await apiClient.put(`${ADMIN_TICKETS_PREFIX}/${id}/reject`, { reason })
+  return response.data
+}
+
 export async function getTechnicianTickets(params = {}) {
   const response = await apiClient.get(TECHNICIAN_TICKETS_PREFIX, { params: buildParams(params) })
   return normalizeCollection(response.data)
@@ -170,6 +180,11 @@ export async function getTechnicianTicketAttachmentUrl(id, key) {
   const response = await apiClient.get(`${TECHNICIAN_TICKETS_PREFIX}/${id}/attachments/file-url`, {
     params: { key },
   })
+  return response.data
+}
+
+export async function resolveTechnicianTicket(id, notes) {
+  const response = await apiClient.put(`${TECHNICIAN_TICKETS_PREFIX}/${id}/resolve`, { notes })
   return response.data
 }
 

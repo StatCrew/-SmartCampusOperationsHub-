@@ -12,6 +12,7 @@ const STATUS_META = {
   IN_PROGRESS: { label: 'In Progress', bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-200' },
   RESOLVED: { label: 'Resolved', bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
   CLOSED: { label: 'Closed', bg: 'bg-slate-50', text: 'text-slate-600', border: 'border-slate-200' },
+  REJECTED: { label: 'Rejected', bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' },
 }
 
 function TicketBadge({ status }) {
@@ -46,6 +47,34 @@ function isImageAttachment(fileUrl) {
   return /\.(png|jpe?g|gif|bmp|webp|svg)$/i.test(String(fileUrl || ''))
 }
 
+function getSLADisplay(dueDate) {
+  if (!dueDate) return null
+  const now = new Date()
+  const due = new Date(dueDate)
+  const diffMs = due - now
+  const isOverdue = diffMs < 0
+  const absDiff = Math.abs(diffMs)
+
+  const hours = Math.floor(absDiff / (1000 * 60 * 60))
+  const mins = Math.floor((absDiff % (1000 * 60 * 60)) / (1000 * 60))
+
+  if (isOverdue) {
+    return {
+      text: `Overdue by ${hours}h ${mins}m`,
+      color: 'text-red-600',
+      icon: 'priority_high',
+      bg: 'bg-red-50',
+    }
+  }
+
+  return {
+    text: `Due in ${hours}h ${mins}m`,
+    color: hours < 4 ? 'text-amber-600' : 'text-emerald-600',
+    icon: 'schedule',
+    bg: hours < 4 ? 'bg-amber-50' : 'bg-emerald-50',
+  }
+}
+
 function TicketDetailsModal({
   open,
   ticket,
@@ -57,6 +86,8 @@ function TicketDetailsModal({
   attachmentUrls,
   isAttachmentsLoading,
   currentUserEmail,
+  onReject,
+  isActionProcessing,
 }) {
   if (!open || !ticket) {
     return null
@@ -64,6 +95,7 @@ function TicketDetailsModal({
 
   const attachments = Array.isArray(ticket.attachments) ? ticket.attachments : []
   const comments = Array.isArray(ticket.comments) ? ticket.comments : []
+  const sla = getSLADisplay(ticket.dueDate)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -82,6 +114,12 @@ function TicketDetailsModal({
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {sla && ticket.status === 'OPEN' && (
+              <div className={`flex items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-bold ${sla.bg} ${sla.color}`}>
+                <span className="material-symbols-outlined text-[18px]">{sla.icon}</span>
+                {sla.text}
+              </div>
+            )}
             <button
               type="button"
               onClick={onClose}
@@ -97,6 +135,14 @@ function TicketDetailsModal({
           <section className="space-y-4">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Maintenance Request Details</p>
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">{ticket.description || '-'}</div>
+
+            {ticket.status === 'REJECTED' && (
+              <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
+                <p className="text-xs font-bold uppercase tracking-wider text-red-700 mb-1">Rejection Reason</p>
+                <p className="text-sm text-red-800 font-medium">{ticket.rejectionReason || 'No reason provided.'}</p>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <Detail label="Status" value={<TicketBadge status={ticket.status} />} />
               <Detail label="Priority" value={ticket.priority || '-'} />
@@ -189,19 +235,35 @@ function TicketDetailsModal({
           </section>
         </div>
 
-        <div className="mt-6 flex items-center justify-end gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
-          >
-            Close
-          </button>
+        <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-5">
+          <div className="flex gap-2">
+            {ticket.status === 'OPEN' && (
+              <button
+                type="button"
+                onClick={onReject}
+                disabled={isActionProcessing}
+                className="flex items-center gap-2 rounded-xl bg-red-50 px-4 py-2.5 text-sm font-bold text-red-700 transition hover:bg-red-100 disabled:opacity-50"
+              >
+                <span className="material-symbols-outlined text-[20px]">cancel</span>
+                Reject Ticket
+              </button>
+            )}
+          </div>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-xl border border-slate-200 px-6 py-2.5 text-sm font-bold text-slate-600 transition hover:bg-slate-50"
+            >
+              Close
+            </button>
+          </div>
         </div>
       </div>
     </div>
   )
 }
+
 
 function Detail({ label, value }) {
   return (
@@ -236,6 +298,7 @@ function AdminTicketsPage() {
   const [isCommentSubmitting, setIsCommentSubmitting] = useState(false)
   const [attachmentUrls, setAttachmentUrls] = useState({})
   const [isAttachmentsLoading, setIsAttachmentsLoading] = useState(false)
+  const [isActionProcessing, setIsActionProcessing] = useState(false)
 
   const loadTickets = useCallback(async () => {
     setIsLoading(true)
@@ -379,6 +442,23 @@ function AdminTicketsPage() {
       setErrorMessage(getApiErrorMessage(error))
     } finally {
       setIsCommentSubmitting(false)
+    }
+  }
+
+  const handleRejectTicket = async () => {
+    const reason = window.prompt('Enter rejection reason:')
+    if (!reason || !selectedTicket?.id) return
+
+    setIsActionProcessing(true)
+    setErrorMessage('')
+    try {
+      await ticketApi.rejectAdminTicket(selectedTicket.id, reason)
+      await loadTickets()
+      setDetailsOpen(false)
+    } catch (error) {
+      setErrorMessage(getApiErrorMessage(error))
+    } finally {
+      setIsActionProcessing(false)
     }
   }
 
@@ -602,6 +682,8 @@ function AdminTicketsPage() {
         attachmentUrls={attachmentUrls}
         isAttachmentsLoading={isAttachmentsLoading}
         currentUserEmail={user?.email}
+        onReject={handleRejectTicket}
+        isActionProcessing={isActionProcessing}
       />
     </div>
   )

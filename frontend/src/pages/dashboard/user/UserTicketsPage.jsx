@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { createTicket, createTicketComment, deleteTicket, getUserTicketAttachmentUrl, getUserTicketById, getUserTickets, updateTicket } from '../../../api/ticketApi'
+import { createTicket, createTicketComment, deleteTicket, getUserTicketAttachmentUrl, getUserTicketById, getUserTickets, updateTicket, rateUserTicket } from '../../../api/ticketApi'
 import useAuth from '../../../context/useAuth'
 import { getSidebarItemsByRole } from '../constants'
 import UserDashboardHeader from './components/UserDashboardHeader'
@@ -11,6 +11,7 @@ const STATUS_META = {
   IN_PROGRESS: { label: 'In Progress', bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-200' },
   RESOLVED: { label: 'Resolved', bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
   CLOSED: { label: 'Closed', bg: 'bg-slate-50', text: 'text-slate-600', border: 'border-slate-200' },
+  REJECTED: { label: 'Rejected', bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' },
 }
 
 function TicketBadge({ status }) {
@@ -265,17 +266,22 @@ function TicketDetailsModal({
   open,
   ticket,
   onClose,
-  onEdit,
-  onDelete,
   onAddComment,
   commentText,
   onCommentTextChange,
-  isDeleting,
   isCommentSubmitting,
   attachmentUrls,
   isAttachmentsLoading,
   currentUserEmail,
+  onRate,
+  isActionProcessing,
+  onEdit,
+  onDelete,
+  isDeleting,
 }) {
+  const [rating, setRating] = useState(0)
+  const [feedback, setFeedback] = useState('')
+
   if (!open || !ticket) {
     return null
   }
@@ -286,7 +292,7 @@ function TicketDetailsModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-6xl rounded-3xl bg-white p-6 shadow-2xl">
+      <div className="relative w-full max-w-6xl rounded-3xl bg-white p-6 shadow-2xl overflow-y-auto max-h-[95vh]">
         <div className="mb-5 flex items-start justify-between gap-4 border-b border-slate-100 pb-5">
           <div className="flex items-center gap-4">
             <div className="grid h-12 w-12 place-items-center rounded-2xl bg-indigo-600/10 text-indigo-700">
@@ -300,23 +306,27 @@ function TicketDetailsModal({
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => onEdit(ticket)}
-              className="grid h-10 w-10 place-items-center rounded-xl border border-indigo-200 text-indigo-600 transition hover:bg-indigo-50"
-              title="Edit ticket"
-            >
-              <span className="material-symbols-outlined text-[20px]">edit</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => onDelete(ticket)}
-              disabled={isDeleting}
-              className="grid h-10 w-10 place-items-center rounded-xl border border-red-200 text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
-              title="Delete ticket"
-            >
-              <span className="material-symbols-outlined text-[20px]">delete</span>
-            </button>
+            {ticket.status === 'OPEN' && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => onEdit(ticket)}
+                  className="grid h-10 w-10 place-items-center rounded-xl border border-indigo-200 text-indigo-600 transition hover:bg-indigo-50"
+                  title="Edit ticket"
+                >
+                  <span className="material-symbols-outlined text-[20px]">edit</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onDelete(ticket)}
+                  disabled={isDeleting}
+                  className="grid h-10 w-10 place-items-center rounded-xl border border-red-200 text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  title="Delete ticket"
+                >
+                  <span className="material-symbols-outlined text-[20px]">delete</span>
+                </button>
+              </>
+            )}
             <button
               type="button"
               onClick={onClose}
@@ -332,6 +342,21 @@ function TicketDetailsModal({
           <section className="space-y-4">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Maintenance Request Details</p>
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">{ticket.description || '-'}</div>
+
+            {ticket.status === 'REJECTED' && (
+              <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
+                <p className="text-xs font-bold uppercase tracking-wider text-red-700 mb-1">Rejection Reason</p>
+                <p className="text-sm text-red-800 font-medium">{ticket.rejectionReason || 'No reason provided.'}</p>
+              </div>
+            )}
+
+            {ticket.status === 'RESOLVED' && (
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                <p className="text-xs font-bold uppercase tracking-wider text-emerald-700 mb-1">Resolution Notes</p>
+                <p className="text-sm text-emerald-800 font-medium">{ticket.resolutionNotes || 'Problem fixed.'}</p>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <Detail label="Status" value={<TicketBadge status={ticket.status} />} />
               <Detail label="Priority" value={ticket.priority || '-'} />
@@ -341,6 +366,58 @@ function TicketDetailsModal({
               <Detail label="Created" value={formatDateTime(ticket.createdAt)} />
               <Detail label="Ticket ID" value={ticket.id} />
             </div>
+
+            {ticket.status === 'RESOLVED' && !ticket.rating && (
+              <div className="rounded-2xl border border-indigo-200 bg-indigo-50 p-5 space-y-4 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="grid h-8 w-8 place-items-center rounded-lg bg-indigo-600 text-white">
+                    <span className="material-symbols-outlined text-[20px]">star</span>
+                  </div>
+                  <h4 className="font-bold text-slate-900">Rate Our Service</h4>
+                </div>
+                <p className="text-sm text-slate-600">How would you rate the technician's response and the resolution?</p>
+                <div className="flex gap-2">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setRating(star)}
+                      className={`grid h-10 w-10 place-items-center rounded-lg transition ${rating >= star ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-slate-400 hover:bg-indigo-50'}`}
+                    >
+                      <span className="material-symbols-outlined">star</span>
+                    </button>
+                  ))}
+                </div>
+                <textarea
+                  value={feedback}
+                  onChange={(e) => setFeedback(e.target.value)}
+                  placeholder="Share your experience (optional)..."
+                  className="w-full rounded-xl border border-indigo-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                  rows={2}
+                />
+                <button
+                  type="button"
+                  onClick={() => onRate(rating, feedback)}
+                  disabled={!rating || isActionProcessing}
+                  className="w-full rounded-xl bg-indigo-600 py-3 text-sm font-bold text-white transition hover:bg-indigo-700 disabled:opacity-50 shadow-lg shadow-indigo-600/20"
+                >
+                  Submit Feedback
+                </button>
+              </div>
+            )}
+
+            {ticket.rating && (
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Your Feedback</p>
+                <div className="flex items-center gap-1 mb-2">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <span key={star} className={`material-symbols-outlined text-[18px] ${ticket.rating >= star ? 'text-amber-500' : 'text-slate-300'}`}>star</span>
+                  ))}
+                </div>
+                <p className="text-sm text-slate-700 italic">"{ticket.feedback || 'No comments provided.'}"</p>
+              </div>
+            )}
+
             <div className="space-y-2">
               <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Attachments</p>
               {attachments.length > 0 ? (
@@ -384,7 +461,7 @@ function TicketDetailsModal({
                 <div key={comment.id} className={`flex ${String(comment.userEmail || comment.createdBy || '').toLowerCase() === String(currentUserEmail || '').toLowerCase() ? 'justify-end' : 'justify-start'}`}>
                   <div className={`max-w-[82%] rounded-2xl px-4 py-3 ${String(comment.userEmail || comment.createdBy || '').toLowerCase() === String(currentUserEmail || '').toLowerCase() ? 'bg-indigo-600 text-white' : 'border border-slate-200 bg-slate-50 text-slate-700'}`}>
                     <div className={`mb-1 text-[10px] font-bold uppercase tracking-wider ${String(comment.userEmail || comment.createdBy || '').toLowerCase() === String(currentUserEmail || '').toLowerCase() ? 'text-indigo-100' : 'text-slate-500'}`}>
-                      {comment.createdBy || comment.userEmail || 'Support user'}
+                      {comment.createdBy || comment.userEmail || 'System'}
                     </div>
                     <p className="text-sm">{comment.message}</p>
                     <div className={`mt-1 text-[10px] ${String(comment.userEmail || comment.createdBy || '').toLowerCase() === String(currentUserEmail || '').toLowerCase() ? 'text-indigo-100' : 'text-slate-500'}`}>
@@ -407,7 +484,7 @@ function TicketDetailsModal({
                 value={commentText}
                 onChange={(event) => onCommentTextChange(event.target.value)}
                 rows={4}
-                placeholder="Write a message to the technician..."
+                placeholder="Write a message to the support team..."
                 className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
               />
               <div className="flex justify-end">
@@ -423,11 +500,11 @@ function TicketDetailsModal({
           </section>
         </div>
 
-        <div className="mt-6 flex items-center justify-end gap-3">
+        <div className="mt-6 flex items-center justify-end border-t border-slate-100 pt-5">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+            className="rounded-xl border border-slate-200 px-6 py-2.5 text-sm font-bold text-slate-600 transition hover:bg-slate-50"
           >
             Close
           </button>
@@ -469,6 +546,7 @@ function UserTicketsPage() {
   const [isCommentSubmitting, setIsCommentSubmitting] = useState(false)
   const [attachmentUrls, setAttachmentUrls] = useState({})
   const [isAttachmentsLoading, setIsAttachmentsLoading] = useState(false)
+  const [isActionProcessing, setIsActionProcessing] = useState(false)
 
   const loadTickets = useCallback(async () => {
     setIsLoading(true)
@@ -601,6 +679,21 @@ function UserTicketsPage() {
     }
   }
 
+  const handleRateTicket = async (rating, feedback) => {
+    if (!previewTicket?.id) return
+
+    setIsActionProcessing(true)
+    setErrorMessage('')
+    try {
+      await rateUserTicket(previewTicket.id, rating, feedback)
+      await loadTicketDetails(previewTicket.id)
+    } catch (error) {
+      setErrorMessage(getApiErrorMessage(error))
+    } finally {
+      setIsActionProcessing(false)
+    }
+  }
+
   const sidebarItems = useMemo(
     () => getSidebarItemsByRole(role).map((item) => ({ ...item, active: item.path === location.pathname })),
     [location.pathname, role],
@@ -647,6 +740,10 @@ function UserTicketsPage() {
     } finally {
       setProcessingId(null)
     }
+  }
+
+  const handleDeleteFromDetails = async (ticket) => {
+    await handleDelete(ticket)
   }
 
   return (
@@ -723,7 +820,7 @@ function UserTicketsPage() {
               />
 
               <div className="flex flex-wrap gap-2">
-                {['ALL', 'OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'].map((status) => (
+                {['ALL', 'OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED', 'REJECTED'].map((status) => (
                   <button
                     key={status}
                     type="button"
@@ -784,22 +881,6 @@ function UserTicketsPage() {
                             >
                               View
                             </button>
-                            <button
-                              type="button"
-                              onClick={() => handleEditTicket(ticket)}
-                              disabled={processingId === ticket.id}
-                              className="rounded-lg border border-indigo-200 px-3 py-2 text-xs font-semibold text-indigo-600 transition hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-60"
-                            >
-                              Edit
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDelete(ticket)}
-                              disabled={processingId === ticket.id}
-                              className="rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
-                            >
-                              {processingId === ticket.id ? 'Working...' : 'Delete'}
-                            </button>
                           </div>
                         </td>
                       </tr>
@@ -826,7 +907,7 @@ function UserTicketsPage() {
         ticket={previewTicket}
         onClose={closeTicketDetails}
         onEdit={handleEditFromDetails}
-        onDelete={handleDelete}
+        onDelete={handleDeleteFromDetails}
         onAddComment={handleAddComment}
         commentText={commentText}
         onCommentTextChange={setCommentText}
@@ -835,11 +916,11 @@ function UserTicketsPage() {
         attachmentUrls={attachmentUrls}
         isAttachmentsLoading={isAttachmentsLoading}
         currentUserEmail={user?.email}
+        onRate={handleRateTicket}
+        isActionProcessing={isActionProcessing}
       />
     </div>
   )
 }
 
 export default UserTicketsPage
-
-

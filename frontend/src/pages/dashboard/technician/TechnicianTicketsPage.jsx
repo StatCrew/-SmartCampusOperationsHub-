@@ -42,6 +42,34 @@ function isImageAttachment(fileUrl) {
   return /\.(png|jpe?g|gif|bmp|webp|svg)$/i.test(String(fileUrl || ''))
 }
 
+function getSLADisplay(dueDate) {
+  if (!dueDate) return null
+  const now = new Date()
+  const due = new Date(dueDate)
+  const diffMs = due - now
+  const isOverdue = diffMs < 0
+  const absDiff = Math.abs(diffMs)
+
+  const hours = Math.floor(absDiff / (1000 * 60 * 60))
+  const mins = Math.floor((absDiff % (1000 * 60 * 60)) / (1000 * 60))
+
+  if (isOverdue) {
+    return {
+      text: `Overdue by ${hours}h ${mins}m`,
+      color: 'text-red-600',
+      icon: 'priority_high',
+      bg: 'bg-red-50',
+    }
+  }
+
+  return {
+    text: `Due in ${hours}h ${mins}m`,
+    color: hours < 4 ? 'text-amber-600' : 'text-emerald-600',
+    icon: 'schedule',
+    bg: hours < 4 ? 'bg-amber-50' : 'bg-emerald-50',
+  }
+}
+
 function TechnicianTicketDetailsModal({
   open,
   ticket,
@@ -53,6 +81,8 @@ function TechnicianTicketDetailsModal({
   attachmentUrls,
   isAttachmentsLoading,
   currentUserEmail,
+  onResolve,
+  isActionProcessing,
 }) {
   if (!open || !ticket) {
     return null
@@ -60,6 +90,7 @@ function TechnicianTicketDetailsModal({
 
   const attachments = Array.isArray(ticket.attachments) ? ticket.attachments : []
   const comments = Array.isArray(ticket.comments) ? ticket.comments : []
+  const sla = getSLADisplay(ticket.dueDate)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -78,6 +109,12 @@ function TechnicianTicketDetailsModal({
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {sla && ticket.status === 'IN_PROGRESS' && (
+              <div className={`flex items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-bold ${sla.bg} ${sla.color}`}>
+                <span className="material-symbols-outlined text-[18px]">{sla.icon}</span>
+                {sla.text}
+              </div>
+            )}
             <button
               type="button"
               onClick={onClose}
@@ -93,6 +130,14 @@ function TechnicianTicketDetailsModal({
           <section className="space-y-4">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Maintenance Request Details</p>
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">{ticket.description || '-'}</div>
+
+            {ticket.status === 'RESOLVED' && (
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                <p className="text-xs font-bold uppercase tracking-wider text-emerald-700 mb-1">Resolution Notes</p>
+                <p className="text-sm text-emerald-800 font-medium">{ticket.resolutionNotes || 'Problem fixed.'}</p>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <Detail label="Status" value={<TicketBadge status={ticket.status} />} />
               <Detail label="Priority" value={ticket.priority || '-'} />
@@ -184,19 +229,35 @@ function TechnicianTicketDetailsModal({
           </section>
         </div>
 
-        <div className="mt-6 flex items-center justify-end gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
-          >
-            Close
-          </button>
+        <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-5">
+          <div className="flex gap-2">
+            {ticket.status === 'IN_PROGRESS' && (
+              <button
+                type="button"
+                onClick={onResolve}
+                disabled={isActionProcessing}
+                className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:opacity-50"
+              >
+                <span className="material-symbols-outlined text-[20px]">check_circle</span>
+                Mark as Resolved
+              </button>
+            )}
+          </div>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-xl border border-slate-200 px-6 py-2.5 text-sm font-bold text-slate-600 transition hover:bg-slate-50"
+            >
+              Close
+            </button>
+          </div>
         </div>
       </div>
     </div>
   )
 }
+
 
 function Detail({ label, value }) {
   return (
@@ -228,6 +289,7 @@ function TechnicianTicketsPage() {
   const [isCommentSubmitting, setIsCommentSubmitting] = useState(false)
   const [attachmentUrls, setAttachmentUrls] = useState({})
   const [isAttachmentsLoading, setIsAttachmentsLoading] = useState(false)
+  const [isActionProcessing, setIsActionProcessing] = useState(false)
 
   useEffect(() => {
     let isMounted = true
@@ -357,6 +419,23 @@ function TechnicianTicketsPage() {
       setErrorMessage(getApiErrorMessage(error))
     } finally {
       setIsCommentSubmitting(false)
+    }
+  }
+
+  const handleResolveTicket = async () => {
+    const notes = window.prompt('Enter resolution notes:')
+    if (!notes || !selectedTicket?.id) return
+
+    setIsActionProcessing(true)
+    setErrorMessage('')
+    try {
+      await resolveTechnicianTicket(selectedTicket.id, notes)
+      await loadTickets()
+      setDetailsOpen(false)
+    } catch (error) {
+      setErrorMessage(getApiErrorMessage(error))
+    } finally {
+      setIsActionProcessing(false)
     }
   }
 
@@ -500,6 +579,8 @@ function TechnicianTicketsPage() {
         attachmentUrls={attachmentUrls}
         isAttachmentsLoading={isAttachmentsLoading}
         currentUserEmail={user?.email}
+        onResolve={handleResolveTicket}
+        isActionProcessing={isActionProcessing}
       />
     </div>
   )
