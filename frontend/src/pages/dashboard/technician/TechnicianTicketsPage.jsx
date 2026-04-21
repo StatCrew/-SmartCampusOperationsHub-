@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import apiClient from '../../../api/authService'
-import { createTicketComment, getTechnicianTicketAttachmentUrl, getTechnicianTicketById, getTechnicianTickets } from '../../../api/ticketApi'
+import { createTicketComment, getTechnicianTicketAttachmentUrl, getTechnicianTicketById, getTechnicianTickets, resolveTechnicianTicket } from '../../../api/ticketApi'
 import useAuth from '../../../context/useAuth'
 import { getHeaderLabelsByRole, getSidebarItemsByRole } from '../constants'
 import UserDashboardHeader from '../user/components/UserDashboardHeader'
@@ -83,6 +83,10 @@ function TechnicianTicketDetailsModal({
   currentUserEmail,
   onResolve,
   isActionProcessing,
+  isResolving,
+  setIsResolving,
+  resolutionNotes,
+  setResolutionNotes,
 }) {
   if (!open || !ticket) {
     return null
@@ -94,7 +98,11 @@ function TechnicianTicketDetailsModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => {
+        setIsResolving(false)
+        setResolutionNotes('')
+        onClose()
+      }} />
       <div className="relative w-full max-w-6xl rounded-3xl bg-white p-6 shadow-2xl overflow-y-auto max-h-[95vh]">
         <div className="mb-5 flex items-start justify-between gap-4 border-b border-slate-100 pb-5">
           <div className="flex items-center gap-4">
@@ -231,16 +239,49 @@ function TechnicianTicketDetailsModal({
 
         <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-5">
           <div className="flex gap-2">
-            {ticket.status === 'IN_PROGRESS' && (
+            {ticket.status === 'IN_PROGRESS' && !isResolving && (
               <button
                 type="button"
-                onClick={onResolve}
+                onClick={() => setIsResolving(true)}
                 disabled={isActionProcessing}
                 className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:opacity-50"
               >
                 <span className="material-symbols-outlined text-[20px]">check_circle</span>
                 Mark as Resolved
               </button>
+            )}
+
+            {isResolving && (
+              <div className="w-full space-y-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                <p className="text-xs font-bold uppercase tracking-wider text-emerald-700">Resolution Notes</p>
+                <textarea
+                  value={resolutionNotes}
+                  onChange={(e) => setResolutionNotes(e.target.value)}
+                  placeholder="Describe the fix or action taken..."
+                  className="w-full rounded-xl border border-emerald-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                  rows={3}
+                />
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsResolving(false)
+                      setResolutionNotes('')
+                    }}
+                    className="rounded-xl px-4 py-2 text-sm font-bold text-slate-600 transition hover:bg-slate-200"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onResolve}
+                    disabled={!resolutionNotes.trim() || isActionProcessing}
+                    className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:opacity-50"
+                  >
+                    Confirm Resolve
+                  </button>
+                </div>
+              </div>
             )}
           </div>
           <div className="flex gap-3">
@@ -258,7 +299,6 @@ function TechnicianTicketDetailsModal({
   )
 }
 
-
 function Detail({ label, value }) {
   return (
     <div className="space-y-2">
@@ -269,7 +309,6 @@ function Detail({ label, value }) {
     </div>
   )
 }
-
 
 function TechnicianTicketsPage() {
   const navigate = useNavigate()
@@ -290,6 +329,8 @@ function TechnicianTicketsPage() {
   const [attachmentUrls, setAttachmentUrls] = useState({})
   const [isAttachmentsLoading, setIsAttachmentsLoading] = useState(false)
   const [isActionProcessing, setIsActionProcessing] = useState(false)
+  const [isResolving, setIsResolving] = useState(false)
+  const [resolutionNotes, setResolutionNotes] = useState('')
 
   useEffect(() => {
     let isMounted = true
@@ -423,14 +464,15 @@ function TechnicianTicketsPage() {
   }
 
   const handleResolveTicket = async () => {
-    const notes = window.prompt('Enter resolution notes:')
-    if (!notes || !selectedTicket?.id) return
+    if (!resolutionNotes.trim() || !selectedTicket?.id) return
 
     setIsActionProcessing(true)
     setErrorMessage('')
     try {
-      await resolveTechnicianTicket(selectedTicket.id, notes)
+      await resolveTechnicianTicket(selectedTicket.id, resolutionNotes.trim())
       await loadTickets()
+      setIsResolving(false)
+      setResolutionNotes('')
       setDetailsOpen(false)
     } catch (error) {
       setErrorMessage(getApiErrorMessage(error))
@@ -581,12 +623,13 @@ function TechnicianTicketsPage() {
         currentUserEmail={user?.email}
         onResolve={handleResolveTicket}
         isActionProcessing={isActionProcessing}
+        isResolving={isResolving}
+        setIsResolving={setIsResolving}
+        resolutionNotes={resolutionNotes}
+        setResolutionNotes={setResolutionNotes}
       />
     </div>
   )
 }
 
 export default TechnicianTicketsPage
-
-
-

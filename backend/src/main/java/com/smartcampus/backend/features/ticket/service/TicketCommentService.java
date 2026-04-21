@@ -23,10 +23,7 @@ public class TicketCommentService {
         Ticket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new RuntimeException("Ticket not found"));
 
-        // comments only allowed if ticket is in progress
-        if (ticket.getStatus() == TicketStatus.OPEN) {
-            throw new RuntimeException("Comments not allowed yet. Wait for admin to open ticket.");
-        }
+
 
         if (ticket.getStatus() == TicketStatus.CLOSED) {
             throw new RuntimeException("Ticket is closed. No further comments allowed.");

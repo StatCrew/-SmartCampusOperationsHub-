@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { assignAdminTicket, createTicketComment, getAdminTicketAttachmentUrl, getAdminTicketById, getAdminTickets, updateAdminTicketStatus } from '../../../api/ticketApi'
+import { assignAdminTicket, createTicketComment, getAdminTicketAttachmentUrl, getAdminTicketById, getAdminTickets, updateAdminTicketStatus, rejectAdminTicket } from '../../../api/ticketApi'
 import { getUsers } from '../../../api/adminApi'
 import useAuth from '../../../context/useAuth'
 import { getSidebarItemsByRole } from '../constants'
@@ -88,6 +88,10 @@ function TicketDetailsModal({
   currentUserEmail,
   onReject,
   isActionProcessing,
+  isRejecting,
+  setIsRejecting,
+  rejectionReason,
+  setRejectionReason,
 }) {
   if (!open || !ticket) {
     return null
@@ -99,7 +103,11 @@ function TicketDetailsModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => {
+        setIsRejecting(false)
+        setRejectionReason('')
+        onClose()
+      }} />
       <div className="relative w-full max-w-6xl rounded-3xl bg-white p-6 shadow-2xl overflow-y-auto max-h-[95vh]">
         <div className="mb-5 flex items-start justify-between gap-4 border-b border-slate-100 pb-5">
           <div className="flex items-center gap-4">
@@ -237,16 +245,49 @@ function TicketDetailsModal({
 
         <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-5">
           <div className="flex gap-2">
-            {ticket.status === 'OPEN' && (
+            {ticket.status === 'OPEN' && !isRejecting && (
               <button
                 type="button"
-                onClick={onReject}
+                onClick={() => setIsRejecting(true)}
                 disabled={isActionProcessing}
                 className="flex items-center gap-2 rounded-xl bg-red-50 px-4 py-2.5 text-sm font-bold text-red-700 transition hover:bg-red-100 disabled:opacity-50"
               >
                 <span className="material-symbols-outlined text-[20px]">cancel</span>
                 Reject Ticket
               </button>
+            )}
+
+            {isRejecting && (
+              <div className="w-full space-y-3 rounded-2xl border border-red-200 bg-red-50 p-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                <p className="text-xs font-bold uppercase tracking-wider text-red-700">Enter Rejection Reason</p>
+                <textarea
+                  value={rejectionReason}
+                  onChange={(e) => setRejectionReason(e.target.value)}
+                  placeholder="Explain why this ticket is being rejected..."
+                  className="w-full rounded-xl border border-red-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                  rows={3}
+                />
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsRejecting(false)
+                      setRejectionReason('')
+                    }}
+                    className="rounded-xl px-4 py-2 text-sm font-bold text-slate-600 transition hover:bg-slate-200"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onReject}
+                    disabled={!rejectionReason.trim() || isActionProcessing}
+                    className="rounded-xl bg-red-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-red-700 disabled:opacity-50"
+                  >
+                    Confirm Reject
+                  </button>
+                </div>
+              </div>
             )}
           </div>
           <div className="flex gap-3">
@@ -298,6 +339,8 @@ function AdminTicketsPage() {
   const [isCommentSubmitting, setIsCommentSubmitting] = useState(false)
   const [attachmentUrls, setAttachmentUrls] = useState({})
   const [isAttachmentsLoading, setIsAttachmentsLoading] = useState(false)
+  const [isRejecting, setIsRejecting] = useState(false)
+  const [rejectionReason, setRejectionReason] = useState('')
   const [isActionProcessing, setIsActionProcessing] = useState(false)
 
   const loadTickets = useCallback(async () => {
@@ -446,14 +489,15 @@ function AdminTicketsPage() {
   }
 
   const handleRejectTicket = async () => {
-    const reason = window.prompt('Enter rejection reason:')
-    if (!reason || !selectedTicket?.id) return
+    if (!rejectionReason.trim() || !selectedTicket?.id) return
 
     setIsActionProcessing(true)
     setErrorMessage('')
     try {
-      await ticketApi.rejectAdminTicket(selectedTicket.id, reason)
+      await rejectAdminTicket(selectedTicket.id, rejectionReason.trim())
       await loadTickets()
+      setIsRejecting(false)
+      setRejectionReason('')
       setDetailsOpen(false)
     } catch (error) {
       setErrorMessage(getApiErrorMessage(error))
@@ -547,7 +591,7 @@ function AdminTicketsPage() {
               />
 
               <div className="flex flex-wrap gap-2">
-                {['ALL', 'OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'].map((status) => (
+                {['ALL', 'OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED', 'REJECTED'].map((status) => (
                   <button
                     key={status}
                     type="button"
@@ -684,6 +728,10 @@ function AdminTicketsPage() {
         currentUserEmail={user?.email}
         onReject={handleRejectTicket}
         isActionProcessing={isActionProcessing}
+        isRejecting={isRejecting}
+        setIsRejecting={setIsRejecting}
+        rejectionReason={rejectionReason}
+        setRejectionReason={setRejectionReason}
       />
     </div>
   )

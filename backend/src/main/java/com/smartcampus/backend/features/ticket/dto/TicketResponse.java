@@ -53,7 +53,7 @@ public class TicketResponse extends RepresentationModel<TicketResponse> {
     this.category = ticket.getCategory();
     this.contactNumber = ticket.getContactNumber();
     this.priority = ticket.getPriority();
-    this.status = ticket.getStatus() != null ? ticket.getStatus() != null ? ticket.getStatus().toString() : null : "OPEN";
+    this.status = ticket.getStatus() != null ? ticket.getStatus().toString() : "OPEN";
     this.resourceId = ticket.getResourceId();
     this.createdAt = ticket.getCreatedAt();
     this.updatedAt = ticket.getUpdatedAt();

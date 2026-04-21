@@ -94,6 +94,12 @@ function TicketFormModal({ open, mode, ticket, onClose, onSaved, getApiErrorMess
     setIsSubmitting(true)
     setErrorMessage('')
 
+    if (files.length > 3) {
+      setErrorMessage('Maximum 3 attachments allowed')
+      setIsSubmitting(false)
+      return
+    }
+
     try {
       const payload = {
         title: formData.title.trim(),
