@@ -4,6 +4,16 @@ const BOOKING_PREFIX = '/api/v1/bookings'
 
 // --- Helper Functions (Matching Member 4's Architecture) ---
 
+export async function updateFullBooking(id, payload) {
+  const response = await apiClient.put(`/api/v1/bookings/${id}`, payload)
+  return response.data
+}
+
+// Verify a QR Code Ticket (Admin Only)
+export async function verifyBookingTicket(id) {
+  const response = await apiClient.post(`${BOOKING_PREFIX}/${id}/verify`)
+  return response.data
+}
 function normalizeCollection(payload) {
   if (Array.isArray(payload)) {
     return payload
@@ -98,5 +108,11 @@ export async function deleteBooking(id) {
 // 6. Get Admin Analytics (Your Innovation Feature)
 export async function getBookingAnalytics() {
   const response = await apiClient.get(`${BOOKING_PREFIX}/analytics`)
+  return response.data
+}
+
+// 7. Safely Cancel a Booking (User Action)
+export async function cancelBookingReq(id) {
+  const response = await apiClient.patch(`${BOOKING_PREFIX}/${id}/cancel`)
   return response.data
 }

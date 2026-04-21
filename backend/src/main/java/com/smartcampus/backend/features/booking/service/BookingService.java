@@ -14,9 +14,7 @@ import java.util.stream.Collectors;
 import java.time.Duration;
 import java.time.LocalDateTime;
 
-
 import java.util.List;
-
 
 @Service
 @RequiredArgsConstructor // Lombok: Automatically creates a constructor for the repository
@@ -83,6 +81,7 @@ public class BookingService {
         booking.setStatus(newStatus);
         return bookingRepository.save(booking);
     }
+
     // 5. Delete a Booking (Required by Rubric)
     public void deleteBooking(Long bookingId) {
         if (!bookingRepository.existsById(bookingId)) {
@@ -90,7 +89,8 @@ public class BookingService {
         }
         bookingRepository.deleteById(bookingId);
     }
-    // Get a single booking by ID (Required for HATEOAS self-links)
+
+    // Get a single booking by ID (Required for HATEOAS self-links and updates)
     public Booking getBookingById(Long bookingId) {
         return bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found with ID: " + bookingId));
@@ -117,9 +117,45 @@ public class BookingService {
                 .popularResources(popularResources)
                 .build();
     }
-    
 
-    
+    // 7. Update Full Booking (Handles the PUT request)
+    public Booking updateFullBooking(Long id, BookingRequest request, User currentUser) {
+        Booking existingBooking = getBookingById(id);
+
+        // Check for conflicts, ignoring the current booking itself so we don't conflict with our own old timeslot
+        List<Booking> conflicts = bookingRepository.findConflictingBookings(
+                request.resourceId(),
+                request.startTime(),
+                request.endTime()
+        );
+
+        conflicts = conflicts.stream()
+                .filter(b -> !b.getId().equals(id))
+                .toList();
+
+        if (!conflicts.isEmpty()) {
+            LocalDateTime nextAvailable = findNextAvailableSlot(request.resourceId(), request.startTime(), request.endTime());
+            LocalDateTime nextAvailableEnd = nextAvailable.plus(Duration.between(request.startTime(), request.endTime()));
+            
+            String suggestion = String.format("Resource is busy. The next available slot is from %s to %s.", 
+                    nextAvailable.toString().replace("T", " "), 
+                    nextAvailableEnd.toString().replace("T", " "));
+                    
+            throw new ResponseStatusException(HttpStatus.CONFLICT, suggestion);
+        }
+
+        // Overwrite the old details with the new ones from the request
+        existingBooking.setResourceId(request.resourceId());
+        existingBooking.setStartTime(request.startTime());
+        existingBooking.setEndTime(request.endTime());
+        existingBooking.setPurpose(request.purpose());
+        existingBooking.setAttendees(request.attendees());
+        
+        // Because they changed the details, reset the status so an Admin reviews it again
+        existingBooking.setStatus("PENDING");
+
+        return bookingRepository.save(existingBooking);
+    }
 
     // Helper Method: Calculates the next available time slot if a conflict occurs
     private LocalDateTime findNextAvailableSlot(Long resourceId, LocalDateTime requestedStart, LocalDateTime requestedEnd) {
