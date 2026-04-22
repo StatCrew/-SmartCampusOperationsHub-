@@ -7,7 +7,6 @@ import UserDashboardHeader from './components/UserDashboardHeader'
 import UserSidebar from './components/UserSidebar'
 import TicketFormModal from './components/TicketFormModal'
 import TicketDetailsModal from './components/TicketDetailsModal'
-import { Button } from '../../../components/ui/Button'
 
 const STATUS_META = {
   OPEN: { label: 'Open', bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', dot: 'bg-amber-500' },
@@ -66,8 +65,6 @@ function UserTicketsPage() {
   const [attachmentUrls, setAttachmentUrls] = useState({})
   const [editingCommentId, setEditingCommentId] = useState(null)
   const [editingCommentText, setEditingCommentText] = useState('')
-  const { role, user, logout, getApiErrorMessage } = useAuth()
-  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true)
 
   const loadTickets = useCallback(async () => {
     setIsLoading(true)
@@ -253,12 +250,6 @@ function UserTicketsPage() {
         sidebarItems={sidebarItems}
       />
 
-        <div className={`min-h-screen transition-all duration-300 ${isSidebarExpanded ? 'md:pl-64' : 'md:pl-20'}`}>
-          <UserDashboardHeader
-            onLogout={handleLogout}
-            eyebrow="Academic Support"
-            title="Service Hub"
-          />
       <div className={`min-h-screen transition-all duration-300 ${isSidebarExpanded ? 'md:pl-64' : 'md:pl-20'}`}>
         <UserDashboardHeader eyebrow={headerLabels.eyebrow} title={headerLabels.title} />
 
@@ -283,23 +274,6 @@ function UserTicketsPage() {
                 >
                   Create New Ticket
                 </button>
-          <main className="mx-auto w-full max-w-7xl p-4 pb-24 md:p-8">
-            <section className="mb-8 rounded-3xl bg-gradient-to-br from-indigo-900 to-slate-950 p-8 text-white shadow-xl">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-                <div>
-                  <h2 className="text-3xl font-black tracking-tight">Support Stream</h2>
-                  <p className="mt-2 text-indigo-100/70 max-w-md font-medium">
-                    Submit maintenance requests or report issues. You have {stats.open} active investigations ongoing.
-                  </p>
-                </div>
-                <div className="flex gap-3">
-                  <Button variant="outline" onClick={loadTickets} className="border-white/20 text-white hover:bg-white/10">
-                    <span className="material-symbols-outlined mr-2">refresh</span> Sync List
-                  </Button>
-                  <Button onClick={openCreateTicket} className="bg-white text-indigo-950 hover:bg-indigo-50 border-none shadow-lg px-8">
-                    Create Request
-                  </Button>
-                </div>
               </div>
             </div>
           </section>
@@ -313,31 +287,13 @@ function UserTicketsPage() {
             ].map((s) => (
               <div key={s.label} className="rounded-2xl bg-white p-6 shadow-sm border border-slate-100 transition-all hover:shadow-md">
                 <div className="flex items-center justify-between mb-4">
-                   <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{s.label}</p>
-                   <span className={`material-symbols-outlined ${s.color} opacity-40`}>{s.icon}</span>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{s.label}</p>
+                  <span className={`material-symbols-outlined ${s.color} opacity-40`}>{s.icon}</span>
                 </div>
                 <h3 className={`text-4xl font-black ${s.color}`}>{isLoading ? '—' : s.val}</h3>
               </div>
             ))}
           </section>
-            <section className="grid grid-cols-1 gap-6 md:grid-cols-4 mb-8">
-              <div className="rounded-[2rem] bg-white p-6 shadow-sm border border-slate-100 transition-all hover:shadow-md">
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Total Submissions</p>
-                <h3 className="text-3xl font-black text-slate-900">{stats.total}</h3>
-              </div>
-              <div className="rounded-[2rem] bg-white p-6 shadow-sm border border-slate-100 transition-all hover:shadow-md">
-                <p className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-2">Open Issues</p>
-                <h3 className="text-3xl font-black text-amber-600">{stats.open}</h3>
-              </div>
-              <div className="rounded-[2rem] bg-white p-6 shadow-sm border border-slate-100 transition-all hover:shadow-md">
-                <p className="text-[10px] font-black uppercase tracking-widest text-indigo-500 mb-2">In Progress</p>
-                <h3 className="text-3xl font-black text-indigo-600">{stats.progress}</h3>
-              </div>
-              <div className="rounded-[2rem] bg-white p-6 shadow-sm border border-slate-100 transition-all hover:shadow-md">
-                <p className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-2">Resolved</p>
-                <h3 className="text-3xl font-black text-emerald-600">{stats.resolved}</h3>
-              </div>
-            </section>
 
           <section className="mt-8">
             <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
@@ -350,24 +306,6 @@ function UserTicketsPage() {
                   className="w-full bg-transparent text-sm font-bold text-slate-700 outline-none placeholder:text-slate-300"
                 />
               </div>
-            <section className="rounded-3xl bg-white p-8 shadow-sm border border-slate-100">
-              <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
-                <div>
-                  <h3 className="text-xl font-black text-slate-900 tracking-tight">Active Investigations</h3>
-                  <p className="text-sm font-medium text-slate-500">Service requests submitted for campus maintenance.</p>
-                </div>
-                <div className="relative group max-w-sm w-full">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors">
-                    <span className="material-symbols-outlined text-[20px]">search</span>
-                  </span>
-                  <input
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Filter by title, category..."
-                    className="w-full rounded-2xl border border-slate-200 bg-white py-2.5 pl-12 pr-5 text-sm font-medium outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 shadow-sm"
-                  />
-                </div>
-              </div>
 
               <div className="flex flex-wrap gap-2">
                 {['ALL', 'OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED', 'REJECTED'].map((status) => (
@@ -375,116 +313,69 @@ function UserTicketsPage() {
                     key={status}
                     type="button"
                     onClick={() => setStatusFilter(status)}
-                    className={`rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${
-                      statusFilter === status
+                    className={`rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${statusFilter === status
                         ? 'bg-slate-900 text-white shadow-lg'
                         : 'bg-white text-slate-500 border border-slate-100 hover:bg-slate-50'
-                    }`}
+                      }`}
                   >
                     {status === 'ALL' ? 'Everything' : status.replace('_', ' ')}
                   </button>
                 ))}
               </div>
             </div>
-              <div className="overflow-x-auto rounded-2xl border border-slate-100">
-                <table className="min-w-full divide-y divide-slate-200 text-sm">
-                  <thead className="bg-slate-50 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">
-                    <tr>
-                      <th className="px-6 py-4">Reference</th>
-                      <th className="px-6 py-4">Submission Date</th>
-                      <th className="px-6 py-4">Current State</th>
-                      <th className="px-6 py-4 text-right">Operations</th>
-                    </tr>
-                  </thead>
 
-                  <tbody className="divide-y divide-slate-50 bg-white text-slate-700">
-                    {filteredTickets.map((ticket) => (
-                      <tr key={ticket.id} className="hover:bg-slate-50/50 transition-colors">
-                        <td className="px-6 py-4">
-                          <div className="font-bold text-slate-900 tracking-tight">{ticket.title}</div>
-                          <div className="text-[10px] text-slate-400 font-medium uppercase tracking-widest">ID: {ticket.id}</div>
-                        </td>
-                        <td className="px-6 py-4 font-medium">
-                          {ticket.createdAt ? new Date(ticket.createdAt).toLocaleDateString() : '—'}
-                        </td>
-                        <td className="px-6 py-4"><TicketBadge status={ticket.status} /></td>
-                        <td className="px-6 py-4 text-right">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleViewTicket(ticket)}
-                            className="rounded-xl font-black uppercase tracking-widest text-[10px] px-4"
-                          >
-                            Inspect
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                    {filteredTickets.length === 0 && (
-                      <tr>
-                        <td colSpan="4" className="px-6 py-20 text-center text-slate-400 font-medium italic">
-                          No matching support requests found.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-          </main>
-        </div>
             {isLoading ? (
-               <div className="py-24 text-center">
-                 <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-indigo-600" />
-                 <p className="mt-4 text-sm font-black uppercase tracking-widest text-slate-400">Fetching your records...</p>
-               </div>
+              <div className="py-24 text-center">
+                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-indigo-600" />
+                <p className="mt-4 text-sm font-black uppercase tracking-widest text-slate-400">Fetching your records...</p>
+              </div>
             ) : filteredTickets.length === 0 ? (
-               <div className="rounded-3xl border-2 border-dashed border-slate-200 bg-slate-50 p-12 text-center">
-                 <span className="material-symbols-outlined text-slate-300 text-6xl">receipt_long</span>
-                 <p className="mt-4 text-sm font-black uppercase tracking-widest text-slate-400">No tickets found in this view.</p>
-               </div>
+              <div className="rounded-3xl border-2 border-dashed border-slate-200 bg-slate-50 p-12 text-center">
+                <span className="material-symbols-outlined text-slate-300 text-6xl">receipt_long</span>
+                <p className="mt-4 text-sm font-black uppercase tracking-widest text-slate-400">No tickets found in this view.</p>
+              </div>
             ) : (
-               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                 {filteredTickets.map((ticket) => (
-                    <div
-                      key={ticket.id}
-                      className="group relative flex flex-col rounded-[2rem] bg-white p-6 shadow-sm border border-slate-100 transition-all duration-500 hover:shadow-xl hover:border-indigo-100 hover:-translate-y-1"
-                    >
-                      <div className="mb-4 flex items-center justify-between">
-                        <TicketBadge status={ticket.status} />
-                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">#{ticket.id}</span>
-                      </div>
-
-                      <h4 className="text-xl font-black text-slate-900 tracking-tight line-clamp-1 mb-2 group-hover:text-indigo-600 transition-colors">
-                        {ticket.title || `Ticket #${ticket.id}`}
-                      </h4>
-                      <p className="text-xs font-semibold text-slate-500 line-clamp-2 mb-6 min-h-[32px]">
-                        {ticket.description || 'No additional details.'}
-                      </p>
-
-                      <div className="mt-auto space-y-4">
-                        <div className="grid grid-cols-2 gap-4 border-t border-slate-50 pt-4">
-                           <div>
-                              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Category</p>
-                              <p className="text-[11px] font-bold text-slate-700">{ticket.category || 'General'}</p>
-                           </div>
-                           <div>
-                              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Created</p>
-                              <p className="text-[11px] font-bold text-slate-700">{formatDateTime(ticket.createdAt).split(',')[0]}</p>
-                           </div>
-                        </div>
-
-                        <button
-                          onClick={() => handleViewTicket(ticket)}
-                          disabled={processingId === ticket.id}
-                          className="w-full rounded-xl bg-slate-50 py-3 text-[10px] font-black uppercase tracking-widest text-slate-600 transition-all hover:bg-slate-900 hover:text-white"
-                        >
-                          View Details
-                        </button>
-                      </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredTickets.map((ticket) => (
+                  <div
+                    key={ticket.id}
+                    className="group relative flex flex-col rounded-[2rem] bg-white p-6 shadow-sm border border-slate-100 transition-all duration-500 hover:shadow-xl hover:border-indigo-100 hover:-translate-y-1"
+                  >
+                    <div className="mb-4 flex items-center justify-between">
+                      <TicketBadge status={ticket.status} />
+                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">#{ticket.id}</span>
                     </div>
-                 ))}
-               </div>
+
+                    <h4 className="text-xl font-black text-slate-900 tracking-tight line-clamp-1 mb-2 group-hover:text-indigo-600 transition-colors">
+                      {ticket.title || `Ticket #${ticket.id}`}
+                    </h4>
+                    <p className="text-xs font-semibold text-slate-500 line-clamp-2 mb-6 min-h-[32px]">
+                      {ticket.description || 'No additional details.'}
+                    </p>
+
+                    <div className="mt-auto space-y-4">
+                      <div className="grid grid-cols-2 gap-4 border-t border-slate-50 pt-4">
+                        <div>
+                          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Category</p>
+                          <p className="text-[11px] font-bold text-slate-700">{ticket.category || 'General'}</p>
+                        </div>
+                        <div>
+                          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Created</p>
+                          <p className="text-[11px] font-bold text-slate-700">{formatDateTime(ticket.createdAt).split(',')[0]}</p>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => handleViewTicket(ticket)}
+                        disabled={processingId === ticket.id}
+                        className="w-full rounded-xl bg-slate-50 py-3 text-[10px] font-black uppercase tracking-widest text-slate-600 transition-all hover:bg-slate-900 hover:text-white"
+                      >
+                        View Details
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </section>
         </main>
