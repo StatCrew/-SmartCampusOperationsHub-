@@ -14,19 +14,13 @@ const STATUS_META = {
   CLOSED: { label: 'Closed', bg: 'bg-slate-50', text: 'text-slate-600', border: 'border-slate-200', dot: 'bg-slate-400' },
 }
 
-function TicketBadge({ status }) {
-  const meta = STATUS_META[status] || STATUS_META.OPEN
-  return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider ${meta.bg} ${meta.text} ${meta.border}`}>
-      <span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} />
-      {meta.label}
-    </span>
-  )
-}
-
 function formatDateTime(value) {
   if (!value) return '-'
   try { return new Date(value).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) } catch { return String(value) }
+}
+
+function isImageAttachment(fileUrl) {
+  return /\.(png|jpe?g|gif|bmp|webp|svg)$/i.test(String(fileUrl || ''))
 }
 
 function extractStorageKey(fileUrl) {
@@ -37,10 +31,6 @@ function extractStorageKey(fileUrl) {
   } catch {
     return fileUrl
   }
-}
-
-function isImageAttachment(fileUrl) {
-  return /\.(png|jpe?g|gif|bmp|webp|svg)$/i.test(String(fileUrl || ''))
 }
 
 function getSLADisplay(dueDate) {
@@ -71,6 +61,16 @@ function getSLADisplay(dueDate) {
     bg: hours < 4 ? 'bg-amber-50' : 'bg-emerald-50',
     border: hours < 4 ? 'border-amber-100' : 'border-emerald-100',
   }
+}
+
+function TicketBadge({ status }) {
+  const meta = STATUS_META[status] || STATUS_META.OPEN
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider ${meta.bg} ${meta.text} ${meta.border}`}>
+      <span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} />
+      {meta.label}
+    </span>
+  )
 }
 
 function InfoCard({ label, children, icon }) {
@@ -108,7 +108,6 @@ function TechnicianTicketDetailsModal({
   onCommentTextChange,
   isCommentSubmitting,
   attachmentUrls,
-  isAttachmentsLoading,
   currentUserEmail,
   onResolve,
   isActionProcessing,
@@ -476,7 +475,6 @@ function TechnicianTicketsPage() {
   const [commentText, setCommentText] = useState('')
   const [isCommentSubmitting, setIsCommentSubmitting] = useState(false)
   const [attachmentUrls, setAttachmentUrls] = useState({})
-  const [isAttachmentsLoading, setIsAttachmentsLoading] = useState(false)
   const [isActionProcessing, setIsActionProcessing] = useState(false)
   const [resolutionNotes, setResolutionNotes] = useState('')
   const [editingCommentId, setEditingCommentId] = useState(null)
@@ -571,7 +569,6 @@ function TechnicianTicketsPage() {
       return
     }
 
-    setIsAttachmentsLoading(true)
     try {
       const entries = await Promise.all(attachments.map(async (attachment) => {
         const key = extractStorageKey(attachment)
@@ -585,8 +582,8 @@ function TechnicianTicketsPage() {
       }))
 
       setAttachmentUrls(Object.fromEntries(entries.filter(([, value]) => value)))
-    } finally {
-      setIsAttachmentsLoading(false)
+    } catch {
+      setAttachmentUrls({})
     }
   }, [])
 
@@ -654,7 +651,6 @@ function TechnicianTicketsPage() {
     try {
       await resolveTechnicianTicket(selectedTicket.id, resolutionNotes.trim())
       await loadTickets()
-      setResolutionNotes('')
       setDetailsOpen(false)
       setResolutionNotes('')
     } catch (error) {
@@ -805,14 +801,12 @@ function TechnicianTicketsPage() {
           setSelectedTicket(null)
           setCommentText('')
           setAttachmentUrls({})
-          setIsAttachmentsLoading(false)
         }}
         onAddComment={handleAddComment}
         commentText={commentText}
         onCommentTextChange={setCommentText}
         isCommentSubmitting={isCommentSubmitting}
         attachmentUrls={attachmentUrls}
-        isAttachmentsLoading={isAttachmentsLoading}
         currentUserEmail={user?.email}
         onResolve={handleResolveTicket}
         isActionProcessing={isActionProcessing}

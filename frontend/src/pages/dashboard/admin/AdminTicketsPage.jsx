@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { closeAdminTicket, createTicketComment, deleteTicketComment, getAdminTicketAttachmentUrl, getAdminTicketById, getAdminTickets, markAdminTicketInProgress, rejectAdminTicket, updateTicketComment } from '../../../api/ticketApi'
+import { assignAdminTicket, closeAdminTicket, createTicketComment, deleteTicketComment, getAdminTicketAttachmentUrl, getAdminTicketById, getAdminTickets, markAdminTicketInProgress, rejectAdminTicket, updateTicketComment } from '../../../api/ticketApi'
+import { getUsers } from '../../../api/adminApi'
 import useAuth from '../../../context/useAuth'
 import { getSidebarItemsByRole } from '../constants'
 import UserDashboardHeader from '../user/components/UserDashboardHeader'
@@ -14,16 +15,6 @@ const STATUS_META = {
   REJECTED: { label: 'Rejected', bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200', dot: 'bg-red-500' },
 }
 
-function TicketBadge({ status }) {
-  const meta = STATUS_META[status] || STATUS_META.OPEN
-  return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider ${meta.bg} ${meta.text} ${meta.border}`}>
-      <span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} />
-      {meta.label}
-    </span>
-  )
-}
-
 function formatDateTime(value) {
   if (!value) return '-'
   try {
@@ -31,6 +22,10 @@ function formatDateTime(value) {
   } catch {
     return String(value)
   }
+}
+
+function isImageAttachment(fileUrl) {
+  return /\.(png|jpe?g|gif|bmp|webp|svg)$/i.test(String(fileUrl || ''))
 }
 
 function extractStorageKey(fileUrl) {
@@ -41,10 +36,6 @@ function extractStorageKey(fileUrl) {
   } catch {
     return fileUrl
   }
-}
-
-function isImageAttachment(fileUrl) {
-  return /\.(png|jpe?g|gif|bmp|webp|svg)$/i.test(String(fileUrl || ''))
 }
 
 function getSLADisplay(dueDate) {
@@ -75,6 +66,16 @@ function getSLADisplay(dueDate) {
     bg: hours < 4 ? 'bg-amber-50' : 'bg-emerald-50',
     border: hours < 4 ? 'border-amber-100' : 'border-emerald-100',
   }
+}
+
+function TicketBadge({ status }) {
+  const meta = STATUS_META[status] || STATUS_META.OPEN
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider ${meta.bg} ${meta.text} ${meta.border}`}>
+      <span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} />
+      {meta.label}
+    </span>
+  )
 }
 
 function InfoCard({ label, children, icon }) {
@@ -112,7 +113,6 @@ function TicketDetailsModal({
   onCommentTextChange,
   isCommentSubmitting,
   attachmentUrls,
-  isAttachmentsLoading,
   currentUserEmail,
   onReject,
   isActionProcessing,
@@ -143,7 +143,7 @@ function TicketDetailsModal({
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
       <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={onClose} />
-
+      
       <div className="relative w-full max-w-6xl rounded-[2.5rem] bg-white p-8 lg:p-10 shadow-[0_32px_64px_-12px_rgba(0,0,0,0.14)] overflow-y-auto max-h-[92vh] no-scrollbar">
         {/* Header Section */}
         <div className="mb-8 flex items-start justify-between">
@@ -161,7 +161,7 @@ function TicketDetailsModal({
               </h3>
             </div>
           </div>
-
+          
           <div className="flex items-center gap-3">
             {sla && ticket.status === 'OPEN' && (
               <div className={`flex items-center gap-2 rounded-2xl border px-4 py-2 text-xs font-bold ${sla.bg} ${sla.color} ${sla.border} animate-pulse shadow-sm`}>
@@ -182,7 +182,7 @@ function TicketDetailsModal({
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
           {/* Left Column: Information Cards */}
           <div className="lg:col-span-7 space-y-6">
-
+            
             {/* Request Context Card */}
             <InfoCard label="Request Description" icon="description">
               <div className="whitespace-pre-wrap leading-relaxed text-slate-600 font-semibold italic border-l-4 border-indigo-200 pl-4 py-1 mt-2">
@@ -232,7 +232,7 @@ function TicketDetailsModal({
                   <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{attachments.length} Files</span>
                 )}
               </div>
-
+              
               {attachments.length > 0 ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                   {attachments.map((attachment, index) => {
@@ -378,8 +378,9 @@ function TicketDetailsModal({
 
                     return (
                       <div key={comment.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} group/msg animate-in fade-in slide-in-from-bottom-2`}>
-                        <div className={`relative max-w-[85%] rounded-[1.5rem] p-4 shadow-sm transition-all duration-300 ${isMe ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-white text-slate-700 rounded-tl-none border border-slate-100'
-                          }`}>
+                        <div className={`relative max-w-[85%] rounded-[1.5rem] p-4 shadow-sm transition-all duration-300 ${
+                          isMe ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-white text-slate-700 rounded-tl-none border border-slate-100'
+                        }`}>
                           {isEditing ? (
                             <div className="space-y-3 min-w-[200px]">
                               <textarea
@@ -510,243 +511,216 @@ function AdminTicketsPage() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [priorityFilter, setPriorityFilter] = useState('ALL')
+  const [technicians, setTechnicians] = useState([])
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [selectedTicket, setSelectedTicket] = useState(null)
+  const [assignmentByTicket, setAssignmentByTicket] = useState({})
   const [processingId, setProcessingId] = useState(null)
   const [commentText, setCommentText] = useState('')
   const [isCommentSubmitting, setIsCommentSubmitting] = useState(false)
   const [attachmentUrls, setAttachmentUrls] = useState({})
-  const [isAttachmentsLoading, setIsAttachmentsLoading] = useState(false)
-  const [, setIsRejecting] = useState(false)
   const [isActionProcessing, setIsActionProcessing] = useState(false)
   const [rejectionReason, setRejectionReason] = useState('')
   const [editingCommentId, setEditingCommentId] = useState(null)
   const [editingCommentText, setEditingCommentText] = useState('')
-    const navigate = useNavigate()
-    const location = useLocation()
-    const { role, user, logout, getApiErrorMessage } = useAuth()
-    const [isSidebarExpanded, setIsSidebarExpanded] = useState(false)
-    const [tickets, setTickets] = useState([])
-    const [isLoading, setIsLoading] = useState(true)
-    const [errorMessage, setErrorMessage] = useState('')
-    const [successMessage, setSuccessMessage] = useState('')
-    const [search, setSearch] = useState('')
-    const [statusFilter, setStatusFilter] = useState('ALL')
-    const [priorityFilter, setPriorityFilter] = useState('ALL')
-    const [technicians, setTechnicians] = useState([])
-    const [detailsOpen, setDetailsOpen] = useState(false)
-    const [selectedTicket, setSelectedTicket] = useState(null)
-    const [assignmentByTicket, setAssignmentByTicket] = useState({})
-    const [processingId, setProcessingId] = useState(null)
-    const [commentText, setCommentText] = useState('')
-    const [isCommentSubmitting, setIsCommentSubmitting] = useState(false)
-    const [attachmentUrls, setAttachmentUrls] = useState({})
-    const [isAttachmentsLoading, setIsAttachmentsLoading] = useState(false)
-    const [isActionProcessing, setIsActionProcessing] = useState(false)
-    const [rejectionReason, setRejectionReason] = useState('')
-    const [editingCommentId, setEditingCommentId] = useState(null)
-    const [editingCommentText, setEditingCommentText] = useState('')
 
-    const loadTickets = useCallback(async () => {
-      setIsLoading(true)
-      setErrorMessage('')
+  const loadTickets = useCallback(async () => {
+    setIsLoading(true)
+    setErrorMessage('')
 
+    try {
+      const data = await getAdminTickets()
+      const sorted = Array.isArray(data) 
+        ? [...data].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+        : []
+      setTickets(sorted)
+    } catch (error) {
+      setErrorMessage(getApiErrorMessage(error))
+    } finally {
+      setIsLoading(false)
+    }
+  }, [getApiErrorMessage])
+
+  useEffect(() => {
+    loadTickets()
+  }, [loadTickets])
+
+  useEffect(() => {
+    let mounted = true
+    const loadTechnicians = async () => {
       try {
-        const data = await getAdminTickets()
-        const sorted = Array.isArray(data)
-          ? [...data].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-          : []
-        setTickets(sorted)
-      } catch (error) {
-        setErrorMessage(getApiErrorMessage(error))
-      } finally {
-        setIsLoading(false)
+        const response = await getUsers({ role: 'TECHNICIAN', active: true, size: 100 })
+        if (!mounted) return
+        setTechnicians(response?.content || response || [])
+      } catch {
+        if (mounted) setTechnicians([])
       }
-    }, [getApiErrorMessage])
+    }
+    loadTechnicians()
+    return () => { mounted = false }
+  }, [])
 
-    useEffect(() => {
-      loadTickets()
-    }, [loadTickets])
+  const handleLogout = () => {
+    logout()
+    navigate('/signin', { replace: true })
+  }
 
-    useEffect(() => {
-      let mounted = true
-      const loadTechnicians = async () => {
+  const sidebarItems = useMemo(
+    () => getSidebarItemsByRole(role).map((item) => ({ ...item, active: item.path === location.pathname })),
+    [location.pathname, role],
+  )
+
+  const filteredTickets = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    return tickets.filter((ticket) => {
+      const matchesStatus = statusFilter === 'ALL' || ticket.status === statusFilter
+      const matchesPriority = priorityFilter === 'ALL' || ticket.priority === priorityFilter
+      const matchesSearch = !q || [ticket.title, ticket.description, ticket.category, ticket.priority, ticket.userEmail]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(q))
+
+      return matchesStatus && matchesPriority && matchesSearch
+    })
+  }, [search, statusFilter, priorityFilter, tickets])
+
+  const stats = useMemo(() => ({
+    total: tickets.length,
+    open: tickets.filter((ticket) => ticket.status === 'OPEN').length,
+    progress: tickets.filter((ticket) => ticket.status === 'IN_PROGRESS').length,
+    resolved: tickets.filter((ticket) => ticket.status === 'RESOLVED').length,
+  }), [tickets])
+
+  const handleStatusChange = async (ticket, nextStatus) => {
+    setProcessingId(ticket.id)
+    setIsActionProcessing(true)
+    setErrorMessage('')
+    setSuccessMessage('')
+
+    try {
+      if (nextStatus === 'IN_PROGRESS') {
+        await markAdminTicketInProgress(ticket.id)
+        setSuccessMessage('Ticket assigned and marked in-progress.')
+      } else if (nextStatus === 'CLOSED') {
+        await closeAdminTicket(ticket.id)
+        setSuccessMessage('Ticket closed successfully.')
+      }
+
+      if (selectedTicket?.id === ticket.id) {
+        await loadTicketDetails(ticket.id)
+      } else {
+        await loadTickets()
+      }
+    } catch (error) {
+      setErrorMessage(getApiErrorMessage(error))
+    } finally {
+      setProcessingId(null)
+      setIsActionProcessing(false)
+    }
+  }
+
+  const handleViewTicket = async (ticket) => {
+    setProcessingId(ticket.id)
+    setErrorMessage('')
+    try {
+      const data = await loadTicketDetails(ticket.id)
+      setSelectedTicket(data || ticket)
+      setDetailsOpen(true)
+    } catch (error) {
+      setErrorMessage(getApiErrorMessage(error))
+    } finally {
+      setProcessingId(null)
+    }
+  }
+
+  const loadAttachmentUrls = useCallback(async (ticketData) => {
+    const attachments = Array.isArray(ticketData?.attachments) ? ticketData.attachments : []
+    if (attachments.length === 0) {
+      setAttachmentUrls({})
+      return
+    }
+
+    try {
+      const entries = await Promise.all(attachments.map(async (attachment) => {
+        const key = extractStorageKey(attachment)
+        if (!key) return [attachment, null]
         try {
-          const response = await getUsers({ role: 'TECHNICIAN', active: true, size: 100 })
-          if (!mounted) return
-          setTechnicians(response?.content || response || [])
+          const signed = await getAdminTicketAttachmentUrl(ticketData.id, key)
+          return [attachment, signed?.url || null]
         } catch {
-          if (mounted) setTechnicians([])
+          return [attachment, null]
         }
-      }
-      loadTechnicians()
-      return () => { mounted = false }
-    }, [])
+      }))
 
-    const handleLogout = () => {
-      logout()
-      navigate('/signin', { replace: true })
+      setAttachmentUrls(Object.fromEntries(entries.filter(([, value]) => value)))
+    } catch {
+      setAttachmentUrls({})
+    }
+  }, [])
+
+  const loadTicketDetails = useCallback(async (ticketId) => {
+    const data = await getAdminTicketById(ticketId)
+    setSelectedTicket(data || null)
+    setCommentText('')
+    await loadAttachmentUrls(data)
+    return data || null
+  }, [loadAttachmentUrls])
+
+  const handleAddComment = async () => {
+    if (!selectedTicket?.id || !commentText.trim()) {
+      return
     }
 
-    const sidebarItems = useMemo(
-      () => getSidebarItemsByRole(role).map((item) => ({ ...item, active: item.path === location.pathname })),
-      [location.pathname, role],
-    )
+    setIsCommentSubmitting(true)
+    setErrorMessage('')
 
-    const filteredTickets = useMemo(() => {
-      const q = search.trim().toLowerCase()
-      return tickets.filter((ticket) => {
-        const matchesStatus = statusFilter === 'ALL' || ticket.status === statusFilter
-        const matchesPriority = priorityFilter === 'ALL' || ticket.priority === priorityFilter
-        const matchesSearch = !q || [ticket.title, ticket.description, ticket.category, ticket.priority, ticket.userEmail]
-          .filter(Boolean)
-          .some((value) => String(value).toLowerCase().includes(q))
-
-        return matchesStatus && matchesPriority && matchesSearch
-      })
-    }, [search, statusFilter, priorityFilter, tickets])
-
-    const stats = useMemo(() => ({
-      total: tickets.length,
-      open: tickets.filter((ticket) => ticket.status === 'OPEN').length,
-      progress: tickets.filter((ticket) => ticket.status === 'IN_PROGRESS').length,
-      resolved: tickets.filter((ticket) => ticket.status === 'RESOLVED').length,
-    }), [tickets])
-
-    const handleStatusChange = async (ticket, nextStatus) => {
-      setProcessingId(ticket.id)
-      setIsActionProcessing(true)
-      setErrorMessage('')
-      setSuccessMessage('')
-
-      try {
-        if (nextStatus === 'IN_PROGRESS') {
-          await markAdminTicketInProgress(ticket.id)
-          setSuccessMessage('Ticket assigned and marked in-progress.')
-        } else if (nextStatus === 'CLOSED') {
-          await closeAdminTicket(ticket.id)
-          setSuccessMessage('Ticket closed successfully.')
-        }
-
-        if (selectedTicket?.id === ticket.id) {
-          await loadTicketDetails(ticket.id)
-        } else {
-          await loadTickets()
-        }
-      } catch (error) {
-        setErrorMessage(getApiErrorMessage(error))
-      } finally {
-        setProcessingId(null)
-        setIsActionProcessing(false)
-      }
+    try {
+      await createTicketComment(selectedTicket.id, commentText.trim())
+      await loadTicketDetails(selectedTicket.id)
+    } catch (error) {
+      setErrorMessage(getApiErrorMessage(error))
+    } finally {
+      setIsCommentSubmitting(false)
     }
+  }
 
-    const handleViewTicket = async (ticket) => {
-      setProcessingId(ticket.id)
-      setErrorMessage('')
-      try {
-        const data = await loadTicketDetails(ticket.id)
-        setSelectedTicket(data || ticket)
-        setDetailsOpen(true)
-      } catch (error) {
-        setErrorMessage(getApiErrorMessage(error))
-      } finally {
-        setProcessingId(null)
-      }
+  const handleDeleteComment = async (commentId) => {
+    if (!window.confirm('Delete this comment?') || !selectedTicket) return
+    
+    setIsActionProcessing(true)
+    try {
+      await deleteTicketComment(selectedTicket.id, commentId)
+      await loadTicketDetails(selectedTicket.id)
+    } catch (error) {
+      setErrorMessage(getApiErrorMessage(error))
+    } finally {
+      setIsActionProcessing(false)
     }
+  }
 
-    const loadAttachmentUrls = useCallback(async (ticketData) => {
-      const attachments = Array.isArray(ticketData?.attachments) ? ticketData.attachments : []
-      if (attachments.length === 0) {
-        setAttachmentUrls({})
-        return
-      }
-
-      setIsAttachmentsLoading(true)
-      try {
-        const entries = await Promise.all(attachments.map(async (attachment) => {
-          const key = extractStorageKey(attachment)
-          if (!key) return [attachment, null]
-          try {
-            const signed = await getAdminTicketAttachmentUrl(ticketData.id, key)
-            return [attachment, signed?.url || null]
-          } catch {
-            return [attachment, null]
-          }
-        }))
-
-        setAttachmentUrls(Object.fromEntries(entries.filter(([, value]) => value)))
-      } finally {
-        setIsAttachmentsLoading(false)
-      }
-    }, [])
-
-    const loadTicketDetails = useCallback(async (ticketId) => {
-      const data = await getAdminTicketById(ticketId)
-      setSelectedTicket(data || null)
-      setCommentText('')
-      await loadAttachmentUrls(data)
-      return data || null
-    }, [loadAttachmentUrls])
-
-    const handleAddComment = async () => {
-      if (!selectedTicket?.id || !commentText.trim()) {
-        return
-      }
-
-      setIsCommentSubmitting(true)
-      setErrorMessage('')
-
-      try {
-        await createTicketComment(selectedTicket.id, commentText.trim())
-        await loadTicketDetails(selectedTicket.id)
-      } catch (error) {
-        setErrorMessage(getApiErrorMessage(error))
-      } finally {
-        setIsCommentSubmitting(false)
-      }
+  const handleUpdateComment = async (commentId) => {
+    if (!editingCommentText.trim() || !selectedTicket) return
+    
+    setIsActionProcessing(true)
+    try {
+      await updateTicketComment(selectedTicket.id, commentId, editingCommentText.trim())
+      setEditingCommentId(null)
+      setEditingCommentText('')
+      await loadTicketDetails(selectedTicket.id)
+    } catch (error) {
+      setErrorMessage(getApiErrorMessage(error))
+    } finally {
+      setIsActionProcessing(false)
     }
+  }
 
-    const handleDeleteComment = async (commentId) => {
-      if (!window.confirm('Delete this comment?') || !selectedTicket) return
-
-      setIsActionProcessing(true)
-      try {
-        await deleteTicketComment(selectedTicket.id, commentId)
-        await loadTicketDetails(selectedTicket.id)
-      } catch (error) {
-        setErrorMessage(getApiErrorMessage(error))
-      } finally {
-        setIsActionProcessing(false)
-      }
-    }
-
-    const handleUpdateComment = async (commentId) => {
-      if (!editingCommentText.trim() || !selectedTicket) return
-
-      setIsActionProcessing(true)
-      try {
-        await updateTicketComment(selectedTicket.id, commentId, editingCommentText.trim())
-        setEditingCommentId(null)
-        setEditingCommentText('')
-        await loadTicketDetails(selectedTicket.id)
-      } catch (error) {
-        setErrorMessage(getApiErrorMessage(error))
-      } finally {
-        setIsActionProcessing(false)
-      }
-    }
-
-    const handleRejectTicket = async () => {
-      if (!rejectionReason.trim() || !selectedTicket?.id) return
+  const handleRejectTicket = async () => {
+    if (!rejectionReason.trim() || !selectedTicket?.id) return
 
     setIsActionProcessing(true)
     setErrorMessage('')
     try {
       await rejectAdminTicket(selectedTicket.id, rejectionReason.trim())
       await loadTickets()
-      setIsRejecting(false)
-      setRejectionReason('')
       setDetailsOpen(false)
       setRejectionReason('')
     } catch (error) {
@@ -755,254 +729,240 @@ function AdminTicketsPage() {
       setIsActionProcessing(false)
     }
   }
-      setIsActionProcessing(true)
-      setErrorMessage('')
-      try {
-        await rejectAdminTicket(selectedTicket.id, rejectionReason.trim())
-        await loadTickets()
-        setDetailsOpen(false)
-        setRejectionReason('')
-      } catch (error) {
-        setErrorMessage(getApiErrorMessage(error))
-      } finally {
-        setIsActionProcessing(false)
-      }
+
+  const handleAssignTicket = async (ticket) => {
+    const technicianId = assignmentByTicket[ticket.id]
+    if (!technicianId) return
+
+    setProcessingId(ticket.id)
+    setErrorMessage('')
+    setSuccessMessage('')
+
+    try {
+      await assignAdminTicket(ticket.id, Number(technicianId))
+      setSuccessMessage('Ticket reassigned successfully.')
+      await loadTickets()
+    } catch (error) {
+      setErrorMessage(getApiErrorMessage(error))
+    } finally {
+      setProcessingId(null)
     }
+  }
 
-    const handleAssignTicket = async (ticket) => {
-      const technicianId = assignmentByTicket[ticket.id]
-      if (!technicianId) return
+  return (
+    <div className="min-h-screen bg-slate-100 text-slate-900">
+      <UserSidebar
+        isSidebarExpanded={isSidebarExpanded}
+        onCollapse={() => setIsSidebarExpanded(false)}
+        onExpand={() => setIsSidebarExpanded(true)}
+        onItemNavigate={(item) => item.path && navigate(item.path)}
+        onLogout={handleLogout}
+        sidebarItems={sidebarItems}
+      />
 
-      setProcessingId(ticket.id)
-      setErrorMessage('')
-      setSuccessMessage('')
+      <div className={`min-h-screen transition-all duration-300 ${isSidebarExpanded ? 'md:pl-64' : 'md:pl-20'}`}>
+        <UserDashboardHeader eyebrow="Admin Operations" title="Ticket Management" />
 
-      try {
-        await assignAdminTicket(ticket.id, Number(technicianId))
-        setSuccessMessage('Ticket reassigned successfully.')
-        await loadTickets()
-      } catch (error) {
-        setErrorMessage(getApiErrorMessage(error))
-      } finally {
-        setProcessingId(null)
-      }
-    }
+        <main className="mx-auto w-full max-w-7xl p-4 pb-24 md:p-8">
+          {errorMessage ? (
+            <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {errorMessage}
+            </div>
+          ) : null}
+          {successMessage ? (
+            <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+              {successMessage}
+            </div>
+          ) : null}
 
-    return (
-      <div className="min-h-screen bg-slate-100 text-slate-900">
-        <UserSidebar
-          isSidebarExpanded={isSidebarExpanded}
-          onCollapse={() => setIsSidebarExpanded(false)}
-          onExpand={() => setIsSidebarExpanded(true)}
-          onItemNavigate={(item) => item.path && navigate(item.path)}
-          onLogout={handleLogout}
-          sidebarItems={sidebarItems}
-        />
-
-        <div className={`min-h-screen transition-all duration-300 ${isSidebarExpanded ? 'md:pl-64' : 'md:pl-20'}`}>
-          <UserDashboardHeader eyebrow="Admin Operations" title="Ticket Management" />
-
-          <main className="mx-auto w-full max-w-7xl p-4 pb-24 md:p-8">
-            {errorMessage ? (
-              <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                {errorMessage}
+          <section className="mb-6 rounded-3xl bg-white p-8 shadow-sm border border-slate-100">
+            <div className="flex flex-wrap items-start justify-between gap-6">
+              <div className="max-w-2xl">
+                <h2 className="text-3xl font-black text-slate-900 tracking-tight">Support Infrastructure</h2>
+                <p className="mt-3 text-sm font-semibold text-slate-500 leading-relaxed">
+                  Oversee all campus incidents, coordinate technician workflows, and maintain service level agreements across all departments.
+                </p>
               </div>
-            ) : null}
-            {successMessage ? (
-              <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-                {successMessage}
-              </div>
-            ) : null}
-
-            <section className="mb-6 rounded-3xl bg-white p-8 shadow-sm border border-slate-100">
-              <div className="flex flex-wrap items-start justify-between gap-6">
-                <div className="max-w-2xl">
-                  <h2 className="text-3xl font-black text-slate-900 tracking-tight">Support Infrastructure</h2>
-                  <p className="mt-3 text-sm font-semibold text-slate-500 leading-relaxed">
-                    Oversee all campus incidents, coordinate technician workflows, and maintain service level agreements across all departments.
-                  </p>
-                </div>
-                <div className="flex gap-4">
-                  <div className="text-right">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">System Status</p>
-                    <div className="mt-1 flex items-center gap-2 text-emerald-600 font-bold">
-                      <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                      Operational
-                    </div>
+              <div className="flex gap-4">
+                <div className="text-right">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">System Status</p>
+                  <div className="mt-1 flex items-center gap-2 text-emerald-600 font-bold">
+                    <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                    Operational
                   </div>
                 </div>
               </div>
-            </section>
+            </div>
+          </section>
 
-            <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {[
-                { label: 'Total Tickets', val: stats.total, color: 'text-slate-900', icon: 'lists' },
-                { label: 'Awaiting Action', val: stats.open, color: 'text-amber-600', icon: 'pending' },
-                { label: 'In Progress', val: stats.progress, color: 'text-indigo-600', icon: 'engineering' },
-                { label: 'Resolved', val: stats.resolved, color: 'text-emerald-600', icon: 'verified' },
-              ].map((s) => (
-                <div key={s.label} className="rounded-2xl bg-white p-6 shadow-sm border border-slate-100 transition-all hover:shadow-md">
-                  <div className="flex items-center justify-between mb-4">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{s.label}</p>
-                    <span className={`material-symbols-outlined ${s.color} opacity-40`}>{s.icon}</span>
-                  </div>
-                  <h3 className={`text-4xl font-black ${s.color}`}>{isLoading ? '—' : s.val}</h3>
+          <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              { label: 'Total Tickets', val: stats.total, color: 'text-slate-900', icon: 'lists' },
+              { label: 'Awaiting Action', val: stats.open, color: 'text-amber-600', icon: 'pending' },
+              { label: 'In Progress', val: stats.progress, color: 'text-indigo-600', icon: 'engineering' },
+              { label: 'Resolved', val: stats.resolved, color: 'text-emerald-600', icon: 'verified' },
+            ].map((s) => (
+              <div key={s.label} className="rounded-2xl bg-white p-6 shadow-sm border border-slate-100 transition-all hover:shadow-md">
+                <div className="flex items-center justify-between mb-4">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{s.label}</p>
+                  <span className={`material-symbols-outlined ${s.color} opacity-40`}>{s.icon}</span>
                 </div>
-              ))}
-            </section>
+                <h3 className={`text-4xl font-black ${s.color}`}>{isLoading ? '—' : s.val}</h3>
+              </div>
+            ))}
+          </section>
 
-            <section className="mt-8">
-              <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-                <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-2xl border border-slate-100 shadow-sm w-full md:w-auto md:min-w-[400px]">
-                  <span className="material-symbols-outlined text-slate-400">search</span>
-                  <input
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                    placeholder="Search by ID, user, or category..."
-                    className="w-full bg-transparent text-sm font-bold text-slate-700 outline-none placeholder:text-slate-300"
-                  />
-                </div>
+          <section className="mt-8">
+            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-2xl border border-slate-100 shadow-sm w-full md:w-auto md:min-w-[400px]">
+                <span className="material-symbols-outlined text-slate-400">search</span>
+                <input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search by ID, user, or category..."
+                  className="w-full bg-transparent text-sm font-bold text-slate-700 outline-none placeholder:text-slate-300"
+                />
+              </div>
 
-                <div className="flex flex-wrap gap-2">
-                  {['ALL', 'OPEN', 'IN_PROGRESS', 'RESOLVED', 'REJECTED', 'CLOSED'].map((status) => (
-                    <button
-                      key={status}
-                      type="button"
-                      onClick={() => setStatusFilter(status)}
-                      className={`rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${statusFilter === status
+              <div className="flex flex-wrap gap-2">
+                {['ALL', 'OPEN', 'IN_PROGRESS', 'RESOLVED', 'REJECTED', 'CLOSED'].map((status) => (
+                  <button
+                    key={status}
+                    type="button"
+                    onClick={() => setStatusFilter(status)}
+                    className={`rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${statusFilter === status
                         ? 'bg-slate-900 text-white shadow-lg'
                         : 'bg-white text-slate-500 border border-slate-100 hover:bg-slate-50'
-                        }`}
-                    >
-                      {status === 'ALL' ? 'All Status' : status.replace('_', ' ')}
-                    </button>
-                  ))}
-                </div>
+                      }`}
+                  >
+                    {status === 'ALL' ? 'All Status' : status.replace('_', ' ')}
+                  </button>
+                ))}
               </div>
+            </div>
 
-              {isLoading ? (
-                <div className="py-24 text-center">
-                  <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-indigo-600" />
-                  <p className="mt-4 text-sm font-black uppercase tracking-widest text-slate-400">Loading infrastructure data...</p>
-                </div>
-              ) : filteredTickets.length === 0 ? (
-                <div className="rounded-3xl border-2 border-dashed border-slate-200 bg-slate-50 p-12 text-center">
-                  <span className="material-symbols-outlined text-slate-300 text-6xl">inventory_2</span>
-                  <p className="mt-4 text-sm font-black uppercase tracking-widest text-slate-400">No matching tickets found.</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                  {filteredTickets.map((ticket) => {
-                    const sla = getSLADisplay(ticket.dueDate)
-                    return (
-                      <div
-                        key={ticket.id}
-                        className="group relative flex flex-col rounded-[2rem] bg-white p-6 shadow-sm border border-slate-100 transition-all duration-500 hover:shadow-xl hover:border-indigo-100 hover:-translate-y-1"
-                      >
-                        <div className="mb-4 flex items-center justify-between">
-                          <TicketBadge status={ticket.status} />
-                          <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">#{ticket.id}</span>
+            {isLoading ? (
+              <div className="py-24 text-center">
+                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-indigo-600" />
+                <p className="mt-4 text-sm font-black uppercase tracking-widest text-slate-400">Loading infrastructure data...</p>
+              </div>
+            ) : filteredTickets.length === 0 ? (
+              <div className="rounded-3xl border-2 border-dashed border-slate-200 bg-slate-50 p-12 text-center">
+                <span className="material-symbols-outlined text-slate-300 text-6xl">inventory_2</span>
+                <p className="mt-4 text-sm font-black uppercase tracking-widest text-slate-400">No matching tickets found.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {filteredTickets.map((ticket) => {
+                  const sla = getSLADisplay(ticket.dueDate)
+                  return (
+                    <div
+                      key={ticket.id}
+                      className="group relative flex flex-col rounded-[2rem] bg-white p-6 shadow-sm border border-slate-100 transition-all duration-500 hover:shadow-xl hover:border-indigo-100 hover:-translate-y-1"
+                    >
+                      <div className="mb-4 flex items-center justify-between">
+                        <TicketBadge status={ticket.status} />
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">#{ticket.id}</span>
+                      </div>
+
+                      <h4 className="text-xl font-black text-slate-900 tracking-tight line-clamp-1 mb-2 group-hover:text-indigo-600 transition-colors">
+                        {ticket.title || `Ticket #${ticket.id}`}
+                      </h4>
+                      <p className="text-xs font-semibold text-slate-500 line-clamp-2 mb-6 min-h-[32px]">
+                        {ticket.description || 'No description provided.'}
+                      </p>
+
+                      <div className="mt-auto space-y-4">
+                        <div className="grid grid-cols-2 gap-4 border-t border-slate-50 pt-4">
+                          <div>
+                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Reporter</p>
+                            <p className="text-[11px] font-bold text-slate-700 truncate">{ticket.userEmail || 'Anonymous'}</p>
+                          </div>
+                          <div>
+                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Priority</p>
+                            <p className={`text-[11px] font-black uppercase tracking-widest ${ticket.priority === 'URGENT' || ticket.priority === 'HIGH' ? 'text-red-600' : 'text-slate-700'
+                              }`}>{ticket.priority || 'MEDIUM'}</p>
+                          </div>
                         </div>
 
-                        <h4 className="text-xl font-black text-slate-900 tracking-tight line-clamp-1 mb-2 group-hover:text-indigo-600 transition-colors">
-                          {ticket.title || `Ticket #${ticket.id}`}
-                        </h4>
-                        <p className="text-xs font-semibold text-slate-500 line-clamp-2 mb-6 min-h-[32px]">
-                          {ticket.description || 'No description provided.'}
-                        </p>
-
-                        <div className="mt-auto space-y-4">
-                          <div className="grid grid-cols-2 gap-4 border-t border-slate-50 pt-4">
-                            <div>
-                              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Reporter</p>
-                              <p className="text-[11px] font-bold text-slate-700 truncate">{ticket.userEmail || 'Anonymous'}</p>
-                            </div>
-                            <div>
-                              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Priority</p>
-                              <p className={`text-[11px] font-black uppercase tracking-widest ${ticket.priority === 'URGENT' || ticket.priority === 'HIGH' ? 'text-red-600' : 'text-slate-700'
-                                }`}>{ticket.priority || 'MEDIUM'}</p>
-                            </div>
+                        {sla && ticket.status === 'OPEN' && (
+                          <div className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-[10px] font-black uppercase tracking-widest ${sla.bg} ${sla.color} ${sla.border}`}>
+                            <span className="material-symbols-outlined text-[16px]">{sla.icon}</span>
+                            {sla.text}
                           </div>
+                        )}
 
-                          {sla && ticket.status === 'OPEN' && (
-                            <div className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-[10px] font-black uppercase tracking-widest ${sla.bg} ${sla.color} ${sla.border}`}>
-                              <span className="material-symbols-outlined text-[16px]">{sla.icon}</span>
-                              {sla.text}
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleViewTicket(ticket)}
+                            disabled={processingId === ticket.id}
+                            className="flex-1 rounded-xl bg-slate-50 py-3 text-[10px] font-black uppercase tracking-widest text-slate-600 transition-all hover:bg-slate-900 hover:text-white"
+                          >
+                            Manage Ticket
+                          </button>
+
+                          {ticket.status === 'OPEN' && (
+                            <div className="flex gap-2">
+                              <select
+                                value={assignmentByTicket[ticket.id] || ''}
+                                onChange={(e) => setAssignmentByTicket(prev => ({ ...prev, [ticket.id]: e.target.value }))}
+                                className="rounded-xl border border-slate-100 bg-slate-50 px-2 text-[10px] font-black uppercase tracking-widest outline-none focus:ring-2 focus:ring-indigo-100"
+                              >
+                                <option value="">Assign</option>
+                                {technicians.map(t => (
+                                  <option key={t.id} value={t.id}>{t.fullName}</option>
+                                ))}
+                              </select>
+                              <button
+                                onClick={() => handleAssignTicket(ticket)}
+                                disabled={!assignmentByTicket[ticket.id] || processingId === ticket.id}
+                                className="grid h-10 w-10 place-items-center rounded-xl bg-indigo-600 text-white shadow-lg shadow-indigo-600/20 transition hover:bg-indigo-700 disabled:opacity-40"
+                              >
+                                <span className="material-symbols-outlined text-[18px]">done</span>
+                              </button>
                             </div>
                           )}
-
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => handleViewTicket(ticket)}
-                              disabled={processingId === ticket.id}
-                              className="flex-1 rounded-xl bg-slate-50 py-3 text-[10px] font-black uppercase tracking-widest text-slate-600 transition-all hover:bg-slate-900 hover:text-white"
-                            >
-                              Manage Ticket
-                            </button>
-
-                            {ticket.status === 'OPEN' && (
-                              <div className="flex gap-2">
-                                <select
-                                  value={assignmentByTicket[ticket.id] || ''}
-                                  onChange={(e) => setAssignmentByTicket(prev => ({ ...prev, [ticket.id]: e.target.value }))}
-                                  className="rounded-xl border border-slate-100 bg-slate-50 px-2 text-[10px] font-black uppercase tracking-widest outline-none focus:ring-2 focus:ring-indigo-100"
-                                >
-                                  <option value="">Assign</option>
-                                  {technicians.map(t => (
-                                    <option key={t.id} value={t.id}>{t.fullName}</option>
-                                  ))}
-                                </select>
-                                <button
-                                  onClick={() => handleAssignTicket(ticket)}
-                                  disabled={!assignmentByTicket[ticket.id] || processingId === ticket.id}
-                                  className="grid h-10 w-10 place-items-center rounded-xl bg-indigo-600 text-white shadow-lg shadow-indigo-600/20 transition hover:bg-indigo-700 disabled:opacity-40"
-                                >
-                                  <span className="material-symbols-outlined text-[18px]">done</span>
-                                </button>
-                              </div>
-                            )}
-                          </div>
                         </div>
                       </div>
-                    )
-                  })}
-                </div>
-              )}
-            </section>
-          </main>
-        </div>
-
-        <TicketDetailsModal
-          open={detailsOpen}
-          ticket={selectedTicket}
-          onClose={() => {
-            setDetailsOpen(false)
-            setSelectedTicket(null)
-            setCommentText('')
-            setAttachmentUrls({})
-            setIsAttachmentsLoading(false)
-            setShowReject(false)
-          }}
-          onAddComment={handleAddComment}
-          commentText={commentText}
-          onCommentTextChange={setCommentText}
-          isCommentSubmitting={isCommentSubmitting}
-          attachmentUrls={attachmentUrls}
-          isAttachmentsLoading={isAttachmentsLoading}
-          currentUserEmail={user?.email}
-          onReject={handleRejectTicket}
-          isActionProcessing={isActionProcessing}
-          rejectionReason={rejectionReason}
-          setRejectionReason={setRejectionReason}
-          onDeleteComment={handleDeleteComment}
-          onUpdateComment={handleUpdateComment}
-          editingCommentId={editingCommentId}
-          setEditingCommentId={setEditingCommentId}
-          editingCommentText={editingCommentText}
-          setEditingCommentText={setEditingCommentText}
-          onUpdateStatus={handleStatusChange}
-        />
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </section>
+        </main>
       </div>
-    )
 
-  export default AdminTicketsPage
+      <TicketDetailsModal
+        open={detailsOpen}
+        ticket={selectedTicket}
+        onClose={() => {
+          setDetailsOpen(false)
+          setSelectedTicket(null)
+          setCommentText('')
+          setAttachmentUrls({})
+          setShowReject(false)
+        }}
+        onAddComment={handleAddComment}
+        commentText={commentText}
+        onCommentTextChange={setCommentText}
+        isCommentSubmitting={isCommentSubmitting}
+        attachmentUrls={attachmentUrls}
+        currentUserEmail={user?.email}
+        onReject={handleRejectTicket}
+        isActionProcessing={isActionProcessing}
+        rejectionReason={rejectionReason}
+        setRejectionReason={setRejectionReason}
+        onDeleteComment={handleDeleteComment}
+        onUpdateComment={handleUpdateComment}
+        editingCommentId={editingCommentId}
+        setEditingCommentId={setEditingCommentId}
+        editingCommentText={editingCommentText}
+        setEditingCommentText={setEditingCommentText}
+        onUpdateStatus={handleStatusChange}
+      />
+    </div>
+  )
+}
+
+export default AdminTicketsPage

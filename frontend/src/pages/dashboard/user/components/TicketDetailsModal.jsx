@@ -68,7 +68,6 @@ export default function TicketDetailsModal({
   isDeleting,
   isCommentSubmitting,
   attachmentUrls,
-  isAttachmentsLoading,
   currentUserEmail,
   onRate,
   isActionProcessing,

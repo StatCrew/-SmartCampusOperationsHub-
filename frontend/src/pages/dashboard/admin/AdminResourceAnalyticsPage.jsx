@@ -8,14 +8,14 @@ import UserDashboardHeader from '../user/components/UserDashboardHeader'
 import UserSidebar from '../user/components/UserSidebar'
 
 const RESOURCE_CONFIG = {
-  LECTURE_HALL: { label: 'Lecture Hall',  color: '#2563eb', bg: 'rgba(37,99,235,0.1)',  icon: '🎓' },
-  LAB:          { label: 'Laboratory',    color: '#3b82f6', bg: 'rgba(59,130,246,0.1)', icon: '🔬' },
-  MEETING_ROOM: { label: 'Meeting Room',  color: '#8b5cf6', bg: 'rgba(139,92,246,0.1)',icon: '🤝' },
-  EQUIPMENT:    { label: 'Equipment',     color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', icon: '⚙️' },
+  LECTURE_HALL: { label: 'Lecture Hall', color: '#2563eb', bg: 'rgba(37,99,235,0.1)', icon: '🎓' },
+  LAB: { label: 'Laboratory', color: '#3b82f6', bg: 'rgba(59,130,246,0.1)', icon: '🔬' },
+  MEETING_ROOM: { label: 'Meeting Room', color: '#8b5cf6', bg: 'rgba(139,92,246,0.1)', icon: '🤝' },
+  EQUIPMENT: { label: 'Equipment', color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', icon: '⚙️' },
 }
 const STATUS_CONFIG = {
-  ACTIVE:         { label: 'Active',         color: '#2563eb', bg: 'rgba(37,99,235,0.09)',  border: 'rgba(37,99,235,0.25)'  },
-  OUT_OF_SERVICE: { label: 'Out of Service', color: '#e53e3e', bg: 'rgba(229,62,62,0.09)',  border: 'rgba(229,62,62,0.25)'  },
+  ACTIVE: { label: 'Active', color: '#2563eb', bg: 'rgba(37,99,235,0.09)', border: 'rgba(37,99,235,0.25)' },
+  OUT_OF_SERVICE: { label: 'Out of Service', color: '#e53e3e', bg: 'rgba(229,62,62,0.09)', border: 'rgba(229,62,62,0.25)' },
 }
 
 function AnimatedNumber({ value, duration = 900 }) {
@@ -133,9 +133,9 @@ function BookingBar({ approved, pending, rejected, cancelled, total }) {
   return (
     <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
       <div style={{ display: 'flex', height: 8, borderRadius: 4, overflow: 'hidden', width: 64, gap: 1 }}>
-        {approved  > 0 && <div style={{ flex: approved,  background: '#2563eb' }} />}
-        {pending   > 0 && <div style={{ flex: pending,   background: '#d97706' }} />}
-        {rejected  > 0 && <div style={{ flex: rejected,  background: '#e53e3e' }} />}
+        {approved > 0 && <div style={{ flex: approved, background: '#2563eb' }} />}
+        {pending > 0 && <div style={{ flex: pending, background: '#d97706' }} />}
+        {rejected > 0 && <div style={{ flex: rejected, background: '#e53e3e' }} />}
         {cancelled > 0 && <div style={{ flex: cancelled, background: '#718096' }} />}
       </div>
       <span style={{ fontSize: '0.68rem', color: '#1e40af', fontWeight: 600 }}>{pct(approved)}%✓</span>
@@ -144,18 +144,18 @@ function BookingBar({ approved, pending, rejected, cancelled, total }) {
 }
 
 export default function AdminResourceAnalyticsPage() {
-  const navigate  = useNavigate()
-  const location  = useLocation()
+  const navigate = useNavigate()
+  const location = useLocation()
   const { role, logout, getApiErrorMessage } = useAuth()
 
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false)
   const [resources, setResources] = useState([])
-  const [bookings,  setBookings]  = useState([])
-  const [loading,   setLoading]   = useState(true)
-  const [error,     setError]     = useState('')
-  const [spinning,  setSpinning]  = useState(false)
+  const [bookings, setBookings] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [spinning, setSpinning] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
-  const [sortBy,    setSortBy]    = useState('bookings')
+  const [sortBy, setSortBy] = useState('bookings')
   const [typeFilter, setTypeFilter] = useState('ALL')
   const [hoveredRow, setHoveredRow] = useState(null)
 
@@ -192,9 +192,9 @@ export default function AdminResourceAnalyticsPage() {
       if (!map[id]) map[id] = { total: 0, approved: 0, pending: 0, rejected: 0, cancelled: 0 }
       map[id].total++
       const s = (b.status || '').toUpperCase()
-      if (s === 'APPROVED')  map[id].approved++
-      if (s === 'PENDING')   map[id].pending++
-      if (s === 'REJECTED')  map[id].rejected++
+      if (s === 'APPROVED') map[id].approved++
+      if (s === 'PENDING') map[id].pending++
+      if (s === 'REJECTED') map[id].rejected++
       if (s === 'CANCELLED') map[id].cancelled++
     }
     return map
@@ -208,29 +208,29 @@ export default function AdminResourceAnalyticsPage() {
   const filtered = useMemo(() => {
     const base = typeFilter === 'ALL' ? enriched : enriched.filter(r => r.type === typeFilter)
     return [...base].sort((a, b) =>
-      sortBy === 'bookings'  ? b.total - a.total :
-      sortBy === 'name'      ? a.name.localeCompare(b.name) :
-      sortBy === 'capacity'  ? b.capacity - a.capacity : 0
+      sortBy === 'bookings' ? b.total - a.total :
+        sortBy === 'name' ? a.name.localeCompare(b.name) :
+          sortBy === 'capacity' ? b.capacity - a.capacity : 0
     )
   }, [enriched, typeFilter, sortBy])
 
-  const typeCounts  = useMemo(() => { const m = { ALL: enriched.length }; for (const t of RESOURCE_TYPES) m[t] = enriched.filter(r => r.type === t).length; return m }, [enriched])
-  const typeMap     = useMemo(() => { const m = {}; for (const r of resources) m[r.type] = (m[r.type] || 0) + 1; return m }, [resources])
-  const statusMap   = useMemo(() => { const m = {}; for (const r of resources) m[r.status] = (m[r.status] || 0) + 1; return m }, [resources])
+  const typeCounts = useMemo(() => { const m = { ALL: enriched.length }; for (const t of RESOURCE_TYPES) m[t] = enriched.filter(r => r.type === t).length; return m }, [enriched])
+  const typeMap = useMemo(() => { const m = {}; for (const r of resources) m[r.type] = (m[r.type] || 0) + 1; return m }, [resources])
+  const statusMap = useMemo(() => { const m = {}; for (const r of resources) m[r.status] = (m[r.status] || 0) + 1; return m }, [resources])
 
-  const totalRes    = resources.length
-  const activeRes   = resources.filter(r => r.status === 'ACTIVE').length
-  const bookedRes   = enriched.filter(r => r.total > 0).length
-  const totalBkgs   = bookings.length
-  const utilPct     = totalRes > 0 ? Math.round((bookedRes / totalRes) * 100) : 0
+  const totalRes = resources.length
+  const activeRes = resources.filter(r => r.status === 'ACTIVE').length
+  const bookedRes = enriched.filter(r => r.total > 0).length
+  const totalBkgs = bookings.length
+  const utilPct = totalRes > 0 ? Math.round((bookedRes / totalRes) * 100) : 0
   const approvedBkgs = bookings.filter(b => (b.status || '').toUpperCase() === 'APPROVED').length
   const approvalRate = totalBkgs > 0 ? Math.round((approvedBkgs / totalBkgs) * 100) : 0
-  const avgPerRes    = totalRes > 0 ? (totalBkgs / totalRes).toFixed(1) : '0'
+  const avgPerRes = totalRes > 0 ? (totalBkgs / totalRes).toFixed(1) : '0'
 
   const topResources = useMemo(() => [...enriched].sort((a, b) => b.total - a.total).slice(0, 8), [enriched])
-  const maxBookings  = topResources[0]?.total || 1
+  const maxBookings = topResources[0]?.total || 1
 
-  const typeSegments   = Object.entries(RESOURCE_CONFIG).map(([k, v]) => ({ label: v.label, color: v.color, value: typeMap[k] || 0 }))
+  const typeSegments = Object.entries(RESOURCE_CONFIG).map(([k, v]) => ({ label: v.label, color: v.color, value: typeMap[k] || 0 }))
   const statusSegments = Object.entries(STATUS_CONFIG).map(([k, v]) => ({ label: v.label, color: v.color, value: statusMap[k] || 0 }))
 
   return (
@@ -323,11 +323,11 @@ export default function AdminResourceAnalyticsPage() {
             {loading ? Array.from({ length: 5 }).map((_, i) => (
               <div key={i} style={{ height: 128, borderRadius: 20, background: 'linear-gradient(90deg,#dbeafe 25%,#bfdbfe 50%,#dbeafe 75%)', backgroundSize: '200% 100%', animation: 'shimmer 1.4s infinite' }} />
             )) : <>
-              <StatCard label="Total Resources"  value={totalRes}    icon="🏢" gradient="linear-gradient(135deg,#2563eb,#3b82f6,#60a5fa)" delay={0.05} />
-              <StatCard label="Active Resources"  value={activeRes}   icon="✅" gradient="linear-gradient(135deg,#dbeafe,#bfdbfe)" textColor="#1e3a8a" subColor="#1e40af" delay={0.10} sub={`${totalRes - activeRes} out of service`} />
-              <StatCard label="Booked Resources"  value={bookedRes}   icon="📅" gradient="linear-gradient(135deg,#eff6ff,#dbeafe)"  textColor="#1d4ed8" subColor="#3b82f6" delay={0.15} sub={`${utilPct}% utilization rate`} />
-              <StatCard label="Total Bookings"    value={totalBkgs}   icon="📋" gradient="linear-gradient(135deg,#faf5ff,#ede9fe)"  textColor="#6d28d9" subColor="#8b5cf6" delay={0.20} sub={`${avgPerRes} avg per resource`} />
-              <StatCard label="Approval Rate"     value={approvalRate} icon="🎯" gradient="linear-gradient(135deg,#fffbeb,#fef3c7)" textColor="#92400e" subColor="#b45309" delay={0.25} sub={`${approvedBkgs} of ${totalBkgs} approved`} />
+              <StatCard label="Total Resources" value={totalRes} icon="🏢" gradient="linear-gradient(135deg,#2563eb,#3b82f6,#60a5fa)" delay={0.05} />
+              <StatCard label="Active Resources" value={activeRes} icon="✅" gradient="linear-gradient(135deg,#dbeafe,#bfdbfe)" textColor="#1e3a8a" subColor="#1e40af" delay={0.10} sub={`${totalRes - activeRes} out of service`} />
+              <StatCard label="Booked Resources" value={bookedRes} icon="📅" gradient="linear-gradient(135deg,#eff6ff,#dbeafe)" textColor="#1d4ed8" subColor="#3b82f6" delay={0.15} sub={`${utilPct}% utilization rate`} />
+              <StatCard label="Total Bookings" value={totalBkgs} icon="📋" gradient="linear-gradient(135deg,#faf5ff,#ede9fe)" textColor="#6d28d9" subColor="#8b5cf6" delay={0.20} sub={`${avgPerRes} avg per resource`} />
+              <StatCard label="Approval Rate" value={approvalRate} icon="🎯" gradient="linear-gradient(135deg,#fffbeb,#fef3c7)" textColor="#92400e" subColor="#b45309" delay={0.25} sub={`${approvedBkgs} of ${totalBkgs} approved`} />
             </>}
           </div>
 
@@ -386,10 +386,10 @@ export default function AdminResourceAnalyticsPage() {
                 </div>
                 <p style={{ fontSize: '0.73rem', color: '#93c5fd', margin: '0 0 0.9rem' }}>{bookedRes} of {totalRes} resources have at least one booking</p>
                 {[
-                  { label: 'Never Booked',          value: totalRes - bookedRes, color: '#e53e3e' },
-                  { label: 'Out of Service',         value: totalRes - activeRes, color: '#d97706' },
-                  { label: 'Avg Bookings / Resource', value: avgPerRes,           color: '#2563eb' },
-                  { label: 'Top Resource',           value: topResources[0]?.name ?? '—', color: '#6d28d9' },
+                  { label: 'Never Booked', value: totalRes - bookedRes, color: '#e53e3e' },
+                  { label: 'Out of Service', value: totalRes - activeRes, color: '#d97706' },
+                  { label: 'Avg Bookings / Resource', value: avgPerRes, color: '#2563eb' },
+                  { label: 'Top Resource', value: topResources[0]?.name ?? '—', color: '#6d28d9' },
                 ].map(row => (
                   <div key={row.label} className="ra-insight-row">
                     <span style={{ fontSize: '0.78rem', color: '#93c5fd' }}>{row.label}</span>
@@ -468,63 +468,63 @@ export default function AdminResourceAnalyticsPage() {
                 </thead>
                 <tbody>
                   {loading ? <SkeletonRows cols={8} n={6} /> :
-                   filtered.length === 0 ? (
-                    <tr>
-                      <td colSpan="8" style={{ padding: '3.5rem 1.5rem', textAlign: 'center' }}>
-                        <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📭</div>
-                        <p style={{ fontFamily: "'Poppins', sans-serif", fontSize: '1rem', fontWeight: 700, color: '#0d2b25', margin: '0 0 0.3rem' }}>No resources found</p>
-                        <p style={{ fontSize: '0.8rem', color: '#93c5fd', margin: 0 }}>Try changing the type filter.</p>
-                      </td>
-                    </tr>
-                  ) : filtered.map((r, i) => {
-                    const cfg = RESOURCE_CONFIG[r.type] || { label: r.type, color: '#93c5fd', bg: '#dbeafe', icon: '🏢' }
-                    const sCfg = STATUS_CONFIG[r.status] || { label: r.status, color: '#93c5fd', bg: '#dbeafe', border: '#bfdbfe' }
-                    const sharePct = totalBkgs > 0 ? (r.total / totalBkgs * 100).toFixed(1) : '0.0'
-                    const barWidth = totalBkgs > 0 ? Math.max(2, r.total / totalBkgs * 100) : 2
-                    return (
-                      <tr key={r.id} className="ra-tbl-row"
-                        onMouseEnter={() => setHoveredRow(r.id)} onMouseLeave={() => setHoveredRow(null)}
-                        style={{ borderBottom: i < filtered.length - 1 ? '1px solid #dbeafe' : 'none', background: hoveredRow === r.id ? '#f0f9ff' : 'transparent' }}>
-                        <td style={{ padding: '0.85rem 1.1rem' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
-                            <div style={{ width: 32, height: 32, borderRadius: 9, background: `linear-gradient(135deg,${cfg.color}20,${cfg.color}40)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', flexShrink: 0 }}>{cfg.icon}</div>
-                            <div>
-                              <div style={{ fontWeight: 700, color: '#0d2b25', fontSize: '0.83rem', whiteSpace: 'nowrap' }}>{r.name}</div>
-                              {r.description && <div style={{ fontSize: '0.68rem', color: '#93c5fd', marginTop: 1, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.description}</div>}
-                            </div>
-                          </div>
-                        </td>
-                        <td style={{ padding: '0.85rem 1.1rem' }}>
-                          <span style={{ fontSize: '0.7rem', fontWeight: 700, color: cfg.color, background: cfg.bg, padding: '0.22rem 0.55rem', borderRadius: 100, whiteSpace: 'nowrap' }}>{cfg.label}</span>
-                        </td>
-                        <td style={{ padding: '0.85rem 1.1rem', fontSize: '0.8rem', color: '#1e40af', whiteSpace: 'nowrap' }}>{r.location || '—'}</td>
-                        <td style={{ padding: '0.85rem 1.1rem' }}>
-                          <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#0d2b25' }}>{r.capacity}</span>
-                          <span style={{ fontSize: '0.68rem', color: '#93c5fd', marginLeft: 2 }}>pax</span>
-                        </td>
-                        <td style={{ padding: '0.85rem 1.1rem' }}>
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: sCfg.bg, color: sCfg.color, border: `1px solid ${sCfg.border}`, borderRadius: 100, padding: '0.2rem 0.65rem', fontSize: '0.68rem', fontWeight: 700, whiteSpace: 'nowrap' }}>
-                            <span style={{ width: 5, height: 5, borderRadius: '50%', background: sCfg.color, ...(r.status === 'ACTIVE' ? { animation: 'pulse 2s infinite' } : {}) }} />
-                            {sCfg.label}
-                          </span>
-                        </td>
-                        <td style={{ padding: '0.85rem 1.1rem' }}>
-                          <span style={{ fontFamily: "'Poppins', sans-serif", fontSize: '1.15rem', fontWeight: 700, color: r.total > 0 ? '#2563eb' : '#bfdbfe' }}>{r.total}</span>
-                        </td>
-                        <td style={{ padding: '0.85rem 1.1rem' }}>
-                          <BookingBar approved={r.approved} pending={r.pending} rejected={r.rejected} cancelled={r.cancelled} total={r.total} />
-                        </td>
-                        <td style={{ padding: '0.85rem 1.1rem' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <div style={{ width: 48, height: 7, borderRadius: 100, background: '#dbeafe', overflow: 'hidden', flexShrink: 0 }}>
-                              <div style={{ width: `${barWidth}%`, height: '100%', borderRadius: 100, background: r.total > 0 ? 'linear-gradient(90deg,#2563eb,#60a5fa)' : '#dbeafe', transition: 'width 0.9s ease' }} />
-                            </div>
-                            <span style={{ fontSize: '0.74rem', fontWeight: 700, color: r.total > 0 ? '#0d2b25' : '#bfdbfe', minWidth: 34 }}>{sharePct}%</span>
-                          </div>
+                    filtered.length === 0 ? (
+                      <tr>
+                        <td colSpan="8" style={{ padding: '3.5rem 1.5rem', textAlign: 'center' }}>
+                          <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📭</div>
+                          <p style={{ fontFamily: "'Poppins', sans-serif", fontSize: '1rem', fontWeight: 700, color: '#0d2b25', margin: '0 0 0.3rem' }}>No resources found</p>
+                          <p style={{ fontSize: '0.8rem', color: '#93c5fd', margin: 0 }}>Try changing the type filter.</p>
                         </td>
                       </tr>
-                    )
-                  })}
+                    ) : filtered.map((r, i) => {
+                      const cfg = RESOURCE_CONFIG[r.type] || { label: r.type, color: '#93c5fd', bg: '#dbeafe', icon: '🏢' }
+                      const sCfg = STATUS_CONFIG[r.status] || { label: r.status, color: '#93c5fd', bg: '#dbeafe', border: '#bfdbfe' }
+                      const sharePct = totalBkgs > 0 ? (r.total / totalBkgs * 100).toFixed(1) : '0.0'
+                      const barWidth = totalBkgs > 0 ? Math.max(2, r.total / totalBkgs * 100) : 2
+                      return (
+                        <tr key={r.id} className="ra-tbl-row"
+                          onMouseEnter={() => setHoveredRow(r.id)} onMouseLeave={() => setHoveredRow(null)}
+                          style={{ borderBottom: i < filtered.length - 1 ? '1px solid #dbeafe' : 'none', background: hoveredRow === r.id ? '#f0f9ff' : 'transparent' }}>
+                          <td style={{ padding: '0.85rem 1.1rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
+                              <div style={{ width: 32, height: 32, borderRadius: 9, background: `linear-gradient(135deg,${cfg.color}20,${cfg.color}40)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', flexShrink: 0 }}>{cfg.icon}</div>
+                              <div>
+                                <div style={{ fontWeight: 700, color: '#0d2b25', fontSize: '0.83rem', whiteSpace: 'nowrap' }}>{r.name}</div>
+                                {r.description && <div style={{ fontSize: '0.68rem', color: '#93c5fd', marginTop: 1, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.description}</div>}
+                              </div>
+                            </div>
+                          </td>
+                          <td style={{ padding: '0.85rem 1.1rem' }}>
+                            <span style={{ fontSize: '0.7rem', fontWeight: 700, color: cfg.color, background: cfg.bg, padding: '0.22rem 0.55rem', borderRadius: 100, whiteSpace: 'nowrap' }}>{cfg.label}</span>
+                          </td>
+                          <td style={{ padding: '0.85rem 1.1rem', fontSize: '0.8rem', color: '#1e40af', whiteSpace: 'nowrap' }}>{r.location || '—'}</td>
+                          <td style={{ padding: '0.85rem 1.1rem' }}>
+                            <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#0d2b25' }}>{r.capacity}</span>
+                            <span style={{ fontSize: '0.68rem', color: '#93c5fd', marginLeft: 2 }}>pax</span>
+                          </td>
+                          <td style={{ padding: '0.85rem 1.1rem' }}>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: sCfg.bg, color: sCfg.color, border: `1px solid ${sCfg.border}`, borderRadius: 100, padding: '0.2rem 0.65rem', fontSize: '0.68rem', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                              <span style={{ width: 5, height: 5, borderRadius: '50%', background: sCfg.color, ...(r.status === 'ACTIVE' ? { animation: 'pulse 2s infinite' } : {}) }} />
+                              {sCfg.label}
+                            </span>
+                          </td>
+                          <td style={{ padding: '0.85rem 1.1rem' }}>
+                            <span style={{ fontFamily: "'Poppins', sans-serif", fontSize: '1.15rem', fontWeight: 700, color: r.total > 0 ? '#2563eb' : '#bfdbfe' }}>{r.total}</span>
+                          </td>
+                          <td style={{ padding: '0.85rem 1.1rem' }}>
+                            <BookingBar approved={r.approved} pending={r.pending} rejected={r.rejected} cancelled={r.cancelled} total={r.total} />
+                          </td>
+                          <td style={{ padding: '0.85rem 1.1rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <div style={{ width: 48, height: 7, borderRadius: 100, background: '#dbeafe', overflow: 'hidden', flexShrink: 0 }}>
+                                <div style={{ width: `${barWidth}%`, height: '100%', borderRadius: 100, background: r.total > 0 ? 'linear-gradient(90deg,#2563eb,#60a5fa)' : '#dbeafe', transition: 'width 0.9s ease' }} />
+                              </div>
+                              <span style={{ fontSize: '0.74rem', fontWeight: 700, color: r.total > 0 ? '#0d2b25' : '#bfdbfe', minWidth: 34 }}>{sharePct}%</span>
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
                 </tbody>
               </table>
             </div>

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { createTicketComment, deleteTicket, deleteTicketComment, getTicketAttachmentUrl, getTicketById, getTickets, updateTicketComment } from '../../../api/ticketApi'
+import { createTicketComment, deleteTicket, deleteTicketComment, getUserTicketAttachmentUrl as getTicketAttachmentUrl, getUserTicketById as getTicketById, getUserTickets as getTickets, updateTicketComment } from '../../../api/ticketApi'
 import useAuth from '../../../context/useAuth'
 import { getHeaderLabelsByRole, getSidebarItemsByRole } from '../constants'
 import UserDashboardHeader from './components/UserDashboardHeader'
@@ -16,6 +16,25 @@ const STATUS_META = {
   REJECTED: { label: 'Rejected', bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200', dot: 'bg-red-500' },
 }
 
+function formatDateTime(value) {
+  if (!value) return '-'
+  try {
+    return new Date(value).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })
+  } catch {
+    return String(value)
+  }
+}
+
+function extractStorageKey(fileUrl) {
+  if (!fileUrl) return null
+  try {
+    const parsed = new URL(fileUrl)
+    return parsed.pathname?.replace(/^\//, '') || null
+  } catch {
+    return fileUrl
+  }
+}
+
 function TicketBadge({ status }) {
   const meta = STATUS_META[status] || STATUS_META.OPEN
   return (
@@ -24,15 +43,6 @@ function TicketBadge({ status }) {
       {meta.label}
     </span>
   )
-}
-
-export function formatDateTime(value) {
-  if (!value) return '-'
-  try { return new Date(value).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) } catch { return String(value) }
-}
-
-export function isImageAttachment(fileUrl) {
-  return /\.(png|jpe?g|gif|bmp|webp|svg)$/i.test(String(fileUrl || ''))
 }
 
 function UserTicketsPage() {
@@ -52,9 +62,7 @@ function UserTicketsPage() {
   const [previewTicket, setPreviewTicket] = useState(null)
   const [processingId, setProcessingId] = useState(null)
   const [commentText, setCommentText] = useState('')
-  const [isCommentSubmitting, setIsCommentSubmitting] = useState(false)
   const [attachmentUrls, setAttachmentUrls] = useState({})
-  const [isAttachmentsLoading, setIsAttachmentsLoading] = useState(false)
   const [editingCommentId, setEditingCommentId] = useState(null)
   const [editingCommentText, setEditingCommentText] = useState('')
 
@@ -126,11 +134,10 @@ function UserTicketsPage() {
       return
     }
 
-    setIsAttachmentsLoading(true)
     try {
       const entries = await Promise.all(attachments.map(async (attachment) => {
-        const parts = attachment.split('/')
-        const key = parts[parts.length - 1]
+        const key = extractStorageKey(attachment)
+        if (!key) return [attachment, null]
         try {
           const signed = await getTicketAttachmentUrl(ticketData.id, key)
           return [attachment, signed?.url || null]
@@ -139,8 +146,8 @@ function UserTicketsPage() {
         }
       }))
       setAttachmentUrls(Object.fromEntries(entries.filter(([, value]) => value)))
-    } finally {
-      setIsAttachmentsLoading(false)
+    } catch {
+      setAttachmentUrls({})
     }
   }, [])
 
@@ -171,7 +178,6 @@ function UserTicketsPage() {
     setPreviewTicket(null)
     setCommentText('')
     setAttachmentUrls({})
-    setIsAttachmentsLoading(false)
   }
 
   const handleEditFromDetails = (ticket) => {
@@ -196,15 +202,12 @@ function UserTicketsPage() {
 
   const handleAddComment = async () => {
     if (!previewTicket?.id || !commentText.trim()) return
-    setIsCommentSubmitting(true)
     setErrorMessage('')
     try {
       await createTicketComment(previewTicket.id, commentText.trim())
       await loadTicketDetails(previewTicket.id)
     } catch (error) {
       setErrorMessage(getApiErrorMessage(error))
-    } finally {
-      setIsCommentSubmitting(false)
     }
   }
 
@@ -237,15 +240,15 @@ function UserTicketsPage() {
   }
 
   return (
-      <div className="min-h-screen bg-slate-100 text-slate-900">
-        <UserSidebar
-            isSidebarExpanded={isSidebarExpanded}
-            onCollapse={() => setIsSidebarExpanded(false)}
-            onExpand={() => setIsSidebarExpanded(true)}
-            onItemNavigate={(item) => item.path && navigate(item.path)}
-            onLogout={handleLogout}
-            sidebarItems={sidebarItems}
-        />
+    <div className="min-h-screen bg-slate-100 text-slate-900">
+      <UserSidebar
+        isSidebarExpanded={isSidebarExpanded}
+        onCollapse={() => setIsSidebarExpanded(false)}
+        onExpand={() => setIsSidebarExpanded(true)}
+        onItemNavigate={(item) => item.path && navigate(item.path)}
+        onLogout={handleLogout}
+        sidebarItems={sidebarItems}
+      />
 
       <div className={`min-h-screen transition-all duration-300 ${isSidebarExpanded ? 'md:pl-64' : 'md:pl-20'}`}>
         <UserDashboardHeader eyebrow={headerLabels.eyebrow} title={headerLabels.title} />
@@ -402,7 +405,6 @@ function UserTicketsPage() {
         onCommentTextChange={setCommentText}
         isDeleting={processingId === previewTicket?.id}
         attachmentUrls={attachmentUrls}
-        isAttachmentsLoading={isAttachmentsLoading}
         currentUserEmail={user?.email}
         onDeleteComment={handleDeleteComment}
         onUpdateComment={handleUpdateComment}
