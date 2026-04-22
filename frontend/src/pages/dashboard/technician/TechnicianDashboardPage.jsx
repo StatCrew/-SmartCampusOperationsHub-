@@ -152,8 +152,8 @@ function TechnicianDashboardPage() {
           <section className="rounded-3xl bg-white p-8 shadow-sm border border-slate-100">
             <ActivityFeed 
               activities={activities} 
-              title="Operational Stream" 
-              subtitle="Latest assigned tasks and system alerts requiring attention." 
+              title="Operational Stream"
+              subtitle="Latest assigned tasks and system alerts requiring attention."
             />
           </section>
         </main>

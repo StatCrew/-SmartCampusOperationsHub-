@@ -340,7 +340,7 @@ function UserResourcesPage() {
                         <td className="px-5 py-4 text-slate-600">{formatResourceType(resource.type)}</td>
                         <td className="px-5 py-4 text-slate-600">{resource.location}</td>
                         <td className="px-5 py-4 text-slate-600">{resource.capacity}</td>
-                        
+
                         {/* Column 6: Schedule */}
                         <td className="px-5 py-4">
                           <Button
@@ -393,10 +393,10 @@ function UserResourcesPage() {
         </main>
       </div>
       {/* adding booking modal */}
-      <CreateBookingModal 
-        isOpen={!!bookingTarget} 
+      <CreateBookingModal
+        isOpen={!!bookingTarget}
         selectedResource={bookingTarget} // Pass the selected resource data!
-        onClose={() => setBookingTarget(null)} 
+        onClose={() => setBookingTarget(null)}
         onSuccess={() => navigate('/dashboard/user/bookings')} // Send them to see their booking!
       />
     </div>

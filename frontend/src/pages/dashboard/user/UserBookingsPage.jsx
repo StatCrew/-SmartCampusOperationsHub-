@@ -391,4 +391,4 @@ function Modal({ icon, iconBg, iconColor, title, description, confirmText, isPro
       </div>
     </div>
   );
-}
+}

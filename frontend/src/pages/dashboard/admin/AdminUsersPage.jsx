@@ -217,13 +217,18 @@ function AdminUsersPage() {
                 </p>
               </div>
               <div className="flex gap-3">
-                <Button 
-                  onClick={refreshUsers} 
-                  className="bg-indigo-500/20 text-white border border-indigo-400/30 hover:bg-indigo-500/40 shadow-lg shadow-indigo-500/10 backdrop-blur-sm"
+                <Button
+                    onClick={refreshUsers}
+                    variant="secondary"
                 >
-                  <span className="material-symbols-outlined mr-2">refresh</span> Sync Registry
+                  <span className="material-symbols-outlined mr-2">refresh</span>
+                  Sync Data
                 </Button>
-                <Button onClick={() => navigate('/admin/users/create')} className="bg-white text-indigo-950 hover:bg-indigo-50 border-none shadow-lg">
+
+                <Button
+                    onClick={() => navigate('/admin/users/create')}
+                    variant="secondary"
+                >
                   Register User
                 </Button>
               </div>
