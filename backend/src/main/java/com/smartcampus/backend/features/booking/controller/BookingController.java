@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Map;
@@ -169,6 +170,16 @@ public class BookingController {
     public ResponseEntity<EntityModel<Booking>> getBookingById(@PathVariable Long id) {
         Booking booking = bookingService.getBookingById(id);
         return ResponseEntity.ok(addLinks(booking));
+    }
+    /**
+     * Intercepts ResponseStatusExceptions (like our 409 Conflict) and forces 
+     * Spring Boot to return our custom suggestion text in the JSON 'message' field.
+     */
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<Map<String, String>> handleResponseStatusException(ResponseStatusException ex) {
+        return ResponseEntity
+                .status(ex.getStatusCode())
+                .body(Map.of("message", ex.getReason()));
     }
 
 }

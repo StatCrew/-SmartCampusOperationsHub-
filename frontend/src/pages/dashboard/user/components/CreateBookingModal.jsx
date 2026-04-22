@@ -33,6 +33,7 @@ export default function CreateBookingModal({ isOpen, onClose, onSuccess, selecte
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [conflictMessage, setConflictMessage] = useState('');
+  const [suggestedSlot, setSuggestedSlot] = useState(null); 
   const [submitted, setSubmitted] = useState(false);
   
   /* Animation State */
@@ -46,6 +47,7 @@ export default function CreateBookingModal({ isOpen, onClose, onSuccess, selecte
       setSubmitted(false); 
       setError(''); 
       setConflictMessage('');
+      setSuggestedSlot(null);
       
       if (modifyData) {
         const [startDate, startTimeStr] = modifyData.startTime.split('T');
@@ -74,6 +76,7 @@ export default function CreateBookingModal({ isOpen, onClose, onSuccess, selecte
     setFormData(p => ({ ...p, [e.target.name]: e.target.value })); 
     setError(''); 
     setConflictMessage(''); 
+    setSuggestedSlot(null);
   };
 
   const goTo = (next) => {
@@ -118,11 +121,25 @@ export default function CreateBookingModal({ isOpen, onClose, onSuccess, selecte
     return true;
   };
 
-  /* Handles final form submission, executing either a POST or PUT request */
+  // Instantly populates the form inputs with the suggested timeslot
+  const acceptSuggestedSlot = () => {
+    if (suggestedSlot) {
+      setFormData(prev => ({
+        ...prev,
+        bookingDate: suggestedSlot.date,
+        startTime: suggestedSlot.startTime,
+        endTime: suggestedSlot.endTime
+      }));
+      setConflictMessage('');
+      setSuggestedSlot(null);
+    }
+  };
+
   const handleSubmit = async () => {
     setLoading(true); 
     setError(''); 
     setConflictMessage('');
+    setSuggestedSlot(null);
     
     try {
       const payload = {
@@ -141,11 +158,26 @@ export default function CreateBookingModal({ isOpen, onClose, onSuccess, selecte
 
       setSubmitted(true);
       setTimeout(() => { onSuccess?.(); }, 2000);
+      
     } catch (err) {
       if (err.response?.status === 409) {
         const msg = err.response.data?.message || err.response.data?.error || err.response.data;
-        setConflictMessage(typeof msg === 'string' ? msg : 'Resource already booked during this time.');
-        goTo(2);
+        const conflictText = typeof msg === 'string' ? msg : 'Resource already booked during this time.';
+        
+        setConflictMessage(conflictText);
+
+        const timeRegex = /(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2})/g;
+        const matches = [...conflictText.matchAll(timeRegex)];
+
+        if (matches.length >= 2) {
+          setSuggestedSlot({
+            date: matches[0][1],      
+            startTime: matches[0][2], 
+            endTime: matches[1][2]    
+          });
+        }
+        
+        goTo(2); 
       } else { 
         setError(getApiErrorMessage(err)); 
       }
@@ -157,7 +189,6 @@ export default function CreateBookingModal({ isOpen, onClose, onSuccess, selecte
   const duration = fmtDuration(formData.startTime, formData.endTime);
   const today = new Date().toISOString().split('T')[0];
 
-  /* Success Screen Rendering */
   if (submitted) return (
     <div className="cbm-overlay">
       <CBMStyles />
@@ -177,13 +208,11 @@ export default function CreateBookingModal({ isOpen, onClose, onSuccess, selecte
     </div>
   );
 
-  /* Main Form Rendering */
   return (
     <div className="cbm-overlay" onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}>
       <CBMStyles />
       <div className="cbm-card">
 
-        {/* Header */}
         <div className="cbm-header">
           <p className="cbm-eyebrow">Facility Booking</p>
           <h3 className="cbm-title">{modifyData ? 'Modify Reservation' : 'Request a Space'}</h3>
@@ -194,7 +223,6 @@ export default function CreateBookingModal({ isOpen, onClose, onSuccess, selecte
           </button>
         </div>
 
-        {/* Progress Stepper */}
         <div className="cbm-stepper">
           {STEPS.map((s, i) => (
             <div key={s.id} className="cbm-step-item">
@@ -211,10 +239,10 @@ export default function CreateBookingModal({ isOpen, onClose, onSuccess, selecte
           ))}
         </div>
 
-        {/* Conflict Warning Banner */}
+        {/* Standard Conflict Warning Banner */}
         {conflictMessage && (
           <div className="cbm-conflict">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
               <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
               <line x1="12" y1="9" x2="12" y2="13"></line>
               <line x1="12" y1="17" x2="12.01" y2="17"></line>
@@ -226,10 +254,7 @@ export default function CreateBookingModal({ isOpen, onClose, onSuccess, selecte
           </div>
         )}
 
-        {/* Dynamic Step Content */}
         <div className={`cbm-step-wrap ${animating ? (direction > 0 ? 'out-left' : 'out-right') : 'in'}`}>
-
-          {/* STEP 1: Resource Selection */}
           {step === 1 && (
             <div className="cbm-step-body">
               <label className="cbm-lbl">Selected Resource</label>
@@ -257,7 +282,6 @@ export default function CreateBookingModal({ isOpen, onClose, onSuccess, selecte
             </div>
           )}
 
-          {/* STEP 2: Time Scheduling */}
           {step === 2 && (
             <div className="cbm-step-body">
               <label className="cbm-lbl">Reservation Date</label>
@@ -288,7 +312,6 @@ export default function CreateBookingModal({ isOpen, onClose, onSuccess, selecte
             </div>
           )}
 
-          {/* STEP 3: Purpose & Summary */}
           {step === 3 && (
             <div className="cbm-step-body">
               <label className="cbm-lbl">Purpose of Booking</label>
@@ -312,7 +335,6 @@ export default function CreateBookingModal({ isOpen, onClose, onSuccess, selecte
           )}
         </div>
 
-        {/* Footer Controls */}
         <div className="cbm-footer">
           {step > 1
             ? <button className="cbm-btn-ghost" onClick={() => goTo(step - 1)}>Back</button>
@@ -325,12 +347,33 @@ export default function CreateBookingModal({ isOpen, onClose, onSuccess, selecte
               </button>
           }
         </div>
+
+        {/* Nested Pop-up Box for the Suggestion */}
+        {suggestedSlot && (
+          <div className="cbm-popup-overlay">
+            <div className="cbm-popup">
+              <div className="cbm-popup-icon">💡</div>
+              <h4 className="cbm-popup-title">Time Slot Taken</h4>
+              <p className="cbm-popup-text">That exact time is already booked. Would you like to instantly switch to the next available slot?</p>
+              
+              <div className="cbm-popup-time">
+                {suggestedSlot.date} <br />
+                {suggestedSlot.startTime} – {suggestedSlot.endTime}
+              </div>
+              
+              <div className="cbm-popup-actions">
+                <button className="cbm-btn-ghost" onClick={() => setSuggestedSlot(null)}>Dismiss</button>
+                <button className="cbm-btn-primary" style={{ width: '100%' }} onClick={acceptSuggestedSlot}>Accept Time</button>
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   );
 }
 
-/* Helper component for summary details */
 function SumItem({ label, value }) {
   return (
     <div>
@@ -345,7 +388,6 @@ function CBMStyles() {
     <style>{`
       @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
 
-      /* ─── Overlay ─── */
       .cbm-overlay {
         position: fixed; inset: 0; z-index: 1000;
         display: flex; align-items: center; justify-content: center; padding: 1rem;
@@ -355,7 +397,6 @@ function CBMStyles() {
       }
       @keyframes cbm-fade { from { opacity: 0 } to { opacity: 1 } }
 
-      /* ─── Card Structure ─── */
       .cbm-card {
         width: 100%; max-width: 460px;
         max-height: 90vh;
@@ -367,33 +408,32 @@ function CBMStyles() {
         overflow: hidden;
         font-family: 'Poppins', sans-serif;
         animation: cbm-up 0.22s cubic-bezier(.22,1,.36,1);
+        position: relative; /* Required to trap the absolute suggestion popup */
       }
       @keyframes cbm-up {
         from { transform: scale(0.96) translateY(8px); opacity: 0 }
         to   { transform: none; opacity: 1 }
       }
 
-      /* ─── Header ─── */
       .cbm-header {
         flex-shrink: 0;
         position: relative;
         padding: 1.75rem;
-        background: #4f46e5; /* Primary Indigo */
+        background: #4f46e5; /* Theme Indigo */
       }
       .cbm-eyebrow { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #c7d2fe; margin: 0 0 0.35rem; }
       .cbm-title { font-size: 1.35rem; font-weight: 700; color: #ffffff; margin: 0; }
       .cbm-close {
         position: absolute; top: 1.5rem; right: 1.5rem;
         width: 32px; height: 32px; border-radius: 8px;
-        background: rgba(255,255,255,0.1); border: none;
+        background: rgba(255,255,255,0.15); border: none;
         color: #ffffff; cursor: pointer;
         display: flex; align-items: center; justify-content: center;
         transition: background 0.2s;
       }
-      .cbm-close:hover { background: rgba(255,255,255,0.25); }
+      .cbm-close:hover { background: rgba(255,255,255,0.3); }
 
-      /* ─── Stepper Progress ─── */
-      .cbm-stepper { flex-shrink: 0; display: flex; align-items: center; padding: 1.25rem 1.75rem; background: #fdfcff; border-bottom: 1.5px solid #f3f0ff; }
+      .cbm-stepper { flex-shrink: 0; display: flex; align-items: center; padding: 1.25rem 1.75rem; background: #fdfcff; border-bottom: 1.5px solid #f8fafc; }
       .cbm-step-item { display: flex; flex-direction: column; align-items: center; position: relative; flex: 1; }
       .cbm-step-dot {
         width: 30px; height: 30px; border-radius: 50%;
@@ -403,25 +443,44 @@ function CBMStyles() {
         transition: all 0.2s ease; position: relative; z-index: 1;
         font-family: 'Poppins', sans-serif;
       }
-      .cbm-step-dot.active { border-color: #4f46e5; background: #4f46e5; color: #ffffff; box-shadow: 0 2px 8px rgba(79,70,229,0.25); }
+      .cbm-step-dot.active { border-color: #4f46e5; background: #4f46e5; color: #ffffff; box-shadow: 0 2px 8px rgba(79, 70, 229, 0.25); }
       .cbm-step-dot.done { border-color: #4f46e5; background: #eef2ff; color: #4f46e5; cursor: pointer; }
       .cbm-step-lbl { font-size: 0.75rem; font-weight: 500; color: #9ca3af; margin-top: 0.5rem; }
-      .cbm-step-lbl.active { color: #1e1b4b; font-weight: 600; }
+      .cbm-step-lbl.active { color: #0f172a; font-weight: 600; }
       .cbm-step-line { position: absolute; top: 14px; left: calc(50% + 15px); width: calc(100% - 30px); height: 2px; background: #e2e8f0; transition: background 0.3s; }
       .cbm-step-line.done { background: #4f46e5; }
 
-      /* ─── Conflict Banner ─── */
       .cbm-conflict { flex-shrink: 0; display: flex; gap: 0.75rem; background: #fffbeb; border: 1.5px solid #fde68a; padding: 1rem 1.25rem; margin: 1.5rem 1.75rem 0; border-radius: 10px; }
       .cbm-conflict strong { font-size: 0.875rem; font-weight: 600; color: #92400e; display: block; margin-bottom: 0.25rem; }
       .cbm-conflict p { font-size: 0.8125rem; color: #b45309; margin: 0; line-height: 1.4; }
 
-      /* ─── Scrolling Content Area ─── */
-      .cbm-step-wrap { 
-        padding: 1.75rem; 
-        flex-grow: 1; 
-        overflow-y: auto; 
-        overflow-x: hidden;
+      /* Suggestion Box Pop-up Overlay */
+      .cbm-popup-overlay {
+        position: absolute; inset: 0; z-index: 50;
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(4px);
+        display: flex; align-items: center; justify-content: center;
+        padding: 1.5rem;
       }
+      .cbm-popup {
+        background: #ffffff; border: 1.5px solid #e2e8f0;
+        border-radius: 16px; padding: 1.75rem; width: 100%; max-width: 340px;
+        box-shadow: 0 25px 50px -12px rgba(0,0,0,0.15);
+        text-align: center;
+        animation: cbm-pop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+      }
+      @keyframes cbm-pop {
+        from { transform: scale(0.9); opacity: 0; }
+        to { transform: scale(1); opacity: 1; }
+      }
+      .cbm-popup-icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+      .cbm-popup-title { font-size: 1.15rem; font-weight: 700; color: #0f172a; margin: 0 0 0.5rem; }
+      .cbm-popup-text { font-size: 0.8125rem; color: #64748b; margin: 0 0 1.25rem; line-height: 1.5; }
+      .cbm-popup-time { background: #eef2ff; color: #4f46e5; font-weight: 700; font-size: 0.875rem; padding: 0.85rem; border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid #c7d2fe; }
+      .cbm-popup-actions { display: flex; gap: 0.75rem; }
+      .cbm-popup-actions button { flex: 1; min-width: 0; }
+
+      .cbm-step-wrap { padding: 1.75rem; flex-grow: 1; overflow-y: auto; overflow-x: hidden; }
       .cbm-step-body { display: flex; flex-direction: column; }
       .in       { animation: cbm-in  0.2s ease-out }
       .out-left { animation: cbm-outL 0.2s ease-in forwards }
@@ -430,7 +489,6 @@ function CBMStyles() {
       @keyframes cbm-outL { to{opacity:0;transform:translateX(-10px)} }
       @keyframes cbm-outR { to{opacity:0;transform:translateX(10px)} }
 
-      /* ─── Form Inputs ─── */
       .cbm-lbl { display: block; font-size: 0.8125rem; font-weight: 600; color: #374151; margin-bottom: 0.5rem; }
       .cbm-input {
         width: 100%; box-sizing: border-box;
@@ -439,12 +497,11 @@ function CBMStyles() {
         color: #1e293b; background: #ffffff;
         transition: all 0.2s; outline: none;
       }
-      .cbm-input:focus { border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1); }
+      .cbm-input:focus { border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15); }
       .cbm-input.locked { background: #f8fafc; color: #64748b; cursor: not-allowed; border-color: #e2e8f0; font-weight: 500; }
       .cbm-textarea { resize: vertical; min-height: 80px; }
       .cbm-hint { font-size: 0.75rem; color: #9ca3af; margin: 0.4rem 0 0; }
 
-      /* ─── Attendee Controls ─── */
       .cbm-attendee-row { display: flex; align-items: center; gap: 1rem; }
       .cbm-att-btn {
         width: 36px; height: 36px; border-radius: 8px;
@@ -456,35 +513,30 @@ function CBMStyles() {
       .cbm-att-num { font-size: 1.125rem; font-weight: 600; color: #1e1b4b; min-width: 32px; text-align: center; }
       .cbm-att-lbl { font-size: 0.875rem; color: #64748b; font-weight: 500; }
 
-      /* ─── Summary Elements ─── */
       .cbm-duration-pill { display: inline-flex; align-items: center; background: #eef2ff; color: #4f46e5; padding: 0.4rem 0.85rem; border-radius: 8px; font-size: 0.75rem; font-weight: 600; margin-top: 1rem; border: 1px solid #c7d2fe; }
       .cbm-summary { background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 1.25rem; margin-top: 1.5rem; }
-      .cbm-summary-title { font-size: 0.875rem; font-weight: 600; color: #1e1b4b; margin: 0 0 1rem; }
+      .cbm-summary-title { font-size: 0.875rem; font-weight: 600; color: #0f172a; margin: 0 0 1rem; }
       .cbm-summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem 1rem; }
 
-      /* ─── Validation Errors ─── */
       .cbm-err-inline { font-size: 0.8125rem; font-weight: 500; color: #dc2626; margin-top: 0.75rem; }
       .cbm-warn { font-size: 0.8125rem; font-weight: 500; color: #b45309; margin-top: 0.75rem; padding: 0.75rem; background: #fffbeb; border: 1.5px solid #fde68a; border-radius: 8px; }
 
-      /* ─── Footer Controls ─── */
-      .cbm-footer { flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; padding: 1.25rem 1.75rem; background: #fdfcff; border-top: 1.5px solid #f3f0ff; }
+      .cbm-footer { flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; padding: 1.25rem 1.75rem; background: #fdfcff; border-top: 1.5px solid #f8fafc; }
       .cbm-btn-ghost { background: #ffffff; border: 1.5px solid #e5e7eb; border-radius: 8px; padding: 0.65rem 1.25rem; font-size: 0.875rem; font-weight: 600; color: #4b5563; cursor: pointer; transition: all 0.2s; font-family: 'Poppins', sans-serif; }
-      .cbm-btn-ghost:hover { background: #f8fafc; color: #1e1b4b; border-color: #cbd5e1; }
+      .cbm-btn-ghost:hover { background: #f8fafc; color: #0f172a; border-color: #cbd5e1; }
       
       .cbm-btn-primary { background: #4f46e5; color: #ffffff; border: none; border-radius: 8px; font-size: 0.875rem; font-weight: 600; padding: 0.65rem 1.75rem; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; min-width: 120px; font-family: 'Poppins', sans-serif; box-shadow: 0 2px 4px rgba(79, 70, 229, 0.15); }
       .cbm-btn-primary:hover:not(:disabled) { background: #4338ca; box-shadow: 0 4px 10px rgba(79, 70, 229, 0.25); transform: translateY(-1px); }
       .cbm-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; transform: none; }
 
-      /* ─── Loading Animation ─── */
       .cbm-dots { display: flex; gap: 5px; align-items: center; }
       .cbm-dots span { width: 6px; height: 6px; border-radius: 50%; background: #ffffff; animation: cbm-bounce 0.8s infinite ease-in-out; }
       .cbm-dots span:nth-child(2) { animation-delay: 0.15s; }
       .cbm-dots span:nth-child(3) { animation-delay: 0.3s; }
       @keyframes cbm-bounce { 0%,80%,100%{transform:scale(0.6);opacity:0.6} 40%{transform:scale(1);opacity:1} }
 
-      /* ─── Success Feedback ─── */
       .cbm-success-icon { width: 64px; height: 64px; border-radius: 50%; background: #ecfdf5; color: #10b981; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; }
-      .cbm-success-title { font-size: 1.5rem; font-weight: 700; color: #1e1b4b; margin: 0 0 0.5rem; }
+      .cbm-success-title { font-size: 1.5rem; font-weight: 700; color: #0f172a; margin: 0 0 0.5rem; }
       .cbm-success-sub { font-size: 0.875rem; color: #64748b; margin: 0 0 1.5rem; }
       .cbm-success-badge { display: inline-block; padding: 0.6rem 1.2rem; background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem; font-weight: 600; color: #334155; }
     `}</style>

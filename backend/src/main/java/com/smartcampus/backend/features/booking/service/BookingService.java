@@ -4,28 +4,47 @@ import com.smartcampus.backend.features.booking.dto.AnalyticsResponse;
 import com.smartcampus.backend.features.booking.dto.BookingRequest;
 import com.smartcampus.backend.features.booking.model.Booking;
 import com.smartcampus.backend.features.booking.repository.BookingRepository;
+import com.smartcampus.backend.features.resource.model.ResourceAvailabilitySlot;
+import com.smartcampus.backend.features.resource.repository.ResourceAvailabilitySlotRepository;
 import com.smartcampus.backend.features.user.model.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
+
+import java.time.DayOfWeek;
+import java.time.Duration;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import java.time.Duration;
-import java.time.LocalDateTime;
 
-import java.util.List;
-
+/**
+ * Service layer handling the business logic for facility reservations.
+ * Manages creation, modification, and advanced conflict resolution.
+ */
 @Service
-@RequiredArgsConstructor // Lombok: Automatically creates a constructor for the repository
+@RequiredArgsConstructor
 public class BookingService {
 
     private final BookingRepository bookingRepository;
+    private final ResourceAvailabilitySlotRepository slotRepository;
 
-    // 1. Create a Booking
+    /**
+     * Creates a new booking after verifying resource availability.
+     * Throws a CONFLICT status with suggested alternative times if the slot is taken.
+     *
+     * @param request     The booking details.
+     * @param currentUser The authenticated user making the request.
+     * @return The persisted Booking entity.
+     */
     public Booking createBooking(BookingRequest request, User currentUser) {
         
-        // Fulfilling the conflict checking workflow requirement
         List<Booking> conflicts = bookingRepository.findConflictingBookings(
                 request.resourceId(),
                 request.startTime(),
@@ -33,18 +52,10 @@ public class BookingService {
         );
 
         if (!conflicts.isEmpty()) {
-            // Calculate the next available slot and return it in the error message
-            LocalDateTime nextAvailable = findNextAvailableSlot(request.resourceId(), request.startTime(), request.endTime());
-            LocalDateTime nextAvailableEnd = nextAvailable.plus(Duration.between(request.startTime(), request.endTime()));
-            
-            String suggestion = String.format("Resource is busy. The next available slot is from %s to %s.", 
-                    nextAvailable.toString().replace("T", " "), 
-                    nextAvailableEnd.toString().replace("T", " "));
-                    
+            String suggestion = buildConflictSuggestion(request.resourceId(), request.startTime(), request.endTime(), null);
             throw new ResponseStatusException(HttpStatus.CONFLICT, suggestion);
         }
 
-        // Using the Builder pattern to map DTO to Entity
         Booking newBooking = Booking.builder()
                 .resourceId(request.resourceId())
                 .user(currentUser)
@@ -52,28 +63,33 @@ public class BookingService {
                 .endTime(request.endTime())
                 .purpose(request.purpose())
                 .attendees(request.attendees())
-                .status("PENDING") // All new bookings start in the PENDING state
+                .status("PENDING")
                 .build();
 
         return bookingRepository.save(newBooking);
     }
 
-    // 2. Get Bookings for the Logged-in User
+    /**
+     * Retrieves all bookings associated with a specific user.
+     */
     public List<Booking> getUserBookings(Long userId) {
         return bookingRepository.findByUserId(userId);
     }
 
-    // 3. Get All Bookings (For Admins)
+    /**
+     * Retrieves all bookings in the system.
+     */
     public List<Booking> getAllBookings() {
         return bookingRepository.findAll();
     }
 
-    // 4. Update Booking Status (Approve, Reject, Cancel)
+    /**
+     * Updates the workflow status of an existing booking.
+     */
     public Booking updateBookingStatus(Long bookingId, String newStatus) {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found"));
 
-        // Ensure only valid workflow states are applied
         if (!newStatus.equals("APPROVED") && !newStatus.equals("REJECTED") && !newStatus.equals("CANCELLED")) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid status provided.");
         }
@@ -82,7 +98,9 @@ public class BookingService {
         return bookingRepository.save(booking);
     }
 
-    // 5. Delete a Booking 
+    /**
+     * Permanently deletes a booking record from the database.
+     */
     public void deleteBooking(Long bookingId) {
         if (!bookingRepository.existsById(bookingId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found");
@@ -90,13 +108,17 @@ public class BookingService {
         bookingRepository.deleteById(bookingId);
     }
 
-    // Get a single booking by ID 
+    /**
+     * Retrieves a single booking by its ID.
+     */
     public Booking getBookingById(Long bookingId) {
         return bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found with ID: " + bookingId));
     }
 
-    // 6. Generate Admin Analytics Dashboard
+    /**
+     * Generates aggregated metrics for the administrative dashboard.
+     */
     public AnalyticsResponse getBookingAnalytics() {
         List<Booking> allBookings = bookingRepository.findAll();
 
@@ -105,7 +127,6 @@ public class BookingService {
         long approved = allBookings.stream().filter(b -> b.getStatus().equals("APPROVED")).count();
         long rejected = allBookings.stream().filter(b -> b.getStatus().equals("REJECTED")).count();
 
-        // Group by Resource ID and count to find the most popular resources
         Map<Long, Long> popularResources = allBookings.stream()
                 .collect(Collectors.groupingBy(Booking::getResourceId, Collectors.counting()));
 
@@ -118,11 +139,13 @@ public class BookingService {
                 .build();
     }
 
-    // 7. Update Full Booking (Handles the PUT request)
+    /**
+     * Replaces the details of an existing booking and resets its status for review.
+     * Prevents the existing booking from triggering a conflict with itself.
+     */
     public Booking updateFullBooking(Long id, BookingRequest request, User currentUser) {
         Booking existingBooking = getBookingById(id);
 
-        // Check for conflicts, ignoring the current booking itself so we don't conflict with our own old timeslot
         List<Booking> conflicts = bookingRepository.findConflictingBookings(
                 request.resourceId(),
                 request.startTime(),
@@ -134,54 +157,157 @@ public class BookingService {
                 .toList();
 
         if (!conflicts.isEmpty()) {
-            LocalDateTime nextAvailable = findNextAvailableSlot(request.resourceId(), request.startTime(), request.endTime());
-            LocalDateTime nextAvailableEnd = nextAvailable.plus(Duration.between(request.startTime(), request.endTime()));
-            
-            String suggestion = String.format("Resource is busy. The next available slot is from %s to %s.", 
-                    nextAvailable.toString().replace("T", " "), 
-                    nextAvailableEnd.toString().replace("T", " "));
-                    
+            String suggestion = buildConflictSuggestion(request.resourceId(), request.startTime(), request.endTime(), id);
             throw new ResponseStatusException(HttpStatus.CONFLICT, suggestion);
         }
 
-        // Overwrite the old details with the new ones from the request
         existingBooking.setResourceId(request.resourceId());
         existingBooking.setStartTime(request.startTime());
         existingBooking.setEndTime(request.endTime());
         existingBooking.setPurpose(request.purpose());
         existingBooking.setAttendees(request.attendees());
         
-        // Because they changed the details, reset the status so an Admin reviews it again
         existingBooking.setStatus("PENDING");
 
         return bookingRepository.save(existingBooking);
     }
 
-    // Helper Method: Calculates the next available time slot if a conflict occurs
-    private LocalDateTime findNextAvailableSlot(Long resourceId, LocalDateTime requestedStart, LocalDateTime requestedEnd) {
-        Duration requestedDuration = Duration.between(requestedStart, requestedEnd);
-        LocalDateTime proposedStart = requestedStart;
-
-        // Get all upcoming bookings for this resource to find a gap
-        List<Booking> futureBookings = bookingRepository.findByResourceIdAndStartTimeGreaterThanEqualOrderByStartTimeAsc(resourceId, requestedStart);
-
-        for (Booking b : futureBookings) {
-            // Ignore cancelled or rejected bookings
-            if (b.getStatus().equals("CANCELLED") || b.getStatus().equals("REJECTED")) {
-                continue;
-            }
-
-            LocalDateTime proposedEnd = proposedStart.plus(requestedDuration);
-            
-            // If our proposed slot overlaps with this booking, push our proposed start to the end of this booking
-            if (proposedStart.isBefore(b.getEndTime()) && proposedEnd.isAfter(b.getStartTime())) {
-                proposedStart = b.getEndTime();
-            } else {
-                
-                break;
-            }
+    /**
+     * Advanced scheduling algorithm. 
+     * Merges fragmented database slots in memory, then analyzes the dynamic operational hours 
+     * of a resource to recommend the absolute next available slot.
+     */
+    private String buildConflictSuggestion(Long resourceId, LocalDateTime reqStart, LocalDateTime reqEnd, Long ignoreBookingId) {
+        List<ResourceAvailabilitySlot> rawSchedule = slotRepository.findByResourceId(resourceId);
+        
+        if (rawSchedule == null || rawSchedule.isEmpty()) {
+            return "Resource scheduling is not configured. Please contact the administrator.";
         }
-        return proposedStart;
+
+        // Phase 1: Merge fragmented 1-hour database slots into contiguous blocks
+        Map<DayOfWeek, List<TimeWindow>> scheduleMap = new HashMap<>();
+        for (DayOfWeek day : DayOfWeek.values()) {
+            List<ResourceAvailabilitySlot> daySlots = rawSchedule.stream()
+                    .filter(s -> s.getDayOfWeek() == day)
+                    .sorted(Comparator.comparing(ResourceAvailabilitySlot::getStartTime))
+                    .toList();
+
+            List<TimeWindow> merged = new ArrayList<>();
+            TimeWindow current = null;
+            
+            for (ResourceAvailabilitySlot slot : daySlots) {
+                if (current == null) {
+                    current = new TimeWindow(slot.getStartTime(), slot.getEndTime());
+                } else if (!slot.getStartTime().isAfter(current.end)) {
+                    // Slots are contiguous or overlapping; extend the current window
+                    if (slot.getEndTime().isAfter(current.end)) {
+                        current.end = slot.getEndTime();
+                    }
+                } else {
+                    merged.add(current);
+                    current = new TimeWindow(slot.getStartTime(), slot.getEndTime());
+                }
+            }
+            if (current != null) {
+                merged.add(current);
+            }
+            scheduleMap.put(day, merged);
+        }
+
+        // Phase 2: Fetch bookings to identify conflicts
+        List<Booking> futureBookings = bookingRepository.findByResourceIdAndStartTimeGreaterThanEqualOrderByStartTimeAsc(
+                resourceId, reqStart.toLocalDate().atStartOfDay()
+        ).stream()
+         .filter(b -> "APPROVED".equals(b.getStatus()) || "PENDING".equals(b.getStatus()))
+         .filter(b -> ignoreBookingId == null || !b.getId().equals(ignoreBookingId))
+         .toList();
+
+        Duration duration = Duration.between(reqStart, reqEnd);
+        LocalDate checkDate = reqStart.toLocalDate();
+        LocalDateTime searchTime = reqStart;
+
+        LocalDateTime nextAvailableStart = null;
+        LocalDateTime nextAvailableEnd = null;
+
+        int daysChecked = 0;
+        
+        // Phase 3: Scan ahead up to 14 days
+        while (daysChecked < 14) { 
+            List<TimeWindow> daySchedule = scheduleMap.get(checkDate.getDayOfWeek());
+
+            if (daySchedule != null) {
+                for (TimeWindow window : daySchedule) {
+                    LocalDateTime windowStart = checkDate.atTime(window.start);
+                    LocalDateTime windowEnd = checkDate.atTime(window.end);
+
+                    // Skip this window if we are already past its end time
+                    if (!searchTime.isBefore(windowEnd)) continue;
+
+                    LocalDateTime currentSearchStart = searchTime.isAfter(windowStart) ? searchTime : windowStart;
+
+                    while (!currentSearchStart.plus(duration).isAfter(windowEnd)) {
+                        LocalDateTime currentSearchEnd = currentSearchStart.plus(duration);
+                        LocalDateTime finalSearchStart = currentSearchStart;
+
+                        // Identify any overlap with existing bookings
+                        List<Booking> overlaps = futureBookings.stream()
+                                .filter(b -> finalSearchStart.isBefore(b.getEndTime()) && currentSearchEnd.isAfter(b.getStartTime()))
+                                .toList();
+
+                        if (overlaps.isEmpty()) {
+                            // Valid gap found!
+                            nextAvailableStart = currentSearchStart;
+                            nextAvailableEnd = currentSearchEnd;
+                            break; 
+                        } else {
+                            // Jump to the conclusion of the overlapping booking
+                            LocalDateTime maxOverlapEnd = overlaps.stream()
+                                    .map(Booking::getEndTime)
+                                    .max(LocalDateTime::compareTo)
+                                    .orElse(currentSearchEnd);
+                                    
+                            currentSearchStart = maxOverlapEnd;
+
+                            // Apply rounding for a clean UI presentation (nearest 30m)
+                            int min = currentSearchStart.getMinute();
+                            if (min > 0 && min <= 30) {
+                                currentSearchStart = currentSearchStart.withMinute(30).withSecond(0).withNano(0);
+                            } else if (min > 30) {
+                                currentSearchStart = currentSearchStart.plusHours(1).withMinute(0).withSecond(0).withNano(0);
+                            }
+                        }
+                    }
+                    if (nextAvailableStart != null) break;
+                }
+            }
+
+            if (nextAvailableStart != null) break;
+
+            // Reset search time to start of the next day
+            checkDate = checkDate.plusDays(1);
+            searchTime = checkDate.atStartOfDay();
+            daysChecked++;
+        }
+
+        if (nextAvailableStart == null) {
+            return "Resource is fully booked for the foreseeable future.";
+        }
+
+        return String.format("Time conflict. Next available: %s to %s.", 
+                nextAvailableStart.toString().replace("T", " "), 
+                nextAvailableEnd.toString().replace("T", " "));
     }
-    
+
+    /**
+     * Lightweight inner class to handle memory-merged time windows cleanly.
+     */
+    private static class TimeWindow {
+        LocalTime start;
+        LocalTime end;
+        
+        TimeWindow(LocalTime start, LocalTime end) {
+            this.start = start;
+            this.end = end;
+        }
+    }
 }
