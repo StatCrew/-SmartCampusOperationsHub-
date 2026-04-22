@@ -191,14 +191,25 @@ export async function resolveTechnicianTicket(id, notes) {
 const ticketApi = {
   getUserTickets,
   getUserTicketById,
+  getUserTicketAttachmentUrl,
   createTicket,
   updateTicket,
   deleteTicket,
+  rateUserTicket,
+  getTicketComments,
+  createTicketComment,
+  updateTicketComment,
+  deleteTicketComment,
   getAdminTickets,
   getAdminTicketById,
+  getAdminTicketAttachmentUrl,
   updateAdminTicketStatus,
+  assignAdminTicket,
+  rejectAdminTicket,
   getTechnicianTickets,
   getTechnicianTicketById,
+  getTechnicianTicketAttachmentUrl,
+  resolveTechnicianTicket,
 }
 
 export default ticketApi

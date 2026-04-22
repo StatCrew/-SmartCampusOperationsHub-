@@ -70,9 +70,8 @@ public class TicketService {
     // Update Ticket
     public Ticket updateTicket(Long id, Ticket updatedTicket) {
 
-        // Find existing ticket
-        Ticket existing = ticketRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Ticket not found"));
+        // Find existing ticket (enforcing ownership)
+        Ticket existing = getMyTicketById(id);
 
         // Only allow updates if status is OPEN
         if (existing.getStatus() != TicketStatus.OPEN) {
@@ -97,9 +96,8 @@ public class TicketService {
     // Delete Ticket
     public void deleteTicket(Long id) {
 
-        // Find ticket
-        Ticket existing = ticketRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Ticket not found"));
+        // Find ticket (enforcing ownership)
+        Ticket existing = getMyTicketById(id);
 
         // Only allow delete if status is OPEN
         if (existing.getStatus() != TicketStatus.OPEN) {
@@ -348,24 +346,6 @@ public class TicketService {
     }
 
 
-    private int technicianIndex = 0; // For round-robin technician assignment
-
-    private User getNextTechnician() {
-
-        List<User> technicians = userRepository
-                .searchUsers("", Role.TECHNICIAN, true, PageRequest.of(0, 100))
-                .getContent();
-
-        if (technicians.isEmpty()) {
-            throw new RuntimeException("No technicians available");
-        }
-
-        User selected = technicians.get(technicianIndex % technicians.size());
-
-        technicianIndex++;
-
-        return selected;
-    }
 
     private void assignBestTechnician(Ticket ticket) {
         Optional<User> selected = findBestTechnician(ticket.getCategory());
