@@ -15,7 +15,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     // Retrieves all bookings made by a specific user (useful for the user dashboard)
     List<Booking> findByUserId(Long userId);
 
-    // CRITICAL: The conflict checking logic required by the rubric
+    // The conflict checking logic is implemented as a custom query to efficiently check for overlapping bookings
     // Checks if there are any approved or pending bookings for the same resource that overlap with the requested times
     @Query("SELECT b FROM Booking b WHERE b.resourceId = :resourceId " +
            "AND b.status IN ('PENDING', 'APPROVED') " +
@@ -25,7 +25,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
             @Param("startTime") LocalDateTime startTime, 
             @Param("endTime") LocalDateTime endTime);
 
-    // INNOVATION FEATURE: Fetch all future bookings for a resource to help calculate gaps
+    // Fetch all future bookings for a resource to help calculate gaps
     List<Booking> findByResourceIdAndStartTimeGreaterThanEqualOrderByStartTimeAsc(
             Long resourceId, 
             LocalDateTime startTime);

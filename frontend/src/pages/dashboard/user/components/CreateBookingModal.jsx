@@ -1,41 +1,55 @@
-import { useState, useEffect, useRef } from 'react'
-import { createBooking, updateFullBooking } from '../../../../api/bookingApi' // 👇 IMPORTED UPDATE API
-import useAuth from '../../../../context/useAuth'
+import { useState, useEffect, useRef } from 'react';
+import { createBooking, updateFullBooking } from '../../../../api/bookingApi';
+import useAuth from '../../../../context/useAuth';
 
-// --- Step definitions ---
+/* Constant configurations for modal steps */
 const STEPS = [
   { id: 1, label: 'Resource',  icon: '🏢' },
   { id: 2, label: 'Schedule',  icon: '📅' },
   { id: 3, label: 'Details',   icon: '📝' },
-]
+];
 
-// --- Helper: parse "HH:MM" to minutes ---
-const toMins = t => { if (!t) return 0; const [h,m] = t.split(':'); return +h*60+(+m) }
+/* Helper utilities for time calculations */
+const toMins = t => { 
+  if (!t) return 0; 
+  const [h,m] = t.split(':'); 
+  return +h * 60 + (+m); 
+};
+
 const fmtDuration = (s, e) => {
-  const d = toMins(e) - toMins(s); if (d <= 0) return null
-  const h = Math.floor(d/60), m = d%60
-  return h && m ? `${h}h ${m}m` : h ? `${h}h` : `${m}m`
-}
+  const d = toMins(e) - toMins(s); 
+  if (d <= 0) return null;
+  const h = Math.floor(d / 60);
+  const m = d % 60;
+  return h && m ? `${h}h ${m}m` : h ? `${h}h` : `${m}m`;
+};
 
 export default function CreateBookingModal({ isOpen, onClose, onSuccess, selectedResource, activeKeys, modifyData }) {
-  const { getApiErrorMessage } = useAuth()
-  const [step, setStep] = useState(1)
-  const [formData, setFormData] = useState({ resourceId:'', bookingDate:'', startTime:'', endTime:'', purpose:'', attendees:1 })
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [conflictMessage, setConflictMessage] = useState('')
-  const [submitted, setSubmitted] = useState(false)
-  const [direction, setDirection] = useState(1)
-  const [animating, setAnimating] = useState(false)
+  const { getApiErrorMessage } = useAuth();
+  
+  /* Component State */
+  const [step, setStep] = useState(1);
+  const [formData, setFormData] = useState({ resourceId: '', bookingDate: '', startTime: '', endTime: '', purpose: '', attendees: 1 });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [conflictMessage, setConflictMessage] = useState('');
+  const [submitted, setSubmitted] = useState(false);
+  
+  /* Animation State */
+  const [direction, setDirection] = useState(1);
+  const [animating, setAnimating] = useState(false);
 
+  /* Initialize form data when modal opens or modifyData changes */
   useEffect(() => {
     if (isOpen) {
-      setStep(1); setSubmitted(false); setError(''); setConflictMessage('')
+      setStep(1); 
+      setSubmitted(false); 
+      setError(''); 
+      setConflictMessage('');
       
       if (modifyData) {
-        // Extract date and times from the existing booking
-        const [startDate, startTimeStr] = modifyData.startTime.split('T')
-        const [, endTimeStr] = modifyData.endTime.split('T')
+        const [startDate, startTimeStr] = modifyData.startTime.split('T');
+        const [, endTimeStr] = modifyData.endTime.split('T');
         
         setFormData({
           resourceId: selectedResource?.id || modifyData.resourceId || '',
@@ -44,52 +58,72 @@ export default function CreateBookingModal({ isOpen, onClose, onSuccess, selecte
           endTime: endTimeStr.substring(0, 5),
           purpose: modifyData.purpose || '',
           attendees: modifyData.attendees || 1
-        })
+        });
       } else {
-        setFormData({ resourceId: selectedResource?.id||'', bookingDate:'', startTime:'', endTime:'', purpose:'', attendees:1 })
+        setFormData({ 
+          resourceId: selectedResource?.id || '', 
+          bookingDate: '', startTime: '', endTime: '', purpose: '', attendees: 1 
+        });
       }
     }
-  }, [isOpen, selectedResource, modifyData])
+  }, [isOpen, selectedResource, modifyData]);
 
-  if (!isOpen) return null
+  if (!isOpen) return null;
 
-  const handleChange = e => { setFormData(p => ({ ...p, [e.target.name]: e.target.value })); setError(''); setConflictMessage('') }
+  const handleChange = (e) => { 
+    setFormData(p => ({ ...p, [e.target.name]: e.target.value })); 
+    setError(''); 
+    setConflictMessage(''); 
+  };
 
-  const goTo = next => {
-    if (animating) return
-    setDirection(next > step ? 1 : -1); setAnimating(true)
-    setTimeout(() => { setStep(next); setAnimating(false) }, 200)
-  }
+  const goTo = (next) => {
+    if (animating) return;
+    setDirection(next > step ? 1 : -1); 
+    setAnimating(true);
+    setTimeout(() => { 
+      setStep(next); 
+      setAnimating(false); 
+    }, 200);
+  };
 
+  /* Validates if the selected time falls within the resource's operating hours */
   const isWithinSchedule = () => {
-    if (!activeKeys || activeKeys.size === 0) return true
-    if (!formData.bookingDate || !formData.startTime || !formData.endTime) return true
-    const [y,m,d] = formData.bookingDate.split('-')
-    const dateObj = new Date(y, m-1, d)
-    const days = ['SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY']
-    const dayOfWeek = days[dateObj.getDay()]
-    const startHour = parseInt(formData.startTime.split(':')[0], 10)
-    const endHour   = parseInt(formData.endTime.split(':')[0], 10)
-    const endMin    = parseInt(formData.endTime.split(':')[1], 10)
-    const effectiveEnd = endMin > 0 ? endHour : endHour - 1
+    if (!activeKeys || activeKeys.size === 0) return true;
+    if (!formData.bookingDate || !formData.startTime || !formData.endTime) return true;
+    
+    const [y, m, d] = formData.bookingDate.split('-');
+    const dateObj = new Date(y, m - 1, d);
+    const days = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+    const dayOfWeek = days[dateObj.getDay()];
+    
+    const startHour = parseInt(formData.startTime.split(':')[0], 10);
+    const endHour   = parseInt(formData.endTime.split(':')[0], 10);
+    const endMin    = parseInt(formData.endTime.split(':')[1], 10);
+    
+    const effectiveEnd = endMin > 0 ? endHour : endHour - 1;
+    
     for (let h = startHour; h <= effectiveEnd; h++) {
-      if (!activeKeys.has(`${dayOfWeek}-${String(h).padStart(2,'0')}`)) return false
+      if (!activeKeys.has(`${dayOfWeek}-${String(h).padStart(2, '0')}`)) return false;
     }
-    return true
-  }
+    return true;
+  };
 
-  const scheduleValid = isWithinSchedule()
+  const scheduleValid = isWithinSchedule();
 
+  /* Validates current step requirements before allowing progression */
   const stepValid = () => {
-    if (step === 1) return formData.resourceId !== ''
-    if (step === 2) return formData.bookingDate && formData.startTime && formData.endTime && toMins(formData.endTime) > toMins(formData.startTime) && scheduleValid
-    if (step === 3) return formData.purpose.trim().length > 0
-    return true
-  }
+    if (step === 1) return formData.resourceId !== '';
+    if (step === 2) return formData.bookingDate && formData.startTime && formData.endTime && toMins(formData.endTime) > toMins(formData.startTime) && scheduleValid;
+    if (step === 3) return formData.purpose.trim().length > 0;
+    return true;
+  };
 
-  // 👇 FIX: Modified handleSubmit to use PUT instead of POST if modifyData exists
+  /* Handles final form submission, executing either a POST or PUT request */
   const handleSubmit = async () => {
-    setLoading(true); setError(''); setConflictMessage('')
+    setLoading(true); 
+    setError(''); 
+    setConflictMessage('');
+    
     try {
       const payload = {
         resourceId: parseInt(formData.resourceId),
@@ -97,35 +131,37 @@ export default function CreateBookingModal({ isOpen, onClose, onSuccess, selecte
         endTime:   `${formData.bookingDate}T${formData.endTime}:00`,
         purpose:   formData.purpose,
         attendees: parseInt(formData.attendees)
-      }
+      };
 
       if (modifyData) {
-        // Overwrite the existing booking
-        await updateFullBooking(modifyData.id, payload)
+        await updateFullBooking(modifyData.id, payload);
       } else {
-        // Create a brand new booking
-        await createBooking(payload)
+        await createBooking(payload);
       }
 
-      setSubmitted(true)
-      setTimeout(() => { onSuccess?.() }, 2000)
+      setSubmitted(true);
+      setTimeout(() => { onSuccess?.(); }, 2000);
     } catch (err) {
       if (err.response?.status === 409) {
-        const msg = err.response.data?.message || err.response.data?.error || err.response.data
-        setConflictMessage(typeof msg === 'string' ? msg : 'Resource already booked during this time.')
-        goTo(2)
-      } else { setError(getApiErrorMessage(err)) }
-    } finally { setLoading(false) }
-  }
+        const msg = err.response.data?.message || err.response.data?.error || err.response.data;
+        setConflictMessage(typeof msg === 'string' ? msg : 'Resource already booked during this time.');
+        goTo(2);
+      } else { 
+        setError(getApiErrorMessage(err)); 
+      }
+    } finally { 
+      setLoading(false); 
+    }
+  };
 
-  const duration = fmtDuration(formData.startTime, formData.endTime)
-  const today = new Date().toISOString().split('T')[0]
+  const duration = fmtDuration(formData.startTime, formData.endTime);
+  const today = new Date().toISOString().split('T')[0];
 
-  // ── Success screen ──
+  /* Success Screen Rendering */
   if (submitted) return (
     <div className="cbm-overlay">
       <CBMStyles />
-      <div className="cbm-card" style={{ textAlign:'center', padding:'3rem 2rem', display:'block' }}>
+      <div className="cbm-card" style={{ textAlign: 'center', padding: '3rem 2rem', display: 'block' }}>
         <div className="cbm-success-icon">
           <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
@@ -139,14 +175,15 @@ export default function CreateBookingModal({ isOpen, onClose, onSuccess, selecte
         </div>
       </div>
     </div>
-  )
+  );
 
+  /* Main Form Rendering */
   return (
-    <div className="cbm-overlay" onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}>
+    <div className="cbm-overlay" onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}>
       <CBMStyles />
       <div className="cbm-card">
 
-        {/* ── Header ── */}
+        {/* Header */}
         <div className="cbm-header">
           <p className="cbm-eyebrow">Facility Booking</p>
           <h3 className="cbm-title">{modifyData ? 'Modify Reservation' : 'Request a Space'}</h3>
@@ -157,24 +194,24 @@ export default function CreateBookingModal({ isOpen, onClose, onSuccess, selecte
           </button>
         </div>
 
-        {/* ── Stepper ── */}
+        {/* Progress Stepper */}
         <div className="cbm-stepper">
           {STEPS.map((s, i) => (
             <div key={s.id} className="cbm-step-item">
               <button
-                className={`cbm-step-dot ${step===s.id?'active':step>s.id?'done':''}`}
+                className={`cbm-step-dot ${step === s.id ? 'active' : step > s.id ? 'done' : ''}`}
                 onClick={() => step > s.id && goTo(s.id)}
                 disabled={step <= s.id}
               >
                 {step > s.id ? '✓' : s.id}
               </button>
-              <span className={`cbm-step-lbl ${step===s.id?'active':''}`}>{s.label}</span>
-              {i < STEPS.length-1 && <div className={`cbm-step-line ${step>s.id?'done':''}`} />}
+              <span className={`cbm-step-lbl ${step === s.id ? 'active' : ''}`}>{s.label}</span>
+              {i < STEPS.length - 1 && <div className={`cbm-step-line ${step > s.id ? 'done' : ''}`} />}
             </div>
           ))}
         </div>
 
-        {/* ── Conflict banner ── */}
+        {/* Conflict Warning Banner */}
         {conflictMessage && (
           <div className="cbm-conflict">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -189,13 +226,12 @@ export default function CreateBookingModal({ isOpen, onClose, onSuccess, selecte
           </div>
         )}
 
-        {/* ── Step content (SCROLLABLE AREA) ── */}
-        <div className={`cbm-step-wrap ${animating ? (direction>0?'out-left':'out-right') : 'in'}`}>
+        {/* Dynamic Step Content */}
+        <div className={`cbm-step-wrap ${animating ? (direction > 0 ? 'out-left' : 'out-right') : 'in'}`}>
 
+          {/* STEP 1: Resource Selection */}
           {step === 1 && (
             <div className="cbm-step-body">
-              {/* 👇 DELETED the confusing "Manually Cancel" note! */}
-              
               <label className="cbm-lbl">Selected Resource</label>
               {selectedResource ? (
                 <>
@@ -209,24 +245,25 @@ export default function CreateBookingModal({ isOpen, onClose, onSuccess, selecte
                 </>
               )}
 
-              <label className="cbm-lbl" style={{ marginTop:'1.25rem' }}>
+              <label className="cbm-lbl" style={{ marginTop: '1.25rem' }}>
                 Total Attendees {selectedResource ? `(Max: ${selectedResource.capacity})` : ''}
               </label>
               <div className="cbm-attendee-row">
-                <button className="cbm-att-btn" onClick={() => setFormData(p => ({ ...p, attendees: Math.max(1, +p.attendees-1) }))}>−</button>
+                <button className="cbm-att-btn" onClick={() => setFormData(p => ({ ...p, attendees: Math.max(1, +p.attendees - 1) }))}>−</button>
                 <span className="cbm-att-num">{formData.attendees}</span>
-                <button className="cbm-att-btn" onClick={() => setFormData(p => ({ ...p, attendees: Math.min(selectedResource?.capacity||999, +p.attendees+1) }))}>+</button>
+                <button className="cbm-att-btn" onClick={() => setFormData(p => ({ ...p, attendees: Math.min(selectedResource?.capacity || 999, +p.attendees + 1) }))}>+</button>
                 <span className="cbm-att-lbl">{formData.attendees === 1 ? 'person' : 'people'}</span>
               </div>
             </div>
           )}
 
+          {/* STEP 2: Time Scheduling */}
           {step === 2 && (
             <div className="cbm-step-body">
               <label className="cbm-lbl">Reservation Date</label>
               <input type="date" name="bookingDate" value={formData.bookingDate} onChange={handleChange} min={today} className="cbm-input" />
 
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem', marginTop:'1.25rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1.25rem' }}>
                 <div>
                   <label className="cbm-lbl">Start Time</label>
                   <input type="time" name="startTime" value={formData.startTime} onChange={handleChange} className="cbm-input" />
@@ -251,6 +288,7 @@ export default function CreateBookingModal({ isOpen, onClose, onSuccess, selecte
             </div>
           )}
 
+          {/* STEP 3: Purpose & Summary */}
           {step === 3 && (
             <div className="cbm-step-body">
               <label className="cbm-lbl">Purpose of Booking</label>
@@ -269,19 +307,19 @@ export default function CreateBookingModal({ isOpen, onClose, onSuccess, selecte
                 </div>
               )}
 
-              {error && <div className="cbm-err-inline" style={{ marginTop:'1rem' }}>{error}</div>}
+              {error && <div className="cbm-err-inline" style={{ marginTop: '1rem' }}>{error}</div>}
             </div>
           )}
         </div>
 
-        {/* ── Footer ── */}
+        {/* Footer Controls */}
         <div className="cbm-footer">
           {step > 1
-            ? <button className="cbm-btn-ghost" onClick={() => goTo(step-1)}>Back</button>
+            ? <button className="cbm-btn-ghost" onClick={() => goTo(step - 1)}>Back</button>
             : <button className="cbm-btn-ghost" onClick={onClose}>Cancel</button>
           }
           {step < 3
-            ? <button className="cbm-btn-primary" onClick={() => goTo(step+1)} disabled={!stepValid()}>Continue</button>
+            ? <button className="cbm-btn-primary" onClick={() => goTo(step + 1)} disabled={!stepValid()}>Continue</button>
             : <button className="cbm-btn-primary" onClick={handleSubmit} disabled={loading || !stepValid()}>
                 {loading ? <span className="cbm-dots"><span/><span/><span/></span> : (modifyData ? 'Submit Modification' : 'Submit Request')}
               </button>
@@ -289,95 +327,97 @@ export default function CreateBookingModal({ isOpen, onClose, onSuccess, selecte
         </div>
       </div>
     </div>
-  )
+  );
 }
 
+/* Helper component for summary details */
 function SumItem({ label, value }) {
   return (
     <div>
-      <span style={{ display:'block', fontSize:'0.75rem', fontWeight:500, color:'#64748b', marginBottom:'0.25rem' }}>{label}</span>
-      <span style={{ display:'block', fontSize:'0.875rem', fontWeight:600, color:'#0f172a' }}>{value}</span>
+      <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 500, color: '#64748b', marginBottom: '0.25rem' }}>{label}</span>
+      <span style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: '#0f172a' }}>{value}</span>
     </div>
-  )
+  );
 }
 
 function CBMStyles() {
   return (
     <style>{`
-      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
 
       /* ─── Overlay ─── */
       .cbm-overlay {
         position: fixed; inset: 0; z-index: 1000;
         display: flex; align-items: center; justify-content: center; padding: 1rem;
-        background: rgba(15, 23, 42, 0.4);
-        backdrop-filter: blur(4px);
+        background: rgba(15, 23, 42, 0.45);
+        backdrop-filter: blur(3px);
         animation: cbm-fade 0.2s ease;
       }
       @keyframes cbm-fade { from { opacity: 0 } to { opacity: 1 } }
 
-      /* ─── Card (FIXED: Flex layout and max-height) ─── */
+      /* ─── Card Structure ─── */
       .cbm-card {
-        width: 100%; max-width: 480px;
-        max-height: 90vh; /* Prevents card from going off screen */
+        width: 100%; max-width: 460px;
+        max-height: 90vh;
         display: flex;
         flex-direction: column;
         background: #ffffff;
-        border-radius: 12px;
-        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        border-radius: 16px;
+        box-shadow: 0 25px 50px -12px rgba(0,0,0,0.18);
         overflow: hidden;
-        font-family: 'Inter', sans-serif;
-        animation: cbm-up 0.25s ease-out;
+        font-family: 'Poppins', sans-serif;
+        animation: cbm-up 0.22s cubic-bezier(.22,1,.36,1);
       }
       @keyframes cbm-up {
-        from { transform: translateY(15px); opacity: 0 }
-        to   { transform: translateY(0); opacity: 1 }
+        from { transform: scale(0.96) translateY(8px); opacity: 0 }
+        to   { transform: none; opacity: 1 }
       }
 
-      /* ─── Header (FIXED: No shrink) ─── */
+      /* ─── Header ─── */
       .cbm-header {
         flex-shrink: 0;
         position: relative;
-        padding: 1.5rem;
-        background: linear-gradient(135deg, #2193b0 0%, #6dd5ed 100%);
+        padding: 1.75rem;
+        background: #4f46e5; /* Primary Indigo */
       }
-      .cbm-eyebrow { font-size: 0.75rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; color: rgba(255,255,255,0.9); margin: 0 0 0.35rem; }
-      .cbm-title { font-size: 1.25rem; font-weight: 600; color: #ffffff; margin: 0; }
+      .cbm-eyebrow { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #c7d2fe; margin: 0 0 0.35rem; }
+      .cbm-title { font-size: 1.35rem; font-weight: 700; color: #ffffff; margin: 0; }
       .cbm-close {
         position: absolute; top: 1.5rem; right: 1.5rem;
-        width: 28px; height: 28px; border-radius: 6px;
-        background: transparent; border: none;
-        color: rgba(255,255,255,0.8); cursor: pointer;
+        width: 32px; height: 32px; border-radius: 8px;
+        background: rgba(255,255,255,0.1); border: none;
+        color: #ffffff; cursor: pointer;
         display: flex; align-items: center; justify-content: center;
-        transition: background 0.2s, color 0.2s;
+        transition: background 0.2s;
       }
-      .cbm-close:hover { background: rgba(255,255,255,0.2); color: #ffffff; }
+      .cbm-close:hover { background: rgba(255,255,255,0.25); }
 
-      /* ─── Stepper (FIXED: No shrink) ─── */
-      .cbm-stepper { flex-shrink: 0; display: flex; align-items: center; padding: 1.25rem 1.5rem; background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
+      /* ─── Stepper Progress ─── */
+      .cbm-stepper { flex-shrink: 0; display: flex; align-items: center; padding: 1.25rem 1.75rem; background: #fdfcff; border-bottom: 1.5px solid #f3f0ff; }
       .cbm-step-item { display: flex; flex-direction: column; align-items: center; position: relative; flex: 1; }
       .cbm-step-dot {
-        width: 28px; height: 28px; border-radius: 50%;
+        width: 30px; height: 30px; border-radius: 50%;
         border: 2px solid #e2e8f0; background: #ffffff;
-        font-size: 0.875rem; font-weight: 600; color: #94a3b8;
+        font-size: 0.875rem; font-weight: 600; color: #9ca3af;
         display: flex; align-items: center; justify-content: center;
         transition: all 0.2s ease; position: relative; z-index: 1;
+        font-family: 'Poppins', sans-serif;
       }
-      .cbm-step-dot.active { border-color: #2193b0; background: #2193b0; color: #ffffff; }
-      .cbm-step-dot.done { border-color: #2193b0; background: #f0f9ff; color: #2193b0; cursor: pointer; }
-      .cbm-step-lbl { font-size: 0.75rem; font-weight: 500; color: #64748b; margin-top: 0.5rem; }
-      .cbm-step-lbl.active { color: #0f172a; font-weight: 600; }
-      .cbm-step-line { position: absolute; top: 13px; left: calc(50% + 14px); width: calc(100% - 28px); height: 2px; background: #e2e8f0; transition: background 0.3s; }
-      .cbm-step-line.done { background: #2193b0; }
+      .cbm-step-dot.active { border-color: #4f46e5; background: #4f46e5; color: #ffffff; box-shadow: 0 2px 8px rgba(79,70,229,0.25); }
+      .cbm-step-dot.done { border-color: #4f46e5; background: #eef2ff; color: #4f46e5; cursor: pointer; }
+      .cbm-step-lbl { font-size: 0.75rem; font-weight: 500; color: #9ca3af; margin-top: 0.5rem; }
+      .cbm-step-lbl.active { color: #1e1b4b; font-weight: 600; }
+      .cbm-step-line { position: absolute; top: 14px; left: calc(50% + 15px); width: calc(100% - 30px); height: 2px; background: #e2e8f0; transition: background 0.3s; }
+      .cbm-step-line.done { background: #4f46e5; }
 
-      /* ─── Conflict banner (FIXED: No shrink) ─── */
-      .cbm-conflict { flex-shrink: 0; display: flex; gap: 0.75rem; background: #fffbeb; border: 1px solid #fde68a; border-left: 4px solid #f59e0b; padding: 1rem; margin: 1.5rem 1.5rem 0; border-radius: 6px; }
+      /* ─── Conflict Banner ─── */
+      .cbm-conflict { flex-shrink: 0; display: flex; gap: 0.75rem; background: #fffbeb; border: 1.5px solid #fde68a; padding: 1rem 1.25rem; margin: 1.5rem 1.75rem 0; border-radius: 10px; }
       .cbm-conflict strong { font-size: 0.875rem; font-weight: 600; color: #92400e; display: block; margin-bottom: 0.25rem; }
-      .cbm-conflict p { font-size: 0.875rem; color: #b45309; margin: 0; line-height: 1.4; }
+      .cbm-conflict p { font-size: 0.8125rem; color: #b45309; margin: 0; line-height: 1.4; }
 
-      /* ─── Step wrap (FIXED: Flexible and Scrollable) ─── */
+      /* ─── Scrolling Content Area ─── */
       .cbm-step-wrap { 
-        padding: 1.5rem; 
+        padding: 1.75rem; 
         flex-grow: 1; 
         overflow-y: auto; 
         overflow-x: hidden;
@@ -390,62 +430,63 @@ function CBMStyles() {
       @keyframes cbm-outL { to{opacity:0;transform:translateX(-10px)} }
       @keyframes cbm-outR { to{opacity:0;transform:translateX(10px)} }
 
-      /* ─── Fields ─── */
-      .cbm-lbl { display: block; font-size: 0.875rem; font-weight: 500; color: #334155; margin-bottom: 0.5rem; }
+      /* ─── Form Inputs ─── */
+      .cbm-lbl { display: block; font-size: 0.8125rem; font-weight: 600; color: #374151; margin-bottom: 0.5rem; }
       .cbm-input {
         width: 100%; box-sizing: border-box;
-        border: 1px solid #cbd5e1; border-radius: 6px;
-        padding: 0.625rem 0.875rem; font-size: 0.875rem; font-family: 'Inter', sans-serif;
-        color: #0f172a; background: #ffffff;
+        border: 1.5px solid #e5e7eb; border-radius: 8px;
+        padding: 0.7rem 1rem; font-size: 0.875rem; font-family: 'Poppins', sans-serif;
+        color: #1e293b; background: #ffffff;
         transition: all 0.2s; outline: none;
       }
-      .cbm-input:focus { border-color: #2193b0; box-shadow: 0 0 0 3px rgba(33, 147, 176, 0.15); }
-      .cbm-input.locked { background: #f8fafc; color: #64748b; cursor: not-allowed; border-color: #e2e8f0; }
+      .cbm-input:focus { border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1); }
+      .cbm-input.locked { background: #f8fafc; color: #64748b; cursor: not-allowed; border-color: #e2e8f0; font-weight: 500; }
       .cbm-textarea { resize: vertical; min-height: 80px; }
-      .cbm-hint { font-size: 0.75rem; color: #64748b; margin: 0.375rem 0 0; }
+      .cbm-hint { font-size: 0.75rem; color: #9ca3af; margin: 0.4rem 0 0; }
 
-      /* ─── Attendees ─── */
+      /* ─── Attendee Controls ─── */
       .cbm-attendee-row { display: flex; align-items: center; gap: 1rem; }
       .cbm-att-btn {
-        width: 36px; height: 36px; border-radius: 6px;
-        border: 1px solid #cbd5e1; background: #ffffff;
-        font-size: 1.25rem; color: #475569; cursor: pointer;
+        width: 36px; height: 36px; border-radius: 8px;
+        border: 1.5px solid #e5e7eb; background: #ffffff;
+        font-size: 1.25rem; color: #4b5563; cursor: pointer;
         display: flex; align-items: center; justify-content: center; transition: all 0.2s;
       }
-      .cbm-att-btn:hover { border-color: #65c7f7; background: #f0f9ff; color: #2193b0; }
-      .cbm-att-num { font-size: 1.125rem; font-weight: 600; color: #0f172a; min-width: 32px; text-align: center; }
-      .cbm-att-lbl { font-size: 0.875rem; color: #64748b; }
+      .cbm-att-btn:hover { border-color: #a5b4fc; background: #eef2ff; color: #4f46e5; }
+      .cbm-att-num { font-size: 1.125rem; font-weight: 600; color: #1e1b4b; min-width: 32px; text-align: center; }
+      .cbm-att-lbl { font-size: 0.875rem; color: #64748b; font-weight: 500; }
 
-      /* ─── Summary & Extras ─── */
-      .cbm-duration-pill { display: inline-flex; align-items: center; background: #f0f9ff; color: #0369a1; padding: 0.375rem 0.75rem; border-radius: 6px; font-size: 0.75rem; font-weight: 500; margin-top: 1rem; border: 1px solid #bae6fd; }
-      .cbm-summary { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1.25rem; margin-top: 1.5rem; }
-      .cbm-summary-title { font-size: 0.875rem; font-weight: 600; color: #0f172a; margin: 0 0 1rem; }
+      /* ─── Summary Elements ─── */
+      .cbm-duration-pill { display: inline-flex; align-items: center; background: #eef2ff; color: #4f46e5; padding: 0.4rem 0.85rem; border-radius: 8px; font-size: 0.75rem; font-weight: 600; margin-top: 1rem; border: 1px solid #c7d2fe; }
+      .cbm-summary { background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 1.25rem; margin-top: 1.5rem; }
+      .cbm-summary-title { font-size: 0.875rem; font-weight: 600; color: #1e1b4b; margin: 0 0 1rem; }
       .cbm-summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem 1rem; }
 
-      /* ─── Errors ─── */
-      .cbm-err-inline { font-size: 0.875rem; color: #b91c1c; margin-top: 0.75rem; }
-      .cbm-warn { font-size: 0.875rem; color: #b45309; margin-top: 0.75rem; padding: 0.5rem; background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; }
+      /* ─── Validation Errors ─── */
+      .cbm-err-inline { font-size: 0.8125rem; font-weight: 500; color: #dc2626; margin-top: 0.75rem; }
+      .cbm-warn { font-size: 0.8125rem; font-weight: 500; color: #b45309; margin-top: 0.75rem; padding: 0.75rem; background: #fffbeb; border: 1.5px solid #fde68a; border-radius: 8px; }
 
-      /* ─── Footer (FIXED: No shrink) ─── */
-      .cbm-footer { flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; padding: 1.25rem 1.5rem; background: #f8fafc; border-top: 1px solid #e2e8f0; }
-      .cbm-btn-ghost { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 0.625rem 1.25rem; font-size: 0.875rem; font-weight: 500; color: #475569; cursor: pointer; transition: all 0.2s; font-family: 'Inter', sans-serif; }
-      .cbm-btn-ghost:hover { background: #f1f5f9; color: #0f172a; }
-      .cbm-btn-primary { background: linear-gradient(135deg, #2193b0 0%, #6dd5ed 100%); color: #ffffff; border: none; border-radius: 6px; font-size: 0.875rem; font-weight: 500; padding: 0.625rem 1.5rem; cursor: pointer; transition: opacity 0.2s; display: flex; align-items: center; justify-content: center; min-width: 120px; font-family: 'Inter', sans-serif; }
-      .cbm-btn-primary:hover:not(:disabled) { opacity: 0.9; }
-      .cbm-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+      /* ─── Footer Controls ─── */
+      .cbm-footer { flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; padding: 1.25rem 1.75rem; background: #fdfcff; border-top: 1.5px solid #f3f0ff; }
+      .cbm-btn-ghost { background: #ffffff; border: 1.5px solid #e5e7eb; border-radius: 8px; padding: 0.65rem 1.25rem; font-size: 0.875rem; font-weight: 600; color: #4b5563; cursor: pointer; transition: all 0.2s; font-family: 'Poppins', sans-serif; }
+      .cbm-btn-ghost:hover { background: #f8fafc; color: #1e1b4b; border-color: #cbd5e1; }
+      
+      .cbm-btn-primary { background: #4f46e5; color: #ffffff; border: none; border-radius: 8px; font-size: 0.875rem; font-weight: 600; padding: 0.65rem 1.75rem; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; min-width: 120px; font-family: 'Poppins', sans-serif; box-shadow: 0 2px 4px rgba(79, 70, 229, 0.15); }
+      .cbm-btn-primary:hover:not(:disabled) { background: #4338ca; box-shadow: 0 4px 10px rgba(79, 70, 229, 0.25); transform: translateY(-1px); }
+      .cbm-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; transform: none; }
 
-      /* ─── Loading dots ─── */
-      .cbm-dots { display: flex; gap: 4px; align-items: center; }
-      .cbm-dots span { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.9); animation: cbm-bounce 0.8s infinite ease-in-out; }
+      /* ─── Loading Animation ─── */
+      .cbm-dots { display: flex; gap: 5px; align-items: center; }
+      .cbm-dots span { width: 6px; height: 6px; border-radius: 50%; background: #ffffff; animation: cbm-bounce 0.8s infinite ease-in-out; }
       .cbm-dots span:nth-child(2) { animation-delay: 0.15s; }
       .cbm-dots span:nth-child(3) { animation-delay: 0.3s; }
       @keyframes cbm-bounce { 0%,80%,100%{transform:scale(0.6);opacity:0.6} 40%{transform:scale(1);opacity:1} }
 
-      /* ─── Success ─── */
-      .cbm-success-icon { width: 56px; height: 56px; border-radius: 50%; background: #f0fdf4; color: #10b981; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; }
-      .cbm-success-title { font-size: 1.5rem; font-weight: 600; color: #0f172a; margin: 0 0 0.5rem; }
+      /* ─── Success Feedback ─── */
+      .cbm-success-icon { width: 64px; height: 64px; border-radius: 50%; background: #ecfdf5; color: #10b981; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; }
+      .cbm-success-title { font-size: 1.5rem; font-weight: 700; color: #1e1b4b; margin: 0 0 0.5rem; }
       .cbm-success-sub { font-size: 0.875rem; color: #64748b; margin: 0 0 1.5rem; }
-      .cbm-success-badge { display: inline-block; padding: 0.5rem 1rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 0.875rem; font-weight: 500; color: #334155; }
+      .cbm-success-badge { display: inline-block; padding: 0.6rem 1.2rem; background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 8px; font-size: 0.875rem; font-weight: 600; color: #334155; }
     `}</style>
-  )
+  );
 }

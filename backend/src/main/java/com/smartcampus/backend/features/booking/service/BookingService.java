@@ -33,7 +33,7 @@ public class BookingService {
         );
 
         if (!conflicts.isEmpty()) {
-            // THE INNOVATION: Calculate the next available slot and return it in the error message
+            // Calculate the next available slot and return it in the error message
             LocalDateTime nextAvailable = findNextAvailableSlot(request.resourceId(), request.startTime(), request.endTime());
             LocalDateTime nextAvailableEnd = nextAvailable.plus(Duration.between(request.startTime(), request.endTime()));
             
@@ -44,7 +44,7 @@ public class BookingService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, suggestion);
         }
 
-        // Using the Builder pattern (thanks to Lombok's @Builder) to map DTO to Entity
+        // Using the Builder pattern to map DTO to Entity
         Booking newBooking = Booking.builder()
                 .resourceId(request.resourceId())
                 .user(currentUser)
@@ -82,7 +82,7 @@ public class BookingService {
         return bookingRepository.save(booking);
     }
 
-    // 5. Delete a Booking (Required by Rubric)
+    // 5. Delete a Booking 
     public void deleteBooking(Long bookingId) {
         if (!bookingRepository.existsById(bookingId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found");
@@ -90,7 +90,7 @@ public class BookingService {
         bookingRepository.deleteById(bookingId);
     }
 
-    // Get a single booking by ID (Required for HATEOAS self-links and updates)
+    // Get a single booking by ID 
     public Booking getBookingById(Long bookingId) {
         return bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found with ID: " + bookingId));
@@ -177,7 +177,7 @@ public class BookingService {
             if (proposedStart.isBefore(b.getEndTime()) && proposedEnd.isAfter(b.getStartTime())) {
                 proposedStart = b.getEndTime();
             } else {
-                // We found a gap large enough! Break the loop.
+                
                 break;
             }
         }
