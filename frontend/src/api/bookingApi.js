@@ -2,7 +2,17 @@ import apiClient from './authService'
 
 const BOOKING_PREFIX = '/api/v1/bookings'
 
-// --- Helper Functions (Matching Member 4's Architecture) ---
+export const saveScanLog = async (logData) => {
+  //Changed axiosInstance to apiClient
+  const response = await apiClient.post('/api/admin/scan-logs', logData);
+  return response.data;
+};
+
+export const getScanHistory = async () => {
+  //Changed axiosInstance to apiClient
+  const response = await apiClient.get('/api/admin/scan-logs');
+  return response.data;
+};
 
 export async function updateFullBooking(id, payload) {
   const response = await apiClient.put(`/api/v1/bookings/${id}`, payload)
@@ -14,11 +24,12 @@ export async function verifyBookingTicket(id) {
   const response = await apiClient.post(`${BOOKING_PREFIX}/${id}/verify`)
   return response.data
 }
+
 function normalizeCollection(payload) {
   if (Array.isArray(payload)) {
     return payload
   }
-  // Handles Spring HATEOAS responses if you use them
+  // Handles Spring HATEOAS responses 
   if (Array.isArray(payload?._embedded?.bookingResponseList)) {
     return payload._embedded.bookingResponseList
   }
@@ -75,7 +86,7 @@ function buildParams(params = {}) {
 
 // --- Booking API Endpoints ---
 
-// 1. Create a Booking (Includes your Smart Suggestion logic on 409 errors)
+// 1. Create a Booking 
 export async function createBooking(payload) {
   const response = await apiClient.post(BOOKING_PREFIX, payload)
   return response.data
@@ -105,7 +116,7 @@ export async function deleteBooking(id) {
   return response.data
 }
 
-// 6. Get Admin Analytics (Your Innovation Feature)
+// 6. Get Admin Analytics 
 export async function getBookingAnalytics() {
   const response = await apiClient.get(`${BOOKING_PREFIX}/analytics`)
   return response.data

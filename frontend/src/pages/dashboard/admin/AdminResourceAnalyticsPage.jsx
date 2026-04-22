@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { getAllResources, RESOURCE_TYPES, formatResourceType } from '../../../api/resourceApi'
 import { getAllBookings } from '../../../api/bookingApi'
-import { getAllResources } from '../../../api/resourceApi'
 import useAuth from '../../../context/useAuth'
 import { getHeaderLabelsByRole, getSidebarItemsByRole } from '../constants'
 import UserDashboardHeader from '../user/components/UserDashboardHeader'
@@ -33,7 +33,6 @@ function StatCard({ label, value, icon, colorClass, sub, delay = 0 }) {
   )
 }
 
-// ── Main Page ──────────────────────────────────────────────────────
 export default function AdminResourceAnalyticsPage() {
   const navigate  = useNavigate()
   const location  = useLocation()
@@ -50,12 +49,12 @@ export default function AdminResourceAnalyticsPage() {
   const loadData = useCallback(async () => {
     setLoading(true); setError('')
     try {
-      const [res, bkng] = await Promise.all([
+      const [res, bkgs] = await Promise.all([
         getAllResources(),
         getAllBookings({ size: 1000 }),
       ])
       setResources(Array.isArray(res) ? res : [])
-      setBookings(bkng?.content ?? [])
+      setBookings(bkgs?.content ?? [])
     } catch (e) {
       setError(getApiErrorMessage(e))
     } finally {
@@ -127,7 +126,7 @@ export default function AdminResourceAnalyticsPage() {
         isSidebarExpanded={isSidebarExpanded}
         onCollapse={() => setIsSidebarExpanded(false)}
         onExpand={() => setIsSidebarExpanded(true)}
-        onItemNavigate={i => i.path && navigate(i.path)}
+        onItemNavigate={(item) => item.path && navigate(item.path)}
         onLogout={handleLogout}
         sidebarItems={sidebarItems}
       />
@@ -136,7 +135,7 @@ export default function AdminResourceAnalyticsPage() {
         <UserDashboardHeader onLogout={handleLogout} eyebrow={headerLabels.eyebrow} title="Resource Analytics" />
 
         <main className="mx-auto w-full max-w-6xl p-4 pb-24 md:p-8">
-          
+
           {/* Hero Section */}
           <section className="mb-8 rounded-3xl bg-gradient-to-br from-indigo-900 to-slate-900 p-8 text-white shadow-xl">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
@@ -147,8 +146,8 @@ export default function AdminResourceAnalyticsPage() {
                 </p>
               </div>
               <div className="flex flex-wrap gap-3">
-                <Button 
-                  onClick={loadData} 
+                <Button
+                  onClick={loadData}
                   className="bg-indigo-500/20 text-white border border-indigo-400/30 hover:bg-indigo-500/40 shadow-lg shadow-indigo-500/10 backdrop-blur-sm"
                 >
                   <span className="material-symbols-outlined mr-2 text-[20px]">refresh</span> Refresh Analytics
@@ -176,14 +175,14 @@ export default function AdminResourceAnalyticsPage() {
           <section className="rounded-3xl bg-white p-6 shadow-sm border border-slate-100 mb-8">
             <div className="mb-8 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
               <div className="flex flex-wrap gap-2">
-                <button 
+                <button
                   onClick={() => setTypeFilter('ALL')}
                   className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition ${typeFilter === 'ALL' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}
                 >
                   All Types ({typeCounts.ALL})
                 </button>
                 {Object.entries(TYPE_CONFIG).map(([type, cfg]) => (
-                  <button 
+                  <button
                     key={type}
                     onClick={() => setTypeFilter(type)}
                     className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition flex items-center gap-2 ${typeFilter === type ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}
@@ -196,8 +195,8 @@ export default function AdminResourceAnalyticsPage() {
 
               <div className="flex items-center gap-3">
                 <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Sort By</span>
-                <select 
-                  value={sortBy} 
+                <select
+                  value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
                   className="bg-slate-50 border-none rounded-xl px-4 py-2 text-xs font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500/20 transition cursor-pointer outline-none"
                 >
@@ -234,7 +233,7 @@ export default function AdminResourceAnalyticsPage() {
                   ) : filteredResources.map((r) => {
                     const typeCfg = TYPE_CONFIG[r.type] || { label: r.type, color: 'text-slate-600', bg: 'bg-slate-50', icon: 'domain' }
                     const appRate = r.total > 0 ? Math.round((r.approved / r.total) * 100) : 0
-                    
+
                     return (
                       <tr key={r.id} className="group hover:bg-slate-50/50 transition-colors">
                         <td className="py-4 px-4">
@@ -268,7 +267,7 @@ export default function AdminResourceAnalyticsPage() {
                         <td className="py-4 px-4">
                           <div className="flex items-center gap-3">
                             <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
-                              <div 
+                              <div
                                 className={`h-full rounded-full transition-all duration-1000 ${appRate > 70 ? 'bg-emerald-500' : appRate > 40 ? 'bg-amber-500' : 'bg-rose-500'}`}
                                 style={{ width: `${appRate}%` }}
                               />
