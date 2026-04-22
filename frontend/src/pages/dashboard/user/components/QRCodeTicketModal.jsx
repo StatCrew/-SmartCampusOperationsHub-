@@ -3,7 +3,7 @@ import { QRCodeSVG } from 'qrcode.react'
 export default function QRCodeTicketModal({ isOpen, onClose, booking }) {
   if (!isOpen || !booking) return null
 
-  // This is the secure data hidden inside the QR code!
+  
   // The Admin scanner will read this JSON and send the ID to the backend.
   const qrPayload = JSON.stringify({
     bookingId: booking.id,
