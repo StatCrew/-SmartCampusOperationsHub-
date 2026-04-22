@@ -1,5 +1,34 @@
 import { useState } from 'react'
-import { TicketBadge, formatDateTime, isImageAttachment } from '../UserTicketsPage'
+
+const STATUS_META = {
+  OPEN: { label: 'Open', bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' },
+  IN_PROGRESS: { label: 'In Progress', bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-200' },
+  RESOLVED: { label: 'Resolved', bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
+  CLOSED: { label: 'Closed', bg: 'bg-slate-50', text: 'text-slate-600', border: 'border-slate-200' },
+  REJECTED: { label: 'Rejected', bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' },
+}
+
+function TicketBadge({ status }) {
+  const meta = STATUS_META[status] || STATUS_META.OPEN
+  return (
+    <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-bold ${meta.bg} ${meta.text} ${meta.border}`}>
+      {meta.label}
+    </span>
+  )
+}
+
+function formatDateTime(value) {
+  if (!value) return '-'
+  try {
+    return new Date(value).toLocaleString()
+  } catch {
+    return String(value)
+  }
+}
+
+function isImageAttachment(fileUrl) {
+  return /\.(png|jpe?g|gif|bmp|webp|svg)$/i.test(String(fileUrl || ''))
+}
 
 function Detail({ label, value }) {
   return (

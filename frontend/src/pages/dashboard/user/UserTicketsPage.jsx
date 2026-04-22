@@ -34,13 +34,10 @@ function UserTicketsPage() {
 
   const {
     filteredTickets,
-    isLoading,
     errorMessage,
     successMessage,
     search,
     setSearch,
-    statusFilter,
-    setStatusFilter,
     isFormOpen,
     formMode,
     activeTicket,

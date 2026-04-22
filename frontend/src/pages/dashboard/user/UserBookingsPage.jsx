@@ -53,7 +53,7 @@ export default function UserBookingsPage() {
   /* Filter & Search State */
   const [filterStatus, setFilterStatus] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
-  const [hoveredRow, setHoveredRow] = useState(null);
+  const [, setHoveredRow] = useState(null);
 
   /* Modal States */
   const [cancelTarget, setCancelTarget] = useState(null);

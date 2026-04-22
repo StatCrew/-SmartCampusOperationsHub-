@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { createBooking, updateFullBooking } from '../../../../api/bookingApi';
 import useAuth from '../../../../context/useAuth';
 

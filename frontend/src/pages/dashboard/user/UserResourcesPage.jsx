@@ -33,11 +33,12 @@ function ScheduleViewModal({ resource, onClose }) {
   const [loading, setLoading]       = useState(true)
 
   useEffect(() => {
-    setLoading(true)
+    const startLoading = setTimeout(() => setLoading(true), 0)
     getAvailabilitySlots(resource.id)
       .then(slots => setActiveKeys(slotsToKeys(slots)))
       .catch(() => setActiveKeys(new Set()))
       .finally(() => setLoading(false))
+    return () => clearTimeout(startLoading)
   }, [resource.id])
 
   const hasAnySlot = activeKeys.size > 0

@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import apiClient from '../../../api/authService'
-import { createTicketComment, getTechnicianTicketAttachmentUrl, getTechnicianTicketById, getTechnicianTickets, resolveTechnicianTicket } from '../../../api/ticketApi'
 import { createTicketComment, deleteTicketComment, getTechnicianTicketAttachmentUrl, getTechnicianTicketById, getTechnicianTickets, resolveTechnicianTicket, updateTicketComment } from '../../../api/ticketApi'
 import useAuth from '../../../context/useAuth'
 import { getHeaderLabelsByRole, getSidebarItemsByRole } from '../constants'
@@ -583,7 +582,6 @@ function TechnicianTicketsPage() {
     try {
       await resolveTechnicianTicket(selectedTicket.id, resolutionNotes.trim())
       await loadTickets()
-      setIsResolving(false)
       setResolutionNotes('')
       setDetailsOpen(false)
       setResolutionNotes('')

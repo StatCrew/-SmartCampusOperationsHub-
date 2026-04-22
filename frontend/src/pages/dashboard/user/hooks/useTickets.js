@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { createTicketComment, deleteTicket, deleteTicketComment, getTicketComments, getUserTicketAttachmentUrl, getUserTicketById, getUserTickets, rateUserTicket, updateTicket, updateTicketComment } from '../../../../api/ticketApi'
+import { createTicketComment, deleteTicket, deleteTicketComment, getUserTicketAttachmentUrl, getUserTicketById, getUserTickets, rateUserTicket, updateTicketComment } from '../../../../api/ticketApi'
 
 export default function useTickets(getApiErrorMessage) {
   const [tickets, setTickets] = useState([])

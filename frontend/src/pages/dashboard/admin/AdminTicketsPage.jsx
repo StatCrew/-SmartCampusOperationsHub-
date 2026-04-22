@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { assignAdminTicket, closeAdminTicket, createTicketComment, deleteTicketComment, getAdminTicketAttachmentUrl, getAdminTicketById, getAdminTickets, markAdminTicketInProgress, rejectAdminTicket, updateTicketComment } from '../../../api/ticketApi'
-import { getUsers } from '../../../api/adminApi'
+import { closeAdminTicket, createTicketComment, deleteTicketComment, getAdminTicketAttachmentUrl, getAdminTicketById, getAdminTickets, markAdminTicketInProgress, rejectAdminTicket, updateTicketComment } from '../../../api/ticketApi'
 import useAuth from '../../../context/useAuth'
 import { getSidebarItemsByRole } from '../constants'
 import UserDashboardHeader from '../user/components/UserDashboardHeader'
@@ -440,17 +439,14 @@ function AdminTicketsPage() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [priorityFilter, setPriorityFilter] = useState('ALL')
-  const [technicians, setTechnicians] = useState([])
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [selectedTicket, setSelectedTicket] = useState(null)
-  const [assignmentByTicket, setAssignmentByTicket] = useState({})
   const [processingId, setProcessingId] = useState(null)
   const [commentText, setCommentText] = useState('')
   const [isCommentSubmitting, setIsCommentSubmitting] = useState(false)
   const [attachmentUrls, setAttachmentUrls] = useState({})
   const [isAttachmentsLoading, setIsAttachmentsLoading] = useState(false)
-  const [isRejecting, setIsRejecting] = useState(false)
-  const [rejectionReason, setRejectionReason] = useState('')
+  const [, setIsRejecting] = useState(false)
   const [isActionProcessing, setIsActionProcessing] = useState(false)
   const [rejectionReason, setRejectionReason] = useState('')
   const [editingCommentId, setEditingCommentId] = useState(null)
@@ -476,21 +472,6 @@ function AdminTicketsPage() {
   useEffect(() => {
     loadTickets()
   }, [loadTickets])
-
-  useEffect(() => {
-    let mounted = true
-    const loadTechnicians = async () => {
-      try {
-        const response = await getUsers({ role: 'TECHNICIAN', active: true, size: 100 })
-        if (!mounted) return
-        setTechnicians(response?.content || response || [])
-      } catch {
-        if (mounted) setTechnicians([])
-      }
-    }
-    loadTechnicians()
-    return () => { mounted = false }
-  }, [])
 
   const handleLogout = () => {
     logout()
@@ -665,24 +646,6 @@ function AdminTicketsPage() {
     }
   }
 
-  const handleAssignTicket = async (ticket) => {
-    const technicianId = assignmentByTicket[ticket.id]
-    if (!technicianId) return
-
-    setProcessingId(ticket.id)
-    setErrorMessage('')
-    setSuccessMessage('')
-
-    try {
-      await assignAdminTicket(ticket.id, Number(technicianId))
-      setSuccessMessage('Ticket reassigned successfully.')
-      await loadTickets()
-    } catch (error) {
-      setErrorMessage(getApiErrorMessage(error))
-    } finally {
-      setProcessingId(null)
-    }
-  }
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900">
