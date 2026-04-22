@@ -14,7 +14,6 @@ export default function AdminQRScannerPage() {
 
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false)
   const [scanResult, setScanResult] = useState(null) // null | 'loading' | { success: true/false, message: '' }
-  const [scannedData, setScannedData] = useState(null)
 
   const handleLogout = () => { logout(); navigate('/signin', { replace: true }) }
 
@@ -34,8 +33,6 @@ export default function AdminQRScannerPage() {
       const payload = JSON.parse(text)
       if (!payload.bookingId) throw new Error("Invalid QR Code format")
       
-      setScannedData(payload)
-
       // 2. Send to Spring Boot for secure verification
       const response = await verifyBookingTicket(payload.bookingId)
       
@@ -55,7 +52,6 @@ export default function AdminQRScannerPage() {
 
   const resetScanner = () => {
     setScanResult(null)
-    setScannedData(null)
   }
 
   return (

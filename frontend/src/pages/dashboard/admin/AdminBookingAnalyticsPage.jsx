@@ -19,7 +19,10 @@ const getS = s => STATUS[s] || STATUS.PENDING
 function AnimatedNumber({ value, duration = 900 }) {
   const [display, setDisplay] = useState(0)
   useEffect(() => {
-    if (!value) { setDisplay(0); return }
+    if (!value) {
+      const resetTimer = setTimeout(() => setDisplay(0), 0)
+      return () => clearTimeout(resetTimer)
+    }
     let cur = 0
     const step = Math.max(1, Math.ceil(value / (duration / 16)))
     const t = setInterval(() => {
@@ -36,13 +39,15 @@ function AnimatedNumber({ value, duration = 900 }) {
 function DonutChart({ segments = [], total }) {
   const r = 42, cx = 60, cy = 60, circ = 2 * Math.PI * r
   const tot = segments.reduce((s, x) => s + (x.value || 0), 0) || 1
-  let offset = 0
   return (
     <svg width="120" height="120" viewBox="0 0 120 120">
       <circle cx={cx} cy={cy} r={r} fill="none" stroke="#e8f5f3" strokeWidth="13" />
       {segments.map((seg, i) => {
+        const offset = segments
+          .slice(0, i)
+          .reduce((sum, item) => sum + ((item.value || 0) / tot) * circ, 0)
         const dash = (seg.value / tot) * circ
-        const el = (
+        return (
           <circle key={i} cx={cx} cy={cy} r={r} fill="none"
             stroke={seg.color} strokeWidth="13"
             strokeDasharray={`${dash} ${circ - dash}`}
@@ -50,8 +55,6 @@ function DonutChart({ segments = [], total }) {
             style={{ transition: 'stroke-dasharray 1s ease', transformOrigin: '50% 50%', transform: 'rotate(-90deg)' }}
           />
         )
-        offset += dash
-        return el
       })}
       <text x={cx} y={cy - 7} textAnchor="middle" fontSize="17" fontWeight="800" fill="#0d2b25" fontFamily="'Playfair Display',serif">{total ?? tot}</text>
       <text x={cx} y={cy + 10} textAnchor="middle" fontSize="8" fill="#7ab5a8" fontWeight="700" letterSpacing="1">TOTAL</text>

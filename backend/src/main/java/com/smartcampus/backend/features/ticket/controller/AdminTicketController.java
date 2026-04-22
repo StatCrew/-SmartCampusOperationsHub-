@@ -69,21 +69,19 @@ public class AdminTicketController {
         return response;
     }
 
-    // Update ticket status
-    @PutMapping("/{id}/status")
-    public TicketResponse updateStatus(
-            @PathVariable Long id,
-            @RequestParam String status
-    ) {
-
+    // Mark ticket as IN_PROGRESS (triggers auto-assignment)
+    @PutMapping("/{id}/mark-in-progress")
+    public TicketResponse markInProgress(@PathVariable Long id) {
         User user = getAuthenticatedAdminUser();
+        Ticket updated = ticketService.updateTicketStatus(id, TicketStatus.IN_PROGRESS, user);
+        return new TicketResponse(updated);
+    }
 
-        Ticket updated = ticketService.updateTicketStatus(
-                id,
-                TicketStatus.from(status),
-                user
-        );
-
+    // Close a resolved ticket
+    @PutMapping("/{id}/close")
+    public TicketResponse closeTicket(@PathVariable Long id) {
+        User user = getAuthenticatedAdminUser();
+        Ticket updated = ticketService.closeTicket(id, user);
         return new TicketResponse(updated);
     }
 

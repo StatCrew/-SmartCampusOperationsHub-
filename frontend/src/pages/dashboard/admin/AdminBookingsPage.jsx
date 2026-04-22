@@ -1,339 +1,396 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
-import { getAllBookings, updateBookingStatus, cancelBookingReq, deleteBooking } from '../../../api/bookingApi'
-import { getAllResources } from '../../../api/resourceApi'
-import useAuth from '../../../context/useAuth'
-import { getSidebarItemsByRole } from '../constants'
-import UserDashboardHeader from '../user/components/UserDashboardHeader'
-import UserSidebar from '../user/components/UserSidebar'
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { getAllBookings, updateBookingStatus, cancelBookingReq, deleteBooking } from '../../../api/bookingApi';
+import { getAllResources } from '../../../api/resourceApi';
+import useAuth from '../../../context/useAuth';
+import { getSidebarItemsByRole } from '../constants';
+import UserDashboardHeader from '../user/components/UserDashboardHeader';
+import UserSidebar from '../user/components/UserSidebar';
 
-// ── Theme & Status Config ────────────────────────────────────────────────────
+/**
+ * Configuration object defining the visual properties for booking statuses.
+ * Utilizes Tailwind CSS classes for consistency and rapid styling.
+ */
 const STATUS = {
   PENDING:   { label: 'Pending',   bg: 'bg-amber-50',   text: 'text-amber-700',   border: 'border-amber-200',   dot: 'bg-amber-400',   ring: 'ring-amber-100' },
   APPROVED:  { label: 'Approved',  bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', dot: 'bg-emerald-400', ring: 'ring-emerald-100' },
   REJECTED:  { label: 'Rejected',  bg: 'bg-red-50',     text: 'text-red-700',     border: 'border-red-200',     dot: 'bg-red-400',     ring: 'ring-red-100' },
   CANCELLED: { label: 'Cancelled', bg: 'bg-slate-50',   text: 'text-slate-500',   border: 'border-slate-200',   dot: 'bg-slate-400',   ring: 'ring-slate-100' },
-}
+};
 
+/**
+ * Renders a stylized badge indicating the current status of a booking.
+ */
 function StatusBadge({ status }) {
-  const s = STATUS[status] ?? STATUS.CANCELLED
+  const s = STATUS[status] ?? STATUS.CANCELLED;
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold ${s.bg} ${s.text} ${s.border} shadow-sm`}>
+    <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${s.bg} ${s.text} ${s.border}`}>
       <span className={`h-1.5 w-1.5 rounded-full ${s.dot}`} />
       {s.label}
     </span>
-  )
+  );
 }
 
-function FilterPill({ label, active, onClick, count, color }) {
+/**
+ * Interactive pill component used for filtering the bookings list.
+ */
+function FilterPill({ label, active, onClick, count, colorClass }) {
   return (
     <button
       onClick={onClick}
-      className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-bold border transition-all duration-200 ${
+      className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold border transition-all duration-200 ${
         active
-          ? `${color ?? 'bg-[#2193b0] border-[#2193b0]'} text-white shadow-sm scale-105`
-          : 'bg-white text-slate-500 border-slate-200 hover:border-[#2193b0] hover:text-[#2193b0] hover:scale-105 shadow-sm'
+          ? `${colorClass ?? 'bg-indigo-600 border-indigo-600'} text-white shadow-sm`
+          : 'bg-white text-slate-500 border-slate-200 hover:border-indigo-300 hover:text-indigo-600 shadow-sm'
       }`}
     >
       {label}
-      <span className={`rounded-full px-2 py-0.5 text-[10px] font-black ${active ? 'bg-white/20' : 'bg-slate-100 text-slate-600'}`}>
+      <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${active ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'}`}>
         {count}
       </span>
     </button>
-  )
+  );
 }
 
+/**
+ * Modal dialogue for confirming administrative actions (Approve, Reject, Cancel, Delete).
+ */
 function ConfirmModal({ open, action, booking, resourceName, onConfirm, onCancel, loading }) {
-  if (!open) return null
+  if (!open) return null;
 
   let title, desc, btnClass, btnText, icon, iconBg;
-  if (action === 'APPROVED') {
-    title = 'Approve Booking?'; desc = 'Confirm this reservation and notify the user.'; btnClass = 'bg-emerald-500 hover:bg-emerald-600'; btnText = 'Yes, Approve'; icon = '✅'; iconBg = 'bg-emerald-100';
-  } else if (action === 'REJECTED') {
-    title = 'Reject Booking?'; desc = 'Decline this request. The user will be notified.'; btnClass = 'bg-red-500 hover:bg-red-600'; btnText = 'Yes, Reject'; icon = '❌'; iconBg = 'bg-red-100';
-  } else if (action === 'CANCELLED') {
-    title = 'Cancel Booking?'; desc = 'Revoke this approved booking and free up the timeslot.'; btnClass = 'bg-amber-500 hover:bg-amber-600'; btnText = 'Yes, Cancel It'; icon = '⚠️'; iconBg = 'bg-amber-100';
-  } else if (action === 'DELETE') {
-    title = 'Permanently Delete?'; desc = 'Completely erase this record from the database. Cannot be undone.'; btnClass = 'bg-slate-900 hover:bg-slate-800'; btnText = 'Yes, Delete'; icon = '🗑️'; iconBg = 'bg-slate-200';
+  
+  switch (action) {
+    case 'APPROVED':
+      title = 'Approve Booking?'; desc = 'Confirm this reservation and notify the user.'; btnClass = 'bg-emerald-600 hover:bg-emerald-700 text-white border-transparent'; btnText = 'Yes, Approve'; icon = '✓'; iconBg = 'bg-emerald-100 text-emerald-600';
+      break;
+    case 'REJECTED':
+      title = 'Reject Booking?'; desc = 'Decline this request. The user will be notified.'; btnClass = 'bg-red-600 hover:bg-red-700 text-white border-transparent'; btnText = 'Yes, Reject'; icon = '✕'; iconBg = 'bg-red-100 text-red-600';
+      break;
+    case 'CANCELLED':
+      title = 'Cancel Booking?'; desc = 'Revoke this approved booking and free up the timeslot.'; btnClass = 'bg-amber-500 hover:bg-amber-600 text-white border-transparent'; btnText = 'Yes, Cancel It'; icon = '!'; iconBg = 'bg-amber-100 text-amber-600';
+      break;
+    case 'DELETE':
+      title = 'Permanently Delete?'; desc = 'Completely erase this record from the database. Cannot be undone.'; btnClass = 'bg-slate-900 hover:bg-slate-800 text-white border-transparent'; btnText = 'Yes, Delete'; icon = '🗑'; iconBg = 'bg-slate-100 text-slate-700';
+      break;
+    default:
+      return null;
   }
 
-  const displayDate = booking?.startTime ? booking.startTime.split('T')[0] : '—'
-  const displayTime = booking?.startTime ? `${booking.startTime.split('T')[1].substring(0, 5)} - ${booking.endTime.split('T')[1].substring(0, 5)}` : '—'
+  const displayDate = booking?.startTime ? booking.startTime.split('T')[0] : '—';
+  const displayTime = booking?.startTime ? `${booking.startTime.split('T')[1].substring(0, 5)} - ${booking.endTime.split('T')[1].substring(0, 5)}` : '—';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onCancel} />
-      <div className="relative w-full max-w-md rounded-3xl bg-white shadow-2xl p-8 animate-[fadeInUp_0.2s_ease]">
-        <div className={`mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl text-2xl ${iconBg}`}>{icon}</div>
-        <h3 className="text-xl font-black text-slate-900">{title}</h3>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ fontFamily: "'Poppins', sans-serif" }}>
+      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" onClick={onCancel} />
+      <div className="relative w-full max-w-md rounded-2xl bg-white shadow-xl p-8 transform transition-all">
+        <div className={`mb-5 inline-flex h-12 w-12 items-center justify-center rounded-xl text-xl font-bold ${iconBg}`}>
+          {icon}
+        </div>
+        <h3 className="text-xl font-bold text-slate-900">{title}</h3>
         <p className="mt-2 text-sm text-slate-500">{desc}</p>
         
         {booking && (
-          <div className="mt-4 rounded-2xl bg-sky-50 border border-sky-100 p-4 space-y-2 text-xs text-sky-900">
-            <div><span className="font-semibold opacity-70">Booking ID:</span> #{booking.id}</div>
-            <div><span className="font-semibold opacity-70">Resource:</span> {resourceName || `#${booking.resourceId}`}</div>
-            <div><span className="font-semibold opacity-70">Schedule:</span> {displayDate} at {displayTime}</div>
+          <div className="mt-5 rounded-xl bg-slate-50 border border-slate-100 p-4 space-y-2 text-sm text-slate-700">
+            <div className="flex justify-between"><span className="font-medium text-slate-500">Booking ID:</span> <span>#{booking.id}</span></div>
+            <div className="flex justify-between"><span className="font-medium text-slate-500">Resource:</span> <span className="font-medium text-indigo-700">{resourceName || `#${booking.resourceId}`}</span></div>
+            <div className="flex justify-between"><span className="font-medium text-slate-500">Schedule:</span> <span>{displayDate} at {displayTime}</span></div>
           </div>
         )}
         
         <div className="mt-6 flex gap-3">
-          <button onClick={onCancel} className="flex-1 rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition">Cancel</button>
-          <button onClick={onConfirm} disabled={loading} className={`flex-1 rounded-xl py-2.5 text-sm font-bold text-white shadow transition disabled:opacity-60 ${btnClass}`}>
+          <button onClick={onCancel} className="flex-1 rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-200">
+            Cancel
+          </button>
+          <button onClick={onConfirm} disabled={loading} className={`flex-1 rounded-xl border py-2.5 text-sm font-semibold transition-colors disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-offset-1 ${btnClass}`}>
             {loading ? 'Processing…' : btnText}
           </button>
         </div>
       </div>
     </div>
-  )
+  );
 }
 
-function BookingCard({ booking, resourceName, onAction, processingId, index }) {
-  const isPending = booking.status === 'PENDING'
-  const isApproved = booking.status === 'APPROVED'
-  const isDead = booking.status === 'REJECTED' || booking.status === 'CANCELLED'
-  const isProcessing = processingId === booking.id
-  const s = STATUS[booking.status] ?? STATUS.CANCELLED
+/**
+ * Card component to display individual booking requests in a grid layout.
+ */
+function BookingCard({ booking, resourceName, onAction, processingId }) {
+  const isPending = booking.status === 'PENDING';
+  const isApproved = booking.status === 'APPROVED';
+  const isDead = booking.status === 'REJECTED' || booking.status === 'CANCELLED';
+  const isProcessing = processingId === booking.id;
+  const s = STATUS[booking.status] ?? STATUS.CANCELLED;
 
-  const displayDate = booking.startTime ? booking.startTime.split('T')[0] : '—'
-  const displayStartTime = booking.startTime ? booking.startTime.split('T')[1].substring(0, 5) : '—'
-  const displayEndTime = booking.endTime ? booking.endTime.split('T')[1].substring(0, 5) : '—'
-  const displayUser = booking.user?.id || booking.userId || 'System'
+  const displayDate = booking.startTime ? booking.startTime.split('T')[0] : '—';
+  const displayStartTime = booking.startTime ? booking.startTime.split('T')[1].substring(0, 5) : '—';
+  const displayUser = booking.user?.id || booking.userId || 'System';
 
   return (
-    <div className="group relative rounded-2xl bg-white border border-slate-200 shadow-sm hover:shadow-lg hover:border-[#6dd5ed] hover:-translate-y-1 transition-all duration-300 overflow-hidden" style={{ animationDelay: `${index * 50}ms` }}>
-      <div className={`absolute left-0 top-0 h-full w-1.5 ${s.dot}`} />
-      <div className="p-5 pl-6">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className={`flex h-10 w-10 items-center justify-center rounded-xl text-lg font-black ${s.bg} ${s.text} ring-4 ${s.ring} flex-shrink-0`}>
-              {booking.id ? `#${String(booking.id).slice(-2)}` : '?'}
-            </div>
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Request #{booking.id}</p>
-              <p className="text-sm font-bold text-slate-800 line-clamp-1" title={resourceName}>{resourceName || `Resource #${booking.resourceId}`}</p>
-            </div>
+    <div className="group relative rounded-xl bg-white border border-slate-200 shadow-sm hover:shadow hover:border-indigo-200 transition-all duration-200 overflow-hidden flex flex-col">
+      <div className={`absolute left-0 top-0 h-full w-1 ${s.dot}`} />
+      <div className="p-5 pl-6 flex-1 flex flex-col">
+        <div className="flex items-start justify-between gap-3 mb-4">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-0.5">Request #{booking.id}</p>
+            <p className="text-sm font-semibold text-slate-900 line-clamp-1" title={resourceName}>
+              {resourceName || `Resource #${booking.resourceId}`}
+            </p>
           </div>
           <StatusBadge status={booking.status} />
         </div>
 
-        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <div className="rounded-xl bg-slate-50 p-2.5 border border-slate-100">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">User ID</p>
-            <p className="mt-0.5 text-sm font-semibold text-slate-700 truncate">{displayUser}</p>
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <div className="rounded-lg bg-slate-50 p-2.5 border border-slate-100">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">User ID</p>
+            <p className="mt-0.5 text-sm font-medium text-slate-800 truncate">{displayUser}</p>
           </div>
-          <div className="rounded-xl bg-slate-50 p-2.5 border border-slate-100 col-span-2 sm:col-span-2">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Date & Time</p>
-            <p className="mt-0.5 text-sm font-semibold text-slate-700">{displayDate} • {displayStartTime}</p>
+          <div className="rounded-lg bg-slate-50 p-2.5 border border-slate-100">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Schedule</p>
+            <p className="mt-0.5 text-sm font-medium text-slate-800">{displayDate}</p>
+            <p className="text-xs text-slate-500">{displayStartTime}</p>
           </div>
         </div>
 
         {booking.purpose && (
-          <p className="mt-3 text-xs text-slate-500 italic line-clamp-1 border-l-2 border-[#bae6fd] pl-2">"{booking.purpose}"</p>
+          <div className="mb-4 flex-1">
+            <p className="text-xs text-slate-600 bg-slate-50/50 p-2.5 rounded-lg border border-slate-100 line-clamp-2">
+              <span className="font-medium text-slate-400 mr-1">Purpose:</span> 
+              {booking.purpose}
+            </p>
+          </div>
         )}
 
-        <div className="mt-4 flex gap-2 border-t border-slate-100 pt-4">
+        <div className="mt-auto pt-4 border-t border-slate-100 flex gap-2">
           {isPending && (
             <>
-              {/* Solid Base Blue for Primary Action */}
-              <button onClick={() => onAction(booking, 'APPROVED')} disabled={isProcessing} className="flex-1 rounded-xl bg-[#2193b0] py-2 text-xs font-bold text-white hover:bg-[#1a7a93] disabled:opacity-50 transition shadow-sm hover:shadow-md">
-                {isProcessing ? '…' : '✓ Approve'}
+              <button onClick={() => onAction(booking, 'APPROVED')} disabled={isProcessing} className="flex-1 rounded-lg bg-indigo-600 py-2 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500/50">
+                {isProcessing ? '…' : 'Approve'}
               </button>
-              <button onClick={() => onAction(booking, 'REJECTED')} disabled={isProcessing} className="flex-1 rounded-xl border border-red-200 bg-white py-2 text-xs font-bold text-red-600 hover:bg-red-50 disabled:opacity-50 transition">
-                {isProcessing ? '…' : '✕ Reject'}
+              <button onClick={() => onAction(booking, 'REJECTED')} disabled={isProcessing} className="flex-1 rounded-lg border border-red-200 bg-white py-2 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500/50">
+                {isProcessing ? '…' : 'Reject'}
               </button>
             </>
           )}
           {isApproved && (
-            <button onClick={() => onAction(booking, 'CANCELLED')} disabled={isProcessing} className="flex-1 rounded-xl border border-amber-200 bg-white py-2 text-xs font-bold text-amber-600 hover:bg-amber-50 disabled:opacity-50 transition shadow-sm">
-              {isProcessing ? '…' : '⚠️ Cancel'}
+            <button onClick={() => onAction(booking, 'CANCELLED')} disabled={isProcessing} className="flex-1 rounded-lg border border-amber-200 bg-white py-2 text-xs font-semibold text-amber-600 hover:bg-amber-50 disabled:opacity-50 transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500/50">
+              {isProcessing ? '…' : 'Cancel Booking'}
             </button>
           )}
           {isDead && (
-            <button onClick={() => onAction(booking, 'DELETE')} disabled={isProcessing} className="flex-1 rounded-xl border border-slate-200 bg-white py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 hover:text-slate-900 disabled:opacity-50 transition flex items-center justify-center gap-1 shadow-sm">
-              {isProcessing ? '…' : <><span>🗑️</span> Delete</>}
+            <button onClick={() => onAction(booking, 'DELETE')} disabled={isProcessing} className="flex-1 rounded-lg border border-slate-200 bg-white py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 disabled:opacity-50 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-500/50">
+              {isProcessing ? '…' : 'Delete Record'}
             </button>
           )}
         </div>
       </div>
     </div>
-  )
+  );
 }
 
+/**
+ * List component to display bookings grouped by date.
+ */
 function AgendaView({ bookings, resourceMap, onAction, processingId }) {
   const grouped = bookings.reduce((acc, b) => {
-    const date = b.startTime ? b.startTime.split('T')[0] : 'Unknown'
-    if (!acc[date]) acc[date] = []
-    acc[date].push(b)
-    return acc
-  }, {})
+    const date = b.startTime ? b.startTime.split('T')[0] : 'Unknown';
+    if (!acc[date]) acc[date] = [];
+    acc[date].push(b);
+    return acc;
+  }, {});
 
-  const sortedDates = Object.keys(grouped).sort()
+  const sortedDates = Object.keys(grouped).sort();
 
-  if (sortedDates.length === 0) return <EmptyState filter="ALL" />
+  if (sortedDates.length === 0) return <EmptyState filter="ALL" />;
 
   return (
     <div className="space-y-6">
       {sortedDates.map(date => (
-        <div key={date} className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-          <div className="bg-slate-50 px-5 py-3 border-b border-slate-200 flex justify-between items-center">
-            <h3 className="font-bold text-slate-800 text-sm">📅 {date}</h3>
-            <span className="text-xs font-bold text-[#0369a1] bg-[#f0f9ff] px-2.5 py-1 rounded-lg border border-[#bae6fd]">{grouped[date].length} Bookings</span>
+        <div key={date} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          <div className="bg-slate-50/80 px-5 py-3 border-b border-slate-200 flex justify-between items-center">
+            <h3 className="font-semibold text-slate-800 text-sm">Date: {date}</h3>
+            <span className="text-xs font-semibold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-md border border-indigo-100">
+              {grouped[date].length} {grouped[date].length === 1 ? 'Booking' : 'Bookings'}
+            </span>
           </div>
           <div className="divide-y divide-slate-100">
             {grouped[date].sort((a, b) => new Date(a.startTime) - new Date(b.startTime)).map(b => {
-              const resName = resourceMap[b.resourceId] || `Resource #${b.resourceId}`
-              const time = `${b.startTime.split('T')[1].substring(0,5)} - ${b.endTime.split('T')[1].substring(0,5)}`
+              const resName = resourceMap[b.resourceId] || `Resource #${b.resourceId}`;
+              const time = `${b.startTime.split('T')[1].substring(0,5)} - ${b.endTime.split('T')[1].substring(0,5)}`;
               
               return (
                 <div key={b.id} className="p-4 hover:bg-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors">
                   <div className="flex items-center gap-4">
                     <StatusBadge status={b.status} />
                     <div>
-                      <p className="text-sm font-bold text-slate-800">{resName}</p>
-                      <p className="text-xs text-slate-500">User: {b.user?.id || b.userId || 'System'} • 🕐 {time}</p>
+                      <p className="text-sm font-semibold text-slate-900">{resName}</p>
+                      <p className="text-xs text-slate-500 mt-0.5">User: {b.user?.id || b.userId || 'System'} <span className="mx-1">•</span> {time}</p>
                     </div>
                   </div>
                   <div className="flex gap-2">
                     {b.status === 'PENDING' && (
                       <>
-                        <button onClick={() => onAction(b, 'APPROVED')} className="px-3 py-1.5 text-xs font-bold text-white bg-[#2193b0] hover:bg-[#1a7a93] rounded-lg shadow-sm transition-colors">Approve</button>
-                        <button onClick={() => onAction(b, 'REJECTED')} className="px-3 py-1.5 text-xs font-bold text-red-600 bg-white border border-red-200 hover:bg-red-50 rounded-lg">Reject</button>
+                        <button onClick={() => onAction(b, 'APPROVED')} disabled={processingId === b.id} className="px-3.5 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm transition-colors disabled:opacity-50">Approve</button>
+                        <button onClick={() => onAction(b, 'REJECTED')} disabled={processingId === b.id} className="px-3.5 py-1.5 text-xs font-semibold text-red-600 bg-white border border-red-200 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50">Reject</button>
                       </>
                     )}
                     {b.status === 'APPROVED' && (
-                      <button onClick={() => onAction(b, 'CANCELLED')} className="px-3 py-1.5 text-xs font-bold text-amber-600 bg-white border border-amber-200 hover:bg-amber-50 rounded-lg">Cancel</button>
+                      <button onClick={() => onAction(b, 'CANCELLED')} disabled={processingId === b.id} className="px-3.5 py-1.5 text-xs font-semibold text-amber-600 bg-white border border-amber-200 hover:bg-amber-50 rounded-lg transition-colors disabled:opacity-50">Cancel</button>
                     )}
                     {(b.status === 'REJECTED' || b.status === 'CANCELLED') && (
-                      <button onClick={() => onAction(b, 'DELETE')} className="px-3 py-1.5 text-xs font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-100 rounded-lg">Delete</button>
+                      <button onClick={() => onAction(b, 'DELETE')} disabled={processingId === b.id} className="px-3.5 py-1.5 text-xs font-semibold text-slate-600 bg-white border border-slate-200 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50">Delete</button>
                     )}
                   </div>
                 </div>
-              )
+              );
             })}
           </div>
         </div>
       ))}
     </div>
-  )
+  );
 }
 
+/**
+ * Placeholder component rendered when no bookings match the current filters.
+ */
 function EmptyState({ filter }) {
   return (
-    <div className="col-span-full flex flex-col items-center justify-center py-20 text-center bg-white rounded-3xl border-2 border-slate-200 border-dashed shadow-sm">
-      <div className="mb-4 text-6xl opacity-30">📭</div>
-      <h3 className="text-lg font-bold text-slate-700">No bookings found</h3>
-      <p className="mt-1 text-sm text-slate-400">
-        {filter === 'ALL' ? 'There are no booking requests yet.' : `No ${filter.toLowerCase()} bookings match your criteria.`}
+    <div className="col-span-full flex flex-col items-center justify-center py-24 text-center bg-white rounded-xl border border-slate-200 border-dashed">
+      <div className="mb-4 text-4xl opacity-40">📋</div>
+      <h3 className="text-base font-semibold text-slate-900">No bookings found</h3>
+      <p className="mt-1.5 text-sm text-slate-500 max-w-sm">
+        {filter === 'ALL' ? 'There are currently no booking requests in the system.' : `We couldn't find any ${filter.toLowerCase()} bookings matching your search criteria.`}
       </p>
     </div>
-  )
+  );
 }
 
 export default function AdminBookingsPage() {
-  const navigate = useNavigate()
-  const location = useLocation()
-  const { role, logout, getApiErrorMessage } = useAuth()
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { role, logout, getApiErrorMessage } = useAuth();
 
-  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false)
-  const [bookings,     setBookings]     = useState([])
-  const [resourceMap,  setResourceMap]  = useState({})
-  const [loading,      setLoading]      = useState(true)
-  const [errorMessage, setErrorMessage] = useState('')
-  const [processingId, setProcessingId] = useState(null)
+  /* State Management */
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
+  const [bookings, setBookings] = useState([]);
+  const [resourceMap, setResourceMap] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [processingId, setProcessingId] = useState(null);
   
-  const [statusFilter, setStatusFilter] = useState('ALL')
-  const [search,       setSearch]       = useState('')
-  const [viewMode,     setViewMode]     = useState('cards') 
+  /* Filter and View State */
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [viewMode, setViewMode] = useState('cards'); 
 
-  const [modal, setModal] = useState({ open: false, booking: null, action: null })
-  const [modalLoading, setModalLoading] = useState(false)
+  /* Modal State */
+  const [modal, setModal] = useState({ open: false, booking: null, action: null });
+  const [modalLoading, setModalLoading] = useState(false);
 
+  /* Data Initialization */
   const loadData = useCallback(async () => {
-    setLoading(true)
-    setErrorMessage('')
+    setLoading(true);
+    setErrorMessage('');
     try {
       const [bookingsData, resourcesData] = await Promise.all([
         getAllBookings({ size: 1000 }),
         getAllResources()
-      ])
-      setBookings(bookingsData?.content || [])
-      const resMap = {}
+      ]);
+      
+      setBookings(bookingsData?.content || []);
+      
+      const resMap = {};
       if (Array.isArray(resourcesData)) {
-        resourcesData.forEach(r => resMap[r.id] = r.name)
+        resourcesData.forEach(r => { resMap[r.id] = r.name; });
       }
-      setResourceMap(resMap)
+      setResourceMap(resMap);
     } catch (error) {
-      setErrorMessage(getApiErrorMessage(error))
+      setErrorMessage(getApiErrorMessage(error));
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [getApiErrorMessage])
+  }, [getApiErrorMessage]);
 
-  useEffect(() => { loadData() }, [loadData])
+  useEffect(() => { loadData(); }, [loadData]);
 
+  /* Action Handlers */
   const handleAction = (booking, action) => {
-    setModal({ open: true, booking, action })
-  }
+    setModal({ open: true, booking, action });
+  };
 
   const handleConfirm = async () => {
-    setModalLoading(true)
-    setProcessingId(modal.booking.id)
+    setModalLoading(true);
+    setProcessingId(modal.booking.id);
     try {
       if (modal.action === 'DELETE') {
-        await deleteBooking(modal.booking.id)
+        await deleteBooking(modal.booking.id);
       } else if (modal.action === 'CANCELLED') {
-        await cancelBookingReq(modal.booking.id)
+        await cancelBookingReq(modal.booking.id);
       } else {
-        await updateBookingStatus(modal.booking.id, modal.action)
+        await updateBookingStatus(modal.booking.id, modal.action);
       }
-      setModal({ open: false, booking: null, action: null })
-      await loadData() 
+      setModal({ open: false, booking: null, action: null });
+      await loadData(); 
     } catch (error) {
-      setErrorMessage(getApiErrorMessage(error))
-      setModal({ open: false, booking: null, action: null })
+      setErrorMessage(getApiErrorMessage(error));
+      setModal({ open: false, booking: null, action: null });
     } finally {
-      setModalLoading(false)
-      setProcessingId(null)
+      setModalLoading(false);
+      setProcessingId(null);
     }
-  }
+  };
 
-  const handleLogout = () => { logout(); navigate('/signin', { replace: true }) }
+  const handleLogout = () => { 
+    logout(); 
+    navigate('/signin', { replace: true }); 
+  };
 
   const sidebarItems = useMemo(
     () => getSidebarItemsByRole(role).map(item => ({ ...item, active: item.path === location.pathname })),
-    [location.pathname, role],
-  )
+    [location.pathname, role]
+  );
 
-  const filtered = useMemo(() => {
+  /* Advanced filtering combining Status and Text Search */
+  const filteredBookings = useMemo(() => {
     return bookings.filter(b => {
-      const matchStatus = statusFilter === 'ALL' || b.status === statusFilter
-      const q = search.toLowerCase()
-      const dateStr = b.startTime ? b.startTime.split('T')[0] : ''
-      const userIdStr = String(b.user?.id || b.userId || '').toLowerCase()
-      const resNameStr = (resourceMap[b.resourceId] || '').toLowerCase() 
+      const matchStatus = statusFilter === 'ALL' || b.status === statusFilter;
+      const searchLower = searchQuery.toLowerCase();
+      const dateStr = b.startTime ? b.startTime.split('T')[0] : '';
+      const userIdStr = String(b.user?.id || b.userId || '').toLowerCase();
+      const resNameStr = (resourceMap[b.resourceId] || '').toLowerCase(); 
 
-      const matchSearch = !q || String(b.id).includes(q) || userIdStr.includes(q) || String(b.resourceId ?? '').includes(q) || resNameStr.includes(q) || dateStr.includes(q)
-      return matchStatus && matchSearch
-    })
-  }, [bookings, statusFilter, search, resourceMap])
+      const matchSearch = !searchQuery || 
+        String(b.id).includes(searchLower) || 
+        userIdStr.includes(searchLower) || 
+        resNameStr.includes(searchLower) || 
+        dateStr.includes(searchLower);
+        
+      return matchStatus && matchSearch;
+    });
+  }, [bookings, statusFilter, searchQuery, resourceMap]);
 
+  /* Aggregate calculation for status pills */
   const counts = useMemo(() => ({
     ALL:      bookings.length,
     PENDING:  bookings.filter(b => b.status === 'PENDING').length,
     APPROVED: bookings.filter(b => b.status === 'APPROVED').length,
     REJECTED: bookings.filter(b => b.status === 'REJECTED').length,
-  }), [bookings])
+  }), [bookings]);
 
   const filters = [
-    { key: 'ALL',      label: 'All',      color: 'bg-[#2193b0] border-[#2193b0]' },
-    { key: 'PENDING',  label: 'Pending',  color: 'bg-amber-500 border-amber-500' },
-    { key: 'APPROVED', label: 'Approved', color: 'bg-emerald-500 border-emerald-500' },
-    { key: 'REJECTED', label: 'Rejected', color: 'bg-red-500 border-red-500' },
-    { key: 'CANCELLED',label: 'Cancelled',color: 'bg-slate-500 border-slate-500' },
-  ]
+    { key: 'ALL',      label: 'All',      colorClass: 'bg-indigo-600 border-indigo-600' },
+    { key: 'PENDING',  label: 'Pending',  colorClass: 'bg-amber-500 border-amber-500' },
+    { key: 'APPROVED', label: 'Approved', colorClass: 'bg-emerald-500 border-emerald-500' },
+    { key: 'REJECTED', label: 'Rejected', colorClass: 'bg-red-500 border-red-500' },
+    { key: 'CANCELLED',label: 'Cancelled',colorClass: 'bg-slate-500 border-slate-500' },
+  ];
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-slate-900 font-sans">
+    <div style={{ minHeight: '100vh', background: '#f8fafc', fontFamily: "'Poppins', sans-serif" }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+      `}</style>
+      
       <ConfirmModal
         open={modal.open} action={modal.action} booking={modal.booking}
         resourceName={resourceMap[modal.booking?.resourceId]}
@@ -341,101 +398,127 @@ export default function AdminBookingsPage() {
         loading={modalLoading}
       />
 
-      <UserSidebar isSidebarExpanded={isSidebarExpanded} onCollapse={() => setIsSidebarExpanded(false)} onExpand={() => setIsSidebarExpanded(true)} onItemNavigate={item => item.path && navigate(item.path)} onLogout={handleLogout} sidebarItems={sidebarItems} />
+      <UserSidebar 
+        isSidebarExpanded={isSidebarExpanded} 
+        onCollapse={() => setIsSidebarExpanded(false)} 
+        onExpand={() => setIsSidebarExpanded(true)} 
+        onItemNavigate={item => item.path && navigate(item.path)} 
+        onLogout={handleLogout} 
+        sidebarItems={sidebarItems} 
+      />
 
       <div className={`min-h-screen transition-all duration-300 ${isSidebarExpanded ? 'md:pl-64' : 'md:pl-20'}`}>
-        <UserDashboardHeader onLogout={handleLogout} eyebrow="Admin" title="Booking Management" />
+        <UserDashboardHeader onLogout={handleLogout} eyebrow="Admin Workspace" title="Booking Management" />
 
-        <main className="mx-auto w-full max-w-7xl p-4 pb-24 md:p-8 space-y-6">
+        <main className="mx-auto w-full max-w-6xl p-6 pb-24 space-y-6">
 
+          {/* Validation & Error Messaging */}
           {errorMessage && (
-            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center gap-2 shadow-sm">
-              <span>⚠️</span> {errorMessage}
-              <button onClick={() => setErrorMessage('')} className="ml-auto text-red-400 hover:text-red-600">✕</button>
+            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center gap-3 shadow-sm">
+              <span className="text-lg">⚠️</span> 
+              <span className="font-medium">{errorMessage}</span>
+              <button onClick={() => setErrorMessage('')} className="ml-auto text-red-400 hover:text-red-600 focus:outline-none">✕</button>
             </div>
           )}
 
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          {/* Page Header and Global Controls */}
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="text-3xl font-black text-slate-900 tracking-tight">Facility Requests</h2>
-              <p className="mt-1 text-sm text-slate-500">
-                {counts.PENDING > 0 ? `${counts.PENDING} pending request${counts.PENDING > 1 ? 's' : ''} awaiting your review` : 'All requests are resolved'}
+              <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Facility Requests</h2>
+              <p className="mt-1 text-sm text-slate-500 font-medium">
+                {counts.PENDING > 0 ? `${counts.PENDING} pending request${counts.PENDING > 1 ? 's' : ''} awaiting your review.` : 'All requests are resolved.'}
               </p>
             </div>
             
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Search Implementation */}
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#2193b0] text-sm">🔍</span>
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">🔍</span>
                 <input
                   type="text"
-                  placeholder="Search name, ID, or date…"
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  className="w-56 rounded-full border border-slate-300 bg-white py-2 pl-9 pr-4 text-sm placeholder-slate-400 focus:border-[#2193b0] focus:outline-none focus:ring-2 focus:ring-[#6dd5ed]/30 transition shadow-sm"
+                  placeholder="Search bookings..."
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  className="w-full sm:w-64 rounded-xl border border-slate-200 bg-white py-2 pl-10 pr-4 text-sm text-slate-800 placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm"
                 />
               </div>
 
-              <div className="flex bg-slate-200 p-1 rounded-full shadow-inner">
-                <button onClick={() => setViewMode('cards')} className={`px-4 py-1.5 text-xs font-bold rounded-full transition-colors ${viewMode === 'cards' ? 'bg-white text-[#2193b0] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Cards</button>
-                <button onClick={() => setViewMode('agenda')} className={`px-4 py-1.5 text-xs font-bold rounded-full transition-colors ${viewMode === 'agenda' ? 'bg-white text-[#2193b0] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Agenda</button>
+              {/* View Toggles */}
+              <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
+                <button onClick={() => setViewMode('cards')} className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-all ${viewMode === 'cards' ? 'bg-white text-indigo-600 shadow-sm border border-slate-200' : 'text-slate-500 hover:text-slate-700'}`}>Cards</button>
+                <button onClick={() => setViewMode('agenda')} className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-all ${viewMode === 'agenda' ? 'bg-white text-indigo-600 shadow-sm border border-slate-200' : 'text-slate-500 hover:text-slate-700'}`}>Agenda</button>
               </div>
 
-              <button onClick={loadData} className={`flex items-center justify-center w-10 h-10 rounded-full border border-slate-200 bg-white text-slate-600 hover:bg-sky-50 hover:text-[#2193b0] shadow-sm transition ${loading ? 'opacity-60' : ''}`}>
+              {/* Reload Data */}
+              <button onClick={loadData} title="Refresh Data" className={`flex items-center justify-center w-10 h-10 rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-indigo-600 shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500/20 ${loading ? 'opacity-60' : ''}`}>
                 <span className={loading ? 'animate-spin inline-block' : ''}>↻</span>
               </button>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {/* The ONLY gradient on the page to make it pop safely */}
-            <div className="rounded-2xl bg-gradient-to-r from-[#2193b0] to-[#6dd5ed] border-none px-5 py-4 shadow-md text-white">
-               <p className="text-xs font-bold uppercase tracking-wider text-sky-100">Total Bookings</p>
-               <p className="mt-1 text-3xl font-black tabular-nums">{counts.ALL}</p>
+          {/* Metric Summary Cards */}
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <div className="rounded-xl bg-indigo-600 border border-indigo-700 px-5 py-4 shadow-sm text-white flex flex-col justify-between">
+               <p className="text-[11px] font-semibold uppercase tracking-wider text-indigo-200">Total Bookings</p>
+               <p className="mt-2 text-3xl font-bold tabular-nums">{counts.ALL}</p>
             </div>
-            <div className="rounded-2xl bg-amber-50 border border-amber-200 px-5 py-4 shadow-sm transition hover:shadow-md">
-               <p className="text-xs font-bold uppercase tracking-wider text-amber-500">Pending</p>
-               <p className="mt-1 text-3xl font-black tabular-nums text-amber-600">{counts.PENDING}</p>
+            <div className="rounded-xl bg-white border border-slate-200 px-5 py-4 shadow-sm flex flex-col justify-between">
+               <p className="text-[11px] font-semibold uppercase tracking-wider text-amber-500">Pending</p>
+               <p className="mt-2 text-3xl font-bold tabular-nums text-slate-800">{counts.PENDING}</p>
             </div>
-            <div className="rounded-2xl bg-emerald-50 border border-emerald-200 px-5 py-4 shadow-sm transition hover:shadow-md">
-               <p className="text-xs font-bold uppercase tracking-wider text-emerald-500">Approved</p>
-               <p className="mt-1 text-3xl font-black tabular-nums text-emerald-600">{counts.APPROVED}</p>
+            <div className="rounded-xl bg-white border border-slate-200 px-5 py-4 shadow-sm flex flex-col justify-between">
+               <p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-500">Approved</p>
+               <p className="mt-2 text-3xl font-bold tabular-nums text-slate-800">{counts.APPROVED}</p>
             </div>
-            <div className="rounded-2xl bg-red-50 border border-red-200 px-5 py-4 shadow-sm transition hover:shadow-md">
-               <p className="text-xs font-bold uppercase tracking-wider text-red-500">Rejected</p>
-               <p className="mt-1 text-3xl font-black tabular-nums text-red-600">{counts.REJECTED}</p>
+            <div className="rounded-xl bg-white border border-slate-200 px-5 py-4 shadow-sm flex flex-col justify-between">
+               <p className="text-[11px] font-semibold uppercase tracking-wider text-red-500">Rejected</p>
+               <p className="mt-2 text-3xl font-bold tabular-nums text-slate-800">{counts.REJECTED}</p>
             </div>
           </div>
 
+          {/* Interactive Filters */}
           <div className="flex flex-wrap gap-2">
             {filters.map(f => (
               <FilterPill
                 key={f.key}
                 label={f.label}
                 active={statusFilter === f.key}
-                count={f.key === 'CANCELLED' ? filtered.filter(b=>b.status==='CANCELLED').length : counts[f.key]}
-                color={f.color}
+                count={f.key === 'CANCELLED' ? filteredBookings.filter(b => b.status === 'CANCELLED').length : counts[f.key]}
+                colorClass={f.colorClass}
                 onClick={() => setStatusFilter(f.key)}
               />
             ))}
           </div>
 
+          {/* Core Content Area */}
           {loading ? (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 animate-pulse">
-              {Array.from({ length: 6 }).map((_, i) => <div key={i} className="h-52 rounded-2xl bg-slate-200" />)}
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 animate-pulse">
+              {Array.from({ length: 6 }).map((_, i) => <div key={i} className="h-56 rounded-xl bg-slate-200" />)}
             </div>
           ) : (
             viewMode === 'cards' ? (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {filtered.length === 0 ? <EmptyState filter={statusFilter} /> : filtered.map((booking, i) => (
-                  <BookingCard key={booking.id} booking={booking} resourceName={resourceMap[booking.resourceId]} onAction={handleAction} processingId={processingId} index={i} />
+              <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                {filteredBookings.length === 0 ? <EmptyState filter={statusFilter} /> : filteredBookings.map((booking) => (
+                  <BookingCard 
+                    key={booking.id} 
+                    booking={booking} 
+                    resourceName={resourceMap[booking.resourceId]} 
+                    onAction={handleAction} 
+                    processingId={processingId} 
+                  />
                 ))}
               </div>
             ) : (
-              <AgendaView bookings={filtered} resourceMap={resourceMap} onAction={handleAction} processingId={processingId} />
+              <AgendaView 
+                bookings={filteredBookings} 
+                resourceMap={resourceMap} 
+                onAction={handleAction} 
+                processingId={processingId} 
+              />
             )
           )}
         </main>
       </div>
     </div>
-  )
+  );
 }

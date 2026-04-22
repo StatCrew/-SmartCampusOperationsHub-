@@ -70,9 +70,8 @@ public class TicketService {
     // Update Ticket
     public Ticket updateTicket(Long id, Ticket updatedTicket) {
 
-        // Find existing ticket
-        Ticket existing = ticketRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Ticket not found"));
+        // Find existing ticket (enforcing ownership)
+        Ticket existing = getMyTicketById(id);
 
         // Only allow updates if status is OPEN
         if (existing.getStatus() != TicketStatus.OPEN) {
@@ -97,9 +96,8 @@ public class TicketService {
     // Delete Ticket
     public void deleteTicket(Long id) {
 
-        // Find ticket
-        Ticket existing = ticketRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Ticket not found"));
+        // Find ticket (enforcing ownership)
+        Ticket existing = getMyTicketById(id);
 
         // Only allow delete if status is OPEN
         if (existing.getStatus() != TicketStatus.OPEN) {
@@ -188,6 +186,16 @@ public class TicketService {
         ticket.setTechnician(technician);
         ticket.setStatus(TicketStatus.IN_PROGRESS);
         ticket.setUpdatedAt(LocalDateTime.now());
+
+        // AUTO COMMENT
+        TicketComment comment = TicketComment.builder()
+                .message("Assigned technician: " + technician.getEmail())
+                .ticket(ticket)
+                .user(actor) // Admin who performed the assignment
+                .createdAt(LocalDateTime.now())
+                .build();
+        commentRepository.save(comment);
+
         Ticket saved = ticketRepository.save(ticket);
         publishAssignmentNotifications(saved, technician);
         return saved;
@@ -283,8 +291,8 @@ public class TicketService {
         Ticket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new RuntimeException("Ticket not found"));
 
-        if (ticket.getStatus() != TicketStatus.OPEN) {
-            throw new RuntimeException("Only open tickets can be rejected");
+        if (ticket.getStatus() != TicketStatus.OPEN && ticket.getStatus() != TicketStatus.IN_PROGRESS) {
+            throw new RuntimeException("Only open or in-progress tickets can be rejected");
         }
 
         ticket.setStatus(TicketStatus.REJECTED);
@@ -347,25 +355,33 @@ public class TicketService {
         return ticketRepository.save(ticket);
     }
 
-
-    private int technicianIndex = 0; // For round-robin technician assignment
-
-    private User getNextTechnician() {
-
-        List<User> technicians = userRepository
-                .searchUsers("", Role.TECHNICIAN, true, PageRequest.of(0, 100))
-                .getContent();
-
-        if (technicians.isEmpty()) {
-            throw new RuntimeException("No technicians available");
+    public Ticket closeTicket(Long ticketId, User admin) {
+        if (admin.getRole() != Role.ADMIN) {
+            throw new RuntimeException("Only admins can close tickets");
         }
 
-        User selected = technicians.get(technicianIndex % technicians.size());
+        Ticket ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new RuntimeException("Ticket not found"));
 
-        technicianIndex++;
+        if (ticket.getStatus() != TicketStatus.RESOLVED) {
+            throw new RuntimeException("Only resolved tickets can be closed");
+        }
 
-        return selected;
+        ticket.setStatus(TicketStatus.CLOSED);
+        ticket.setUpdatedAt(LocalDateTime.now());
+
+        TicketComment comment = TicketComment.builder()
+                .message("Ticket CLOSED by admin.")
+                .ticket(ticket)
+                .user(admin)
+                .createdAt(LocalDateTime.now())
+                .build();
+        commentRepository.save(comment);
+
+        return ticketRepository.save(ticket);
     }
+
+
 
     private void assignBestTechnician(Ticket ticket) {
         Optional<User> selected = findBestTechnician(ticket.getCategory());
@@ -373,9 +389,20 @@ public class TicketService {
             return;
         }
 
-        ticket.setTechnician(selected.get());
+        User technician = selected.get();
+        ticket.setTechnician(technician);
         ticketRepository.save(ticket);
-        publishAssignmentNotifications(ticket, selected.get());
+
+        // AUTO COMMENT
+        TicketComment comment = TicketComment.builder()
+                .message("Assigned technician: " + technician.getEmail())
+                .ticket(ticket)
+                .user(technician) // Attribute to technician as system message
+                .createdAt(LocalDateTime.now())
+                .build();
+        commentRepository.save(comment);
+
+        publishAssignmentNotifications(ticket, technician);
     }
 
     private Optional<User> findBestTechnician(String category) {

@@ -148,11 +148,13 @@ export async function getAdminTicketAttachmentUrl(id, key) {
   return response.data
 }
 
-export async function updateAdminTicketStatus(id, status) {
-  const response = await apiClient.put(`${ADMIN_TICKETS_PREFIX}/${id}/status`, null, {
-    params: { status },
-  })
+export async function markAdminTicketInProgress(id) {
+  const response = await apiClient.put(`${ADMIN_TICKETS_PREFIX}/${id}/mark-in-progress`)
+  return response.data
+}
 
+export async function closeAdminTicket(id) {
+  const response = await apiClient.put(`${ADMIN_TICKETS_PREFIX}/${id}/close`)
   return response.data
 }
 
@@ -191,14 +193,26 @@ export async function resolveTechnicianTicket(id, notes) {
 const ticketApi = {
   getUserTickets,
   getUserTicketById,
+  getUserTicketAttachmentUrl,
   createTicket,
   updateTicket,
   deleteTicket,
+  rateUserTicket,
+  getTicketComments,
+  createTicketComment,
+  updateTicketComment,
+  deleteTicketComment,
   getAdminTickets,
   getAdminTicketById,
-  updateAdminTicketStatus,
+  getAdminTicketAttachmentUrl,
+  markAdminTicketInProgress,
+  closeAdminTicket,
+  assignAdminTicket,
+  rejectAdminTicket,
   getTechnicianTickets,
   getTechnicianTicketById,
+  getTechnicianTicketAttachmentUrl,
+  resolveTechnicianTicket,
 }
 
 export default ticketApi
