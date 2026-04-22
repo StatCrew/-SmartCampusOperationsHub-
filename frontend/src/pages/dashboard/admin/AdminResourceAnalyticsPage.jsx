@@ -81,9 +81,9 @@ export default function AdminResourceAnalyticsPage() {
       if (!map[id]) map[id] = { total: 0, approved: 0, pending: 0, rejected: 0, cancelled: 0 }
       map[id].total++
       const s = (b.status || '').toUpperCase()
-      if (s === 'APPROVED')  map[id].approved++
-      if (s === 'PENDING')   map[id].pending++
-      if (s === 'REJECTED')  map[id].rejected++
+      if (s === 'APPROVED') map[id].approved++
+      if (s === 'PENDING') map[id].pending++
+      if (s === 'REJECTED') map[id].rejected++
       if (s === 'CANCELLED') map[id].cancelled++
     }
     return map

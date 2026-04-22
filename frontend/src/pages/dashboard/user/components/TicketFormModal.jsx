@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { createTicket, updateTicket } from '../../../../api/ticketApi'
 import { sendAdminRoleBroadcast } from '../../../../api/adminApi'
 
@@ -6,6 +7,7 @@ const CATEGORIES = ['GENERAL', 'PLUMBING', 'ELECTRICAL', 'EQUIPMENT', 'HVAC', 'N
 const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT']
 
 export default function TicketFormModal({ open, mode, ticket, onClose, onSaved, getApiErrorMessage }) {
+  const navigate = useNavigate()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
   const [touched, setTouched] = useState({})
@@ -44,7 +46,7 @@ export default function TicketFormModal({ open, mode, ticket, onClose, onSaved, 
       resourceId: ticket?.resourceId ? String(ticket.resourceId) : '',
       contactNumber: ticket?.contactNumber || '',
     }
-    
+
     initialData.current = data
     setFormData(formData => ({ ...formData, ...data }))
     setErrorMessage('')
@@ -57,10 +59,10 @@ export default function TicketFormModal({ open, mode, ticket, onClose, onSaved, 
   const errors = {}
   if (!formData.title.trim()) errors.title = 'Ticket title is required'
   else if (formData.title.length < 5) errors.title = 'Title must be at least 5 characters'
-  
+
   if (!formData.description.trim()) errors.description = 'Please describe the issue'
   else if (formData.description.length < 20) errors.description = 'Description must be at least 20 characters'
-  
+
   if (formData.contactNumber && !/^\d{10}$/.test(formData.contactNumber)) {
     errors.contactNumber = 'Contact number must be exactly 10 digits'
   }
@@ -165,6 +167,7 @@ export default function TicketFormModal({ open, mode, ticket, onClose, onSaved, 
       }
 
       onSaved()
+      navigate('/dashboard/user/tickets')
     } catch (error) {
       setErrorMessage(getApiErrorMessage(error))
     } finally {
@@ -176,256 +179,236 @@ export default function TicketFormModal({ open, mode, ticket, onClose, onSaved, 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-5xl rounded-[2rem] bg-white p-6 shadow-2xl overflow-y-auto max-h-[95vh] no-scrollbar">
-        <div className="mb-6 flex items-center justify-between border-b border-slate-50 pb-5">
-          <div className="flex items-center gap-4">
-            <div className="grid h-12 w-12 place-items-center rounded-xl bg-indigo-600 text-white shadow-lg shadow-indigo-600/20">
-              <span className="material-symbols-outlined text-[24px]">
-                {mode === 'edit' ? 'edit_note' : 'add_task'}
-              </span>
+      <style>{`
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      `}</style>
+      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={onClose} />
+      <div className="relative w-full max-w-6xl rounded-[2.5rem] bg-white p-8 lg:p-10 shadow-[0_32px_64px_-12px_rgba(0,0,0,0.14)] overflow-y-auto max-h-[92vh] no-scrollbar">
+        {/* Header Section */}
+        <div className="mb-6 lg:mb-8 flex items-start justify-between">
+          <div>
+            <div className="flex items-center gap-2 mb-1.5">
+              <div className="h-2 w-2 rounded-full bg-indigo-500 shadow-[0_0_12px_rgba(99,102,241,0.5)]" />
+              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">STUDENT SUPPORT PORTAL</p>
             </div>
-            <div>
-              <h3 className="text-xl font-black text-slate-900 tracking-tight leading-none">
-                {mode === 'edit' ? 'Update Support Request' : 'Create New Ticket'}
-              </h3>
-              <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                {mode === 'edit' ? `Editing Ticket #${ticket.id}` : 'Smart Campus Maintenance System'}
-              </p>
-            </div>
+            <h3 className="text-3xl lg:text-4xl font-black text-slate-900 tracking-tight leading-tight">
+              {mode === 'edit' ? 'Update Ticket' : 'New Ticket'}
+            </h3>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="grid h-10 w-10 place-items-center rounded-xl bg-slate-50 text-slate-400 transition hover:bg-red-50 hover:text-red-500 shadow-sm"
+            className="grid h-10 w-10 lg:h-12 lg:w-12 place-items-center rounded-full bg-slate-50 text-slate-400 transition-all duration-300 hover:bg-red-50 hover:text-red-500 hover:rotate-90 shadow-sm border border-slate-100"
           >
-            <span className="material-symbols-outlined text-[20px]">close</span>
+            <span className="material-symbols-outlined text-[20px] lg:text-[24px]">close</span>
           </button>
         </div>
 
         {errorMessage && (
-          <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 animate-in fade-in slide-in-from-top-2">
-            <div className="flex items-center gap-3 text-red-700">
-              <span className="material-symbols-outlined">error</span>
-              <p className="text-sm font-bold">{errorMessage}</p>
+          <div className="mb-6 rounded-2xl border border-red-100 bg-red-50/50 p-4 animate-in fade-in slide-in-from-top-4">
+            <div className="flex items-center gap-3 text-red-600">
+              <span className="material-symbols-outlined text-[20px]">error</span>
+              <p className="text-xs font-bold tracking-tight">{errorMessage}</p>
             </div>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-12 gap-x-8 gap-y-6">
-          <div className="md:col-span-8 space-y-6">
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400 ml-1">Problem Title</label>
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
+          {/* Left Column: Form Fields */}
+          <div className="lg:col-span-7 space-y-5 lg:space-y-6">
+            <div className="space-y-1.5 group">
+              <label className="text-[12px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1 transition-colors group-focus-within:text-indigo-500">Issue Title</label>
               <input
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                 onBlur={() => setTouched({ ...touched, title: true })}
-                placeholder="Brief summary of the issue (e.g., Leaking pipe in Lab 302)"
-                className={`w-full rounded-2xl border bg-slate-50/50 px-5 py-4 text-sm font-medium outline-none transition focus:bg-white focus:ring-4 focus:ring-indigo-500/10 ${
-                  touched.title && errors.title ? 'border-red-300' : 'border-slate-100 focus:border-indigo-400'
-                }`}
+                placeholder="What's the problem?"
+                className={`w-full rounded-xl lg:rounded-2xl border bg-slate-50/30 px-5 lg:px-6 py-3.5 lg:py-4 text-sm font-semibold outline-none transition-all duration-300 placeholder:text-slate-300 shadow-sm ${touched.title && errors.title ? 'border-red-200 focus:border-red-400 focus:ring-4 focus:ring-red-500/5' : 'border-slate-100 focus:border-indigo-400 focus:bg-white focus:ring-[10px] focus:ring-indigo-500/5'
+                  }`}
               />
               {touched.title && errors.title && (
-                <p className="ml-1 text-[10px] font-bold text-red-500 uppercase tracking-wide">{errors.title}</p>
+                <p className="ml-1 text-[9px] font-black text-red-500 uppercase tracking-widest animate-in fade-in slide-in-from-left-2">{errors.title}</p>
               )}
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400 ml-1">Issue Description</label>
+            <div className="space-y-1.5 group">
+              <label className="text-[12px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1 transition-colors group-focus-within:text-indigo-500">Detailed Description</label>
               <textarea
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 onBlur={() => setTouched({ ...touched, description: true })}
-                rows={5}
-                placeholder="Provide as much detail as possible to help our technicians understand the problem..."
-                className={`w-full rounded-2xl border bg-slate-50/50 px-5 py-4 text-sm font-medium outline-none transition focus:bg-white focus:ring-4 focus:ring-indigo-500/10 leading-relaxed ${
-                  touched.description && errors.description ? 'border-red-300' : 'border-slate-100 focus:border-indigo-400'
-                }`}
+                rows={3}
+                placeholder="Describe the incident, location, and specific details..."
+                className={`w-full rounded-xl lg:rounded-[1.5rem] border bg-slate-50/30 px-5 lg:px-6 py-3.5 lg:py-4 text-sm font-semibold outline-none transition-all duration-300 placeholder:text-slate-300 leading-relaxed resize-none shadow-sm ${touched.description && errors.description ? 'border-red-200 focus:border-red-400 focus:ring-4 focus:ring-red-500/5' : 'border-slate-100 focus:border-indigo-400 focus:bg-white focus:ring-[10px] focus:ring-indigo-500/5'
+                  }`}
               />
               {touched.description && errors.description && (
-                <p className="ml-1 text-[10px] font-bold text-red-500 uppercase tracking-wide">{errors.description}</p>
+                <p className="ml-1 text-[9px] font-black text-red-500 uppercase tracking-widest animate-in fade-in slide-in-from-left-2">{errors.description}</p>
               )}
             </div>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400 ml-1">Contact Number (Optional)</label>
+
+            <div className="grid grid-cols-2 gap-5 lg:gap-6">
+              <div className="space-y-1.5 group">
+                <label className="text-[12px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1 transition-colors group-focus-within:text-indigo-500">Category</label>
                 <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-300 text-[18px]">call</span>
-                  <input
-                    value={formData.contactNumber}
-                    onChange={(e) => setFormData({ ...formData, contactNumber: e.target.value.replace(/\D/g, '').slice(0, 10) })}
-                    onBlur={() => setTouched({ ...touched, contactNumber: true })}
-                    placeholder="10-digit mobile number"
-                    className={`w-full rounded-2xl border bg-slate-50/50 pl-11 pr-5 py-4 text-sm font-medium outline-none transition focus:bg-white focus:ring-4 focus:ring-indigo-500/10 ${
-                      touched.contactNumber && errors.contactNumber ? 'border-red-300' : 'border-slate-100 focus:border-indigo-400'
-                    }`}
-                  />
-                </div>
-                {touched.contactNumber && errors.contactNumber && (
-                  <p className="ml-1 text-[10px] font-bold text-red-500 uppercase tracking-wide">{errors.contactNumber}</p>
-                )}
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400 ml-1">Resource ID (Optional)</label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-300 text-[18px]">tag</span>
-                  <input
-                    value={formData.resourceId}
-                    onChange={(e) => setFormData({ ...formData, resourceId: e.target.value.replace(/\D/g, '') })}
-                    placeholder="Equipment or Room ID"
-                    className="w-full rounded-2xl border border-slate-100 bg-slate-50/50 pl-11 pr-5 py-4 text-sm font-medium outline-none transition focus:border-indigo-400 focus:bg-white focus:ring-4 focus:ring-indigo-500/10"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="md:col-span-4 space-y-6">
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400 ml-1">Service Category</label>
-              <select
-                value={formData.category}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                className="w-full rounded-2xl border border-slate-100 bg-slate-50/50 px-5 py-4 text-sm font-bold text-slate-700 outline-none transition focus:border-indigo-400 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 appearance-none cursor-pointer"
-              >
-                {CATEGORIES.map((cat) => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400 ml-1">Urgency Level</label>
-              <div className="grid grid-cols-2 gap-2">
-                {PRIORITIES.map((p) => (
-                  <button
-                    key={p}
-                    type="button"
-                    onClick={() => setFormData({ ...formData, priority: p })}
-                    className={`rounded-xl py-3 text-[10px] font-black uppercase tracking-widest transition border ${
-                      formData.priority === p 
-                        ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-600/20 scale-95' 
-                        : 'bg-white border-slate-100 text-slate-400 hover:border-indigo-200 hover:text-indigo-500'
-                    }`}
+                  <select
+                    value={formData.category}
+                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                    className="w-full rounded-xl lg:rounded-2xl border border-slate-100 bg-slate-50/30 px-5 lg:px-6 py-3.5 lg:py-4 text-sm font-bold text-slate-700 outline-none transition-all duration-300 focus:border-indigo-400 focus:bg-white appearance-none cursor-pointer shadow-sm"
                   >
-                    {p}
-                  </button>
-                ))}
+                    {CATEGORIES.map((cat) => (
+                      <option key={cat} value={cat}>{cat.charAt(0) + cat.slice(1).toLowerCase()}</option>
+                    ))}
+                  </select>
+                  <span className="absolute right-5 lg:right-6 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 pointer-events-none transition-transform group-focus-within:rotate-180 text-[20px]">expand_more</span>
+                </div>
+              </div>
+
+              <div className="space-y-1.5 group">
+                <label className="text-[12px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1 transition-colors group-focus-within:text-indigo-500">Priority Level</label>
+                <div className="relative">
+                  <select
+                    value={formData.priority}
+                    onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+                    className="w-full rounded-xl lg:rounded-2xl border border-slate-100 bg-slate-50/30 px-5 lg:px-6 py-3.5 lg:py-4 text-sm font-bold text-slate-700 outline-none transition-all duration-300 focus:border-indigo-400 focus:bg-white appearance-none cursor-pointer shadow-sm"
+                  >
+                    {PRIORITIES.map((p) => (
+                      <option key={p} value={p}>{p.charAt(0) + p.slice(1).toLowerCase()}</option>
+                    ))}
+                  </select>
+                  <span className="absolute right-5 lg:right-6 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 pointer-events-none transition-transform group-focus-within:rotate-180 text-[20px]">expand_more</span>
+                </div>
               </div>
             </div>
 
-            <div className="space-y-1.5 pt-2">
-              <label className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400 ml-1">Visual Evidence (Max 3)</label>
-              <div 
-                onDragEnter={handleDrag}
-                onDragOver={handleDrag}
-                onDragLeave={handleDrag}
-                onDrop={handleDrop}
-                onClick={() => fileInputRef.current?.click()}
-                className={`relative group cursor-pointer rounded-[2rem] border-2 border-dashed transition-all duration-300 flex flex-col items-center justify-center p-6 min-h-[160px] ${
-                  isDragging ? 'border-indigo-500 bg-indigo-50/50 scale-95' : 'border-slate-200 bg-slate-50/50 hover:bg-slate-50 hover:border-indigo-300'
-                }`}
-              >
+            <div className="grid grid-cols-2 gap-5 lg:gap-6">
+              <div className="space-y-1.5 group">
+                <label className="text-[12px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1 transition-colors group-focus-within:text-indigo-500">Resource ID</label>
                 <input
-                  ref={fileInputRef}
-                  type="file"
-                  multiple
-                  accept="image/*"
-                  onChange={processFiles}
-                  className="hidden"
+                  value={formData.resourceId}
+                  onChange={(e) => setFormData({ ...formData, resourceId: e.target.value.replace(/\D/g, '') })}
+                  placeholder="e.g. 102 (Optional)"
+                  className="w-full rounded-xl lg:rounded-2xl border border-slate-100 bg-slate-50/30 px-5 lg:px-6 py-3.5 lg:py-4 text-sm font-semibold outline-none transition-all duration-300 focus:border-indigo-400 focus:bg-white focus:ring-[10px] focus:ring-indigo-500/5 shadow-sm placeholder:text-slate-300"
                 />
-                
-                <div className="grid h-12 w-12 place-items-center rounded-full bg-white text-slate-400 shadow-sm transition group-hover:scale-110 group-hover:text-indigo-600">
-                  <span className="material-symbols-outlined text-[28px]">cloud_upload</span>
-                </div>
-                <p className="mt-3 text-[10px] font-black uppercase tracking-widest text-slate-500">
-                  {files.length > 0 ? `${files.length} Files selected` : 'Drop images or click'}
-                </p>
-                <p className="mt-1 text-[8px] font-bold text-slate-400 uppercase tracking-tighter">
-                  Support JPEG, PNG up to 5MB
-                </p>
-
-                {fileError && (
-                  <div className="absolute inset-x-2 -bottom-2 px-2 py-1 bg-red-500 text-white text-[8px] font-black uppercase tracking-widest rounded-lg text-center animate-bounce shadow-lg">
-                    {fileError}
-                  </div>
-                )}
               </div>
 
-              {files.length > 0 && (
-                <div className="grid grid-cols-3 gap-3 mt-5">
-                  {files.map((file, index) => {
-                    const isImage = file.type.startsWith('image/')
-                    return (
-                      <div key={index} className="group relative aspect-square rounded-2xl border border-slate-100 bg-white overflow-hidden shadow-sm transition hover:shadow-md hover:border-indigo-200 p-1">
-                        {isImage ? (
-                          <img
-                            src={URL.createObjectURL(file)}
-                            alt="preview"
-                            className="h-full w-full object-cover rounded-[1.125rem]"
-                          />
-                        ) : (
-                          <div className="flex h-full w-full flex-col items-center justify-center p-2 text-center bg-slate-50 rounded-[1.125rem]">
-                            <span className="material-symbols-outlined text-slate-300">draft</span>
-                            <span className="mt-1 block truncate text-[8px] font-bold text-slate-400 w-full">{file.name}</span>
-                          </div>
-                        )}
-                        
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            removeFile(index)
-                          }}
-                          className="absolute top-2 right-2 grid h-6 w-6 place-items-center rounded-full bg-red-500 text-white shadow-lg opacity-0 scale-75 transition group-hover:opacity-100 group-hover:scale-100 hover:bg-red-600 z-10"
-                        >
-                          <span className="material-symbols-outlined text-[16px]">close</span>
-                        </button>
-
-                        <div className="absolute inset-x-2 bottom-2 bg-slate-900/70 backdrop-blur-sm p-1 px-2 text-[8px] font-bold text-white uppercase tracking-tighter truncate opacity-0 group-hover:opacity-100 transition rounded-md">
-                          {(file.size / 1024).toFixed(0)} KB
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
+              <div className="space-y-1.5 group">
+                <label className="text-[12px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1 transition-colors group-focus-within:text-indigo-500">Contact Number</label>
+                <input
+                  value={formData.contactNumber}
+                  onChange={(e) => setFormData({ ...formData, contactNumber: e.target.value.replace(/\D/g, '').slice(0, 10) })}
+                  onBlur={() => setTouched({ ...touched, contactNumber: true })}
+                  placeholder="0712345678"
+                  className={`w-full rounded-xl lg:rounded-2xl border bg-slate-50/30 px-5 lg:px-6 py-3.5 lg:py-4 text-sm font-semibold outline-none transition-all duration-300 placeholder:text-slate-300 shadow-sm ${touched.contactNumber && errors.contactNumber ? 'border-red-200 focus:border-red-400 focus:ring-4 focus:ring-red-500/5' : 'border-slate-100 focus:border-indigo-400 focus:bg-white focus:ring-[10px] focus:ring-indigo-500/5'
+                    }`}
+                />
+                {touched.contactNumber && errors.contactNumber && (
+                  <p className="ml-1 text-[9px] font-black text-red-500 uppercase tracking-widest animate-in fade-in slide-in-from-left-2">{errors.contactNumber}</p>
+                )}
+              </div>
             </div>
           </div>
 
-          <div className="md:col-span-12 flex flex-col md:flex-row items-center justify-between gap-4 border-t border-slate-50 pt-8">
-            <p className="text-[10px] text-slate-400 font-medium italic">
-              * By submitting, you confirm the incident details are accurate for investigation.
-            </p>
-            
-            <div className="flex items-center gap-3 w-full md:w-auto">
+          {/* Right Column: Visual Evidence */}
+          <div className="lg:col-span-5 space-y-4 lg:space-y-5 flex flex-col h-full">
+            <div className="flex items-center justify-between ml-1">
+              <label className="text-[12px] lg:text-[12px] font-black uppercase tracking-[0.25em] text-slate-400">Visual Evidence</label>
+              <div className="flex items-center gap-2">
+                <div className={`h-1.5 w-1.5 rounded-full transition-colors ${files.length >= 3 ? 'bg-red-500' : 'bg-indigo-500'}`} />
+                <span className={`text-[12px] lg:text-[12px] font-black uppercase tracking-widest ${files.length >= 3 ? 'text-red-500' : 'text-slate-400'}`}>
+                  {files.length} / 3 Files
+                </span>
+              </div>
+            </div>
+
+            <div
+              onDragEnter={handleDrag}
+              onDragOver={handleDrag}
+              onDragLeave={handleDrag}
+              onDrop={handleDrop}
+              className={`relative flex-1 rounded-[2rem] lg:rounded-[2.5rem] border-2 border-dashed transition-all duration-500 flex flex-col items-center justify-center p-6 lg:p-10 min-h-[280px] shadow-sm ${isDragging ? 'border-indigo-500 bg-indigo-50/50 scale-[0.97] ring-[15px] ring-indigo-500/5' : 'border-slate-200 bg-slate-50/30 hover:bg-slate-50 hover:border-indigo-300 hover:shadow-md'
+                }`}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={processFiles}
+                className="hidden"
+              />
+
+              <div className="grid h-14 w-14 lg:h-16 lg:w-16 place-items-center rounded-2xl bg-white text-indigo-500 shadow-sm border border-slate-100 mb-4 lg:mb-6 transition-transform duration-500">
+                <span className="material-symbols-outlined text-[32px] lg:text-[36px]">add_photo_alternate</span>
+              </div>
+
+              <h4 className="text-base lg:text-lg font-black text-slate-900 tracking-tight text-center">Drag & drop images here</h4>
+              <p className="mt-2 text-[9px] lg:text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">
+                Supported: JPG, PNG, WEBP
+              </p>
+
               <button
                 type="button"
-                onClick={onClose}
-                className="flex-1 md:flex-none rounded-2xl border border-slate-200 px-6 py-3 text-xs font-bold text-slate-500 transition hover:bg-slate-50"
+                onClick={() => fileInputRef.current?.click()}
+                className="mt-6 lg:mt-8 rounded-xl lg:rounded-2xl bg-slate-900 px-7 lg:px-8 py-3 lg:py-3.5 text-[9px] lg:text-[10px] font-black text-white uppercase tracking-[0.2em] transition-all duration-300 hover:bg-indigo-600 hover:shadow-[0_15px_30px_-8px_rgba(79,70,229,0.3)] active:scale-95"
               >
-                Cancel
+                Browse Gallery
               </button>
+
+              {fileError && (
+                <div className="absolute bottom-6 lg:bottom-8 px-4 lg:px-6 py-2 lg:py-2.5 bg-red-500 text-white text-[9px] lg:text-[10px] font-black uppercase tracking-widest rounded-xl lg:rounded-2xl text-center shadow-xl animate-in zoom-in-95 duration-300">
+                  You can upload maximum 3 images
+                </div>
+              )}
+            </div>
+
+            {/* Selected Files Preview */}
+            {files.length > 0 && (
+              <div className="grid grid-cols-3 gap-3 lg:gap-4 mt-4 animate-in fade-in slide-in-from-bottom-4">
+                {files.map((file, index) => (
+                  <div key={index} className="group relative aspect-square rounded-[1.25rem] border border-slate-200 bg-white overflow-hidden shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1 p-1">
+                    <img
+                      src={URL.createObjectURL(file)}
+                      alt="preview"
+                      className="h-full w-full object-cover rounded-[1rem]"
+                    />
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        removeFile(index)
+                      }}
+                      className="absolute top-2 right-2 grid h-6 w-6 place-items-center rounded-full bg-red-500 text-white shadow-lg opacity-0 scale-75 transition-all duration-300 group-hover:opacity-100 group-hover:scale-100 hover:bg-red-600 z-10"
+                    >
+                      <span className="material-symbols-outlined text-[14px]">close</span>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Footer Section */}
+          <div className="lg:col-span-12 flex flex-col md:flex-row items-center justify-between gap-3 lg:gap-4 pt-3 lg:pt-4 mt-0 border-t border-slate-50">
+            <p className="text-[12px] lg:text-[12px] text-slate-400 font-bold italic tracking-tight opacity-70">
+              * By submitting, you confirm the incident details are accurate for investigation.
+            </p>
+
+            <div className="flex items-center gap-4 lg:gap-5 w-full md:w-auto">
               <button
                 type="button"
                 onClick={handleRevert}
-                className="flex-1 md:flex-none rounded-2xl border border-amber-200 bg-amber-50 px-6 py-3 text-xs font-bold text-amber-600 transition hover:bg-amber-100 shadow-sm shadow-amber-500/5"
+                className="flex-1 md:flex-none rounded-xl lg:rounded-2xl border-2 border-amber-200 bg-white px-8 lg:px-10 py-4 lg:py-4.5 text-[12px] lg:text-[12px] font-black uppercase tracking-[0.2em] text-amber-600 transition-all duration-300 hover:bg-amber-50 hover:border-amber-300 active:scale-95"
               >
                 Revert
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting || !isFormValid}
-                className="flex-1 md:flex-none rounded-2xl bg-indigo-600 px-8 py-3 text-xs font-bold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-40 shadow-xl shadow-indigo-600/20 active:scale-95"
+                className="flex-1 md:flex-none rounded-xl lg:rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-600 px-10 lg:px-12 py-4 lg:py-4.5 text-[12px] lg:text-[12px] font-black uppercase tracking-[0.25em] text-white transition-all duration-300 hover:shadow-[0_20px_40px_-10px_rgba(79,70,229,0.4)] hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-40 shadow-lg"
               >
-                {isSubmitting ? (
-                  <span className="flex items-center gap-2">
-                    <span className="h-3 w-3 border-2 border-white/20 border-t-white rounded-full animate-spin"></span>
-                    Processing...
-                  </span>
-                ) : mode === 'edit' ? 'Save Changes' : 'Publish Ticket'}
+                {isSubmitting ? 'Processing...' : mode === 'edit' ? 'Save Changes' : 'Publish Ticket'}
               </button>
             </div>
           </div>

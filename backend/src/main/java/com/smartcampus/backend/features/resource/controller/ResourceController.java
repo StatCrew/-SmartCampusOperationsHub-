@@ -48,7 +48,8 @@ public class ResourceController {
 
     private String createEtag(ResourceResponseDTO dto) {
         Instant timestamp = dto.getUpdatedAt() != null ? dto.getUpdatedAt() : dto.getCreatedAt();
-        return timestamp != null ? String.format("W/\"%s\"", timestamp.toEpochMilli()) : String.format("W/\"%s\"", dto.getId());
+        return timestamp != null ? String.format("W/\"%s\"", timestamp.toEpochMilli())
+                : String.format("W/\"%s\"", dto.getId());
     }
 
     private String createCollectionEtag(List<ResourceResponseDTO> resources) {
@@ -65,7 +66,8 @@ public class ResourceController {
     @PreAuthorize("hasAnyRole('ADMIN', 'TECHNICIAN')")
     public ResponseEntity<ResourceResponseDTO> createResource(@Valid @RequestBody ResourceRequestDTO resourceDTO) {
         ResourceResponseDTO createdResource = addLinks(resourceService.createResource(resourceDTO));
-        URI location = linkTo(methodOn(ResourceController.class).getResourceById(createdResource.getId(), null)).toUri();
+        URI location = linkTo(methodOn(ResourceController.class).getResourceById(createdResource.getId(), null))
+                .toUri();
         return ResponseEntity.created(location).body(createdResource);
     }
 
