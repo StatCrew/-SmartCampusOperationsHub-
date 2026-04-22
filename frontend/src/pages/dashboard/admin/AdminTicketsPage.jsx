@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { assignAdminTicket, createTicketComment, deleteTicketComment, getAdminTicketAttachmentUrl, getAdminTicketById, getAdminTickets, rejectAdminTicket, updateAdminTicketStatus, updateTicketComment } from '../../../api/ticketApi'
+import { assignAdminTicket, closeAdminTicket, createTicketComment, deleteTicketComment, getAdminTicketAttachmentUrl, getAdminTicketById, getAdminTickets, markAdminTicketInProgress, rejectAdminTicket, updateTicketComment } from '../../../api/ticketApi'
 import { getUsers } from '../../../api/adminApi'
 import useAuth from '../../../context/useAuth'
 import { getSidebarItemsByRole } from '../constants'
@@ -96,7 +96,10 @@ function TicketDetailsModal({
   setEditingCommentId,
   editingCommentText,
   setEditingCommentText,
+  onUpdateStatus,
 }) {
+  const [showReject, setShowReject] = useState(false)
+
   if (!open || !ticket) {
     return null
   }
@@ -339,7 +342,49 @@ function TicketDetailsModal({
         </div>
 
         <div className="mt-6 flex flex-col gap-5 border-t border-slate-100 pt-5">
-          {ticket.status === 'OPEN' && (
+          <div className="flex items-center justify-between">
+            <div className="flex flex-wrap gap-2">
+              {ticket.status === 'OPEN' && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => onUpdateStatus(ticket, 'IN_PROGRESS')}
+                    disabled={isActionProcessing}
+                    className="rounded-xl bg-indigo-600 px-6 py-2.5 text-sm font-bold text-white transition hover:bg-indigo-700 shadow-sm disabled:opacity-50"
+                  >
+                    Assign
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowReject(!showReject)}
+                    disabled={isActionProcessing}
+                    className="rounded-xl bg-red-100 px-6 py-2.5 text-sm font-bold text-red-700 transition hover:bg-red-200 shadow-sm disabled:opacity-50"
+                  >
+                    Reject
+                  </button>
+                </>
+              )}
+              {ticket.status === 'RESOLVED' && (
+                <button
+                  type="button"
+                  onClick={() => onUpdateStatus(ticket, 'CLOSED')}
+                  disabled={isActionProcessing}
+                  className="rounded-xl bg-slate-800 px-6 py-2.5 text-sm font-bold text-white transition hover:bg-slate-900 shadow-sm disabled:opacity-50"
+                >
+                  Close
+                </button>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-xl border border-slate-200 px-8 py-2.5 text-sm font-bold text-slate-600 transition hover:bg-slate-50 shadow-sm"
+            >
+              Close Management View
+            </button>
+          </div>
+
+          {ticket.status === 'OPEN' && showReject && (
             <div className="space-y-3 rounded-2xl bg-red-50/50 p-4 border border-red-100 animate-in fade-in slide-in-from-bottom-2 duration-300">
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-red-500 text-[20px]">report</span>
@@ -364,17 +409,6 @@ function TicketDetailsModal({
               </div>
             </div>
           )}
-
-          <div className="flex items-center justify-between">
-            <div />
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-xl border border-slate-200 px-8 py-3 text-sm font-bold text-slate-600 transition hover:bg-slate-50 shadow-sm"
-            >
-              Close Management View
-            </button>
-          </div>
         </div>
       </div>
     </div>
@@ -490,17 +524,29 @@ function AdminTicketsPage() {
 
   const handleStatusChange = async (ticket, nextStatus) => {
     setProcessingId(ticket.id)
+    setIsActionProcessing(true)
     setErrorMessage('')
     setSuccessMessage('')
 
     try {
-      await updateAdminTicketStatus(ticket.id, nextStatus)
-      setSuccessMessage('Ticket status updated successfully.')
-      await loadTickets()
+      if (nextStatus === 'IN_PROGRESS') {
+        await markAdminTicketInProgress(ticket.id)
+        setSuccessMessage('Ticket assigned and marked in-progress.')
+      } else if (nextStatus === 'CLOSED') {
+        await closeAdminTicket(ticket.id)
+        setSuccessMessage('Ticket closed successfully.')
+      }
+
+      if (selectedTicket?.id === ticket.id) {
+        await loadTicketDetails(ticket.id)
+      } else {
+        await loadTickets()
+      }
     } catch (error) {
       setErrorMessage(getApiErrorMessage(error))
     } finally {
       setProcessingId(null)
+      setIsActionProcessing(false)
     }
   }
 
@@ -772,45 +818,14 @@ function AdminTicketsPage() {
                         <td className="px-4 py-4 text-slate-700">{ticket.priority || '-'}</td>
                         <td className="px-4 py-4"><TicketBadge status={ticket.status} /></td>
                         <td className="px-4 py-4 text-right">
-                          <div className="flex flex-wrap justify-end gap-2">
-                            <button
-                              type="button"
-                              onClick={() => handleViewTicket(ticket)}
-                              disabled={processingId === ticket.id}
-                              className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-                            >
-                              View
-                            </button>
-                            <select
-                              value={assignmentByTicket[ticket.id] || ticket.technicianId || ''}
-                              onChange={(event) => setAssignmentByTicket((prev) => ({ ...prev, [ticket.id]: event.target.value }))}
-                              className="min-w-40 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-                            >
-                              <option value="">Assign technician</option>
-                              {technicians.map((tech) => (
-                                <option key={tech.id} value={tech.id}>{tech.fullName || tech.email}</option>
-                              ))}
-                            </select>
-                            <button
-                              type="button"
-                              onClick={() => handleAssignTicket(ticket)}
-                              disabled={processingId === ticket.id || !assignmentByTicket[ticket.id]}
-                              className="rounded-lg border border-indigo-200 px-3 py-2 text-xs font-semibold text-indigo-600 transition hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-60"
-                            >
-                              Assign
-                            </button>
-                            <select
-                              value={ticket.status || 'OPEN'}
-                              onChange={(event) => handleStatusChange(ticket, event.target.value)}
-                              disabled={processingId === ticket.id}
-                              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 disabled:cursor-not-allowed disabled:opacity-60"
-                            >
-                              <option value="OPEN">Open</option>
-                              <option value="IN_PROGRESS">In Progress</option>
-                              <option value="RESOLVED">Resolved</option>
-                              <option value="CLOSED">Closed</option>
-                            </select>
-                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleViewTicket(ticket)}
+                            disabled={processingId === ticket.id}
+                            className="rounded-lg border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            View
+                          </button>
                         </td>
                       </tr>
                     ))
@@ -849,6 +864,7 @@ function AdminTicketsPage() {
         setEditingCommentId={setEditingCommentId}
         editingCommentText={editingCommentText}
         setEditingCommentText={setEditingCommentText}
+        onUpdateStatus={handleStatusChange}
       />
     </div>
   )
