@@ -38,7 +38,7 @@ export default function AdminResourceAnalyticsPage() {
   const location  = useLocation()
   const { role, user, logout, getApiErrorMessage } = useAuth()
 
-  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false)
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true)
   const [resources,  setResources]  = useState([])
   const [bookings,   setBookings]   = useState([])
   const [loading,    setLoading]    = useState(true)

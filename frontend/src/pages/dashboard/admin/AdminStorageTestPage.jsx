@@ -10,7 +10,7 @@ function AdminStorageTestPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const { role, logout, getApiErrorMessage } = useAuth()
-  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false)
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true)
   const [selectedFile, setSelectedFile] = useState(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isRefreshingUrl, setIsRefreshingUrl] = useState(false)

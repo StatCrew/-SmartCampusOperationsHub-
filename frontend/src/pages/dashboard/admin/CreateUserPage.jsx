@@ -18,7 +18,7 @@ function CreateUserPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const { role, logout, getApiErrorMessage } = useAuth()
-  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false)
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true)
   const [formData, setFormData] = useState(initialFormData)
   const [formError, setFormError] = useState('')
   const [formSuccess, setFormSuccess] = useState('')

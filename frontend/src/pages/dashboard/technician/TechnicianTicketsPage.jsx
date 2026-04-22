@@ -346,7 +346,7 @@ function TechnicianTicketsPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const { role, user, logout, syncProfile, getApiErrorMessage } = useAuth()
-  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false)
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true)
   const [profile, setProfile] = useState(user)
   const [loadingProfile, setLoadingProfile] = useState(true)
   const [profileError, setProfileError] = useState('')

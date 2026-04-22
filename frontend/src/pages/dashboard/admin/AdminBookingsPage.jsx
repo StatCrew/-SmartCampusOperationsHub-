@@ -278,7 +278,7 @@ export default function AdminBookingsPage() {
   const { role, logout, getApiErrorMessage } = useAuth();
 
   /* State Management */
-  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
   const [bookings, setBookings] = useState([]);
   const [resourceMap, setResourceMap] = useState({});
   const [loading, setLoading] = useState(true);

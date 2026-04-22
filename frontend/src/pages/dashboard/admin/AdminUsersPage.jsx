@@ -28,7 +28,7 @@ function AdminUsersPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const { role, logout, getApiErrorMessage } = useAuth()
-  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false)
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true)
   const [users, setUsers] = useState([])
   const [isLoadingUsers, setIsLoadingUsers] = useState(true)
   const [errorMessage, setErrorMessage] = useState('')

@@ -15,7 +15,7 @@ function TechnicianDashboardPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const { role, user, logout, syncProfile, getApiErrorMessage } = useAuth()
-  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false)
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true)
   const [profile, setProfile] = useState(user)
   const [loadingProfile, setLoadingProfile] = useState(true)
   const [profileError, setProfileError] = useState('')
@@ -99,7 +99,7 @@ function TechnicianDashboardPage() {
         <UserDashboardHeader
           onLogout={handleLogout}
           eyebrow={headerLabels.eyebrow}
-          title="Mission Nexus"
+          title="My Workspace"
         />
 
         <main className="mx-auto w-full max-w-7xl p-4 pb-24 md:p-8">
@@ -110,7 +110,7 @@ function TechnicianDashboardPage() {
                   Hello, {profile?.fullName || 'Technician'}!
                 </h2>
                 <p className="mt-2 text-indigo-100/70 max-w-md font-medium">
-                  Operational Control: You have {tickets.filter(t => t.status !== 'RESOLVED' && t.status !== 'CLOSED').length} critical issues requiring intervention.
+                  You have {tickets.filter(t => t.status !== 'RESOLVED' && t.status !== 'CLOSED').length} open tickets requiring your attention.
                 </p>
               </div>
               <div className="flex gap-3">
@@ -118,7 +118,7 @@ function TechnicianDashboardPage() {
                   onClick={() => navigate('/dashboard/technician/tickets')} 
                   className="bg-indigo-500/20 text-white border border-indigo-400/30 hover:bg-indigo-500/40 shadow-lg shadow-indigo-500/10 backdrop-blur-sm"
                 >
-                  Manage Queue
+                  View Tickets
                 </Button>
               </div>
             </div>
@@ -136,7 +136,7 @@ function TechnicianDashboardPage() {
               </h3>
             </div>
             <div className="rounded-[2rem] bg-white p-6 shadow-sm border border-slate-100 transition-all hover:shadow-md">
-              <p className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-2">Identity Auth</p>
+              <p className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-2">Account Status</p>
               <h3 className="text-sm font-black text-emerald-600 uppercase tracking-widest mt-3">
                 {loadingProfile ? 'Checking...' : profile?.emailVerified ? 'Verified' : 'Pending'}
               </h3>
@@ -152,8 +152,8 @@ function TechnicianDashboardPage() {
           <section className="rounded-3xl bg-white p-8 shadow-sm border border-slate-100">
             <ActivityFeed 
               activities={activities} 
-              title="Operational Stream"
-              subtitle="Latest assigned tasks and system alerts requiring attention."
+              title="Activity Feed"
+              subtitle="Latest ticket updates and system alerts."
             />
           </section>
         </main>

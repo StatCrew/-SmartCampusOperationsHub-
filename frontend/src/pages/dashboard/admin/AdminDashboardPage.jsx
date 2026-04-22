@@ -16,7 +16,7 @@ function AdminDashboardPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const { role, user, logout, getApiErrorMessage } = useAuth()
-  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false)
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true)
   const [users, setUsers] = useState([])
   const [tickets, setTickets] = useState([])
   const [bookings, setBookings] = useState([])
@@ -166,8 +166,8 @@ function AdminDashboardPage() {
             <div className="lg:col-span-2">
               <ActivityFeed
                 activities={activities}
-                title="Global Event Log"
-                subtitle="Real-time system notifications and user updates"
+                title="Event Log"
+                subtitle="Recent system notifications and activity"
               />
             </div>
 

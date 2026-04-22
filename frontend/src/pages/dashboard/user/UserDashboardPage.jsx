@@ -20,7 +20,7 @@ function UserDashboardPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const { user, role, logout, syncProfile, getApiErrorMessage } = useAuth()
-  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false)
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true)
   const [tickets, setTickets] = useState([])
   const [bookings, setBookings] = useState([])
   const [loadingStats, setLoadingStats] = useState(true)
@@ -138,7 +138,7 @@ function UserDashboardPage() {
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
             <div className="space-y-6 lg:col-span-1">
               <section className="rounded-[2rem] bg-white p-6 shadow-sm border border-slate-100">
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-6">Account Identity</p>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-6">My Account</p>
                 <div className="flex items-center gap-4 mb-6">
                   <div className="h-16 w-16 rounded-2xl bg-indigo-600 flex items-center justify-center text-white text-xl font-black shadow-lg shadow-indigo-600/20">
                     {initials}
@@ -150,7 +150,7 @@ function UserDashboardPage() {
                 </div>
                 <div className="space-y-4 border-t border-slate-50 pt-6">
                   <div className="flex justify-between items-center">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Auth Status</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Email Status</span>
                     <Badge variant="success">Verified</Badge>
                   </div>
                   <div className="flex justify-between items-center">
@@ -180,8 +180,8 @@ function UserDashboardPage() {
               <section className="rounded-3xl bg-white p-8 shadow-sm border border-slate-100">
                 <div className="flex items-center justify-between mb-8">
                   <div>
-                    <h3 className="text-xl font-black text-slate-900 tracking-tight">Identity Profile</h3>
-                    <p className="text-sm font-medium text-slate-500">Your registered campus identity and contact details.</p>
+                    <h3 className="text-xl font-black text-slate-900 tracking-tight">My Profile</h3>
+                    <p className="text-sm font-medium text-slate-500">Your campus identity and contact details.</p>
                   </div>
                   <Button variant="outline" onClick={reloadProfile} className="w-11 h-11 !p-0 rounded-2xl">
                     <span className="material-symbols-outlined">refresh</span>
@@ -193,7 +193,7 @@ function UserDashboardPage() {
                     <p className="text-sm font-bold text-slate-900">{mergedProfile?.fullName || '—'}</p>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Identity Email</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Email</p>
                     <p className="text-sm font-bold text-slate-900">{mergedProfile?.email || '—'}</p>
                   </div>
                   <div className="space-y-1">
@@ -208,9 +208,23 @@ function UserDashboardPage() {
               </section>
 
               <section className="rounded-3xl bg-white p-8 shadow-sm border border-slate-100">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h3 className="text-xl font-black text-slate-900 tracking-tight">Edit Profile</h3>
+                    <p className="text-sm font-medium text-slate-500">Update your name, email, or contact info.</p>
+                  </div>
+                </div>
+                <UserProfileDetailsCard
+                  loadingProfile={loadingProfile}
+                  profile={mergedProfile}
+                  onReloadProfile={reloadProfile}
+                />
+              </section>
+
+              <section className="rounded-3xl bg-white p-8 shadow-sm border border-slate-100">
                 <ActivityFeed
                   activities={activities}
-                  title="Campus Stream"
+                  title="Recent Activity"
                   subtitle="Latest updates on your bookings and support requests."
                 />
               </section>

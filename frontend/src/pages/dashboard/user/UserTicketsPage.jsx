@@ -31,7 +31,7 @@ function UserTicketsPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const { role, user, logout, getApiErrorMessage } = useAuth()
-  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false)
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true)
 
   const {
     filteredTickets,

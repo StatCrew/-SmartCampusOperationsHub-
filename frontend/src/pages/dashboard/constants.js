@@ -12,26 +12,16 @@ export const roleSidebarItems = {
   ADMIN: [
     { icon: 'dashboard', label: 'Dashboard', path: '/admin/dashboard' },
     { icon: 'group', label: 'Users', path: '/admin/users' },
-    // ADDED: Admin Analytics & Booking Requests
-
-    { icon: 'list_alt', label: 'Booking Requests', path: '/admin/bookings' },
-    //{ icon: 'analytics', label: 'Booking Analytics', path: '/admin/analytics' },
-    { icon: 'bar_chart', label: 'Resource Analytics', path: '/admin/resource-analytics' },
-    // { icon: 'cloud_upload', label: 'Storage Test', path: '/admin/storage-test' },
+    { icon: 'list_alt', label: 'Bookings', path: '/admin/bookings' },
+    { icon: 'bar_chart', label: 'Analytics', path: '/admin/resource-analytics' },
     { icon: 'inventory_2', label: 'Resources', path: '/admin/resources' },
-    
     { label: 'QR Scanner', icon: 'qr_code_scanner', path: '/dashboard/admin/scanner' },
-
-    // Admin Ticketing system
-    { icon: 'confirmation_number', label: 'Manage Tickets', path: '/admin/tickets' },
-
+    { icon: 'confirmation_number', label: 'Tickets', path: '/admin/tickets' },
   ],
   TECHNICIAN: [
     { icon: 'dashboard', label: 'Dashboard', path: '/dashboard/technician' },
-    { icon: 'inventory_2', label: 'Resources', path: '/dashboard/user/resources' }, // ← ADD
-
-    // Technician Ticketing system
-    { icon: 'build', label: 'Assigned Tickets', path: '/dashboard/technician/tickets' },
+    { icon: 'inventory_2', label: 'Resources', path: '/dashboard/user/resources' },
+    { icon: 'build', label: 'My Tickets', path: '/dashboard/technician/tickets' },
   ],
 }
 

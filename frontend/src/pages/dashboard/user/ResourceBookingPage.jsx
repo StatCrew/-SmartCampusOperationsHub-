@@ -63,7 +63,7 @@ export default function ResourceBookingPage() {
   const location  = useLocation();
   const { role, logout, getApiErrorMessage } = useAuth();
 
-  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
   const [resource, setResource] = useState(null);
   const [activeKeys, setActiveKeys] = useState(new Set());
   const [upcomingBookings, setUpcomingBookings] = useState([]);
