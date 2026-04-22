@@ -1,61 +1,78 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useParams, useNavigate, useLocation } from 'react-router-dom'
-import useAuth from '../../../context/useAuth'
-import { getAllResources, getAvailabilitySlots, formatResourceType } from '../../../api/resourceApi'
-import { getAllBookings } from '../../../api/bookingApi'
-import { getHeaderLabelsByRole, getSidebarItemsByRole } from '../constants'
-import UserDashboardHeader from './components/UserDashboardHeader'
-import UserSidebar from './components/UserSidebar'
-import CreateBookingModal from './components/CreateBookingModal'
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import useAuth from '../../../context/useAuth';
+import { getAllResources, getAvailabilitySlots, formatResourceType } from '../../../api/resourceApi';
+import { getAllBookings } from '../../../api/bookingApi';
+import { getHeaderLabelsByRole, getSidebarItemsByRole } from '../constants';
+import UserDashboardHeader from './components/UserDashboardHeader';
+import UserSidebar from './components/UserSidebar';
+import CreateBookingModal from './components/CreateBookingModal';
 
-const DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY']
-const DAY_SHORT = { MONDAY: 'Mon', TUESDAY: 'Tue', WEDNESDAY: 'Wed', THURSDAY: 'Thu', FRIDAY: 'Fri', SATURDAY: 'Sat', SUNDAY: 'Sun' }
-const HOURS = ['08', '09', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19']
+const DAY_SHORT = { MONDAY: 'Mon', TUESDAY: 'Tue', WEDNESDAY: 'Wed', THURSDAY: 'Thu', FRIDAY: 'Fri', SATURDAY: 'Sat', SUNDAY: 'Sun' };
+const HOURS = ['08', '09', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19'];
 
-// Helper to format dates correctly to local YYYY-MM-DD
+/**
+ * Formats a given Date object to a localized YYYY-MM-DD string format.
+ * This ensures strict adherence to the local calendar day, preventing 
+ * date-shifting bugs caused by implicit UTC conversions.
+ * * @param {Date} date - The date object to format.
+ * @returns {string} The formatted date string (e.g., "2026-04-28").
+ */
 function formatLocalYYYYMMDD(date) {
-  const y = date.getFullYear()
-  const m = String(date.getMonth() + 1).padStart(2, '0')
-  const d = String(date.getDate()).padStart(2, '0')
-  return `${y}-${m}-${d}`
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }
 
-function slotsToKeys(slots) {
-  const keys = new Set()
+/**
+ * Maps raw availability timeslots into a localized Set of string keys.
+ * This allows O(1) time complexity lookups when rendering the availability grid.
+ * * @param {Array} slots - The array of resource availability slots.
+ * @returns {Set<string>} A set containing operational hour keys (e.g., "MONDAY-08").
+ */
+function extractAvailabilityKeys(slots) {
+  const keys = new Set();
   slots.forEach(s => {
-    const startHour = parseInt(s.startTime.split(':')[0], 10)
-    let endHour = parseInt(s.endTime.split(':')[0], 10)
-    const endMin = parseInt(s.endTime.split(':')[1], 10)
+    const startHour = parseInt(s.startTime.split(':')[0], 10);
+    let endHour = parseInt(s.endTime.split(':')[0], 10);
+    const endMin = parseInt(s.endTime.split(':')[1], 10);
+    
     if (endMin === 0 && endHour > startHour) endHour -= 1;
+    
     for (let h = startHour; h <= endHour; h++) {
-      keys.add(`${s.dayOfWeek}-${String(h).padStart(2, '0')}`)
+      keys.add(`${s.dayOfWeek}-${String(h).padStart(2, '0')}`);
     }
-  })
-  return keys
+  });
+  return keys;
 }
 
-function extractTakenData(bookings) {
+/**
+ * Normalizes existing bookings into a Map segregated by specific Date and Hour.
+ * Enables the UI to calculate and render exact partial-hour blocks dynamically.
+ * * @param {Array} bookings - The array of existing booking entities.
+ * @returns {Map<string, Array>} A mapping of specific datetime keys to booking segments.
+ */
+function mapBookingsToGrid(bookings) {
   const takenMap = new Map();
   
   bookings.forEach(b => {
-    const dateString = b.startTime.split('T')[0]; // "2026-04-28"
-
+    const dateString = b.startTime.split('T')[0];
     const startT = b.startTime.split('T')[1].split(':');
     const endT = b.endTime.split('T')[1].split(':');
-
+    
     const startHour = parseInt(startT[0], 10);
-    const startMin = parseInt(startT[1], 10);
-    const endHour = parseInt(endT[0], 10);
-    const endMin = parseInt(endT[1], 10);
+    const startMin  = parseInt(startT[1], 10);
+    const endHour   = parseInt(endT[0], 10);
+    const endMin    = parseInt(endT[1], 10);
 
     for (let h = startHour; h <= endHour; h++) {
       if (h === endHour && endMin === 0) break;
-
-      // The key is now precisely bound to the date: "2026-04-28-10"
+      
       const key = `${dateString}-${String(h).padStart(2, '0')}`;
-      const sMin = (h === startHour) ? startMin : 0;
-      const eMin = (h === endHour) ? endMin : 60;
-
+      const sMin = h === startHour ? startMin : 0;
+      const eMin = h === endHour ? endMin : 60;
+      
       if (!takenMap.has(key)) takenMap.set(key, []);
       takenMap.get(key).push({ start: sMin, end: eMin, booking: b });
     }
@@ -64,73 +81,106 @@ function extractTakenData(bookings) {
 }
 
 export default function ResourceBookingPage() {
-  const { id } = useParams()
-  const navigate = useNavigate()
-  const location = useLocation()
-  const { role, logout, getApiErrorMessage } = useAuth()
+  const { id } = useParams();
+  const navigate  = useNavigate();
+  const location  = useLocation();
+  const { role, logout, getApiErrorMessage } = useAuth();
 
-  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false)
-  const [resource, setResource] = useState(null)
-  const [activeKeys, setActiveKeys] = useState(new Set())
-  const [takenBookings, setTakenBookings] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
+  const [resource, setResource] = useState(null);
+  const [activeKeys, setActiveKeys] = useState(new Set());
+  const [upcomingBookings, setUpcomingBookings] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [weekOffset, setWeekOffset] = useState(0);
+
   const modifyData = location.state?.modifyBooking || null;
-  
+
+  /**
+   * Automatically initializes the booking modal if the user is redirected
+   * here from an existing reservation modification flow.
+   */
   useEffect(() => {
     if (modifyData && resource && !isModalOpen) {
       setIsModalOpen(true);
     }
-  }, [modifyData, resource]);
+  }, [modifyData, resource, isModalOpen]);
 
-  const [weekOffset, setWeekOffset] = useState(0)
-
-  const loadData = useCallback(async () => {
-    setLoading(true); setError('')
+  /**
+   * Fetches core resource details, operating hours, and associated bookings.
+   * Performs client-side date filtering to ignore historical records.
+   */
+  const loadResourceData = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    
     try {
-      const allResources = await getAllResources()
-      const currentResource = allResources.find(r => String(r.id) === String(id))
-      if (!currentResource) throw new Error('Resource not found.')
-      setResource(currentResource)
-      
-      const slots = await getAvailabilitySlots(id)
-      setActiveKeys(slotsToKeys(slots))
-      
-      const bookingsResponse = await getAllBookings({ size: 1000 })
-      const bookings = bookingsResponse?.content || bookingsResponse || []
-      
-      const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0)
-      const upcomingTaken = bookings.filter(b =>
+      const allResources = await getAllResources();
+      const current = allResources.find(r => String(r.id) === String(id));
+      if (!current) throw new Error('Resource not found.');
+      setResource(current);
+
+      const slots = await getAvailabilitySlots(id);
+      setActiveKeys(extractAvailabilityKeys(slots));
+
+      const bookingsResponse = await getAllBookings({ size: 1000 });
+      const bookings = bookingsResponse?.content || bookingsResponse || [];
+
+      const startOfToday = new Date();
+      startOfToday.setHours(0, 0, 0, 0);
+
+      const relevantBookings = bookings.filter(b =>
         String(b.resourceId) === String(id) &&
         (b.status === 'APPROVED' || b.status === 'PENDING') &&
         new Date(b.startTime) >= startOfToday
-      ).sort((a, b) => new Date(a.startTime) - new Date(b.startTime))
-      
-      setTakenBookings(upcomingTaken)
+      ).sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
+
+      setUpcomingBookings(relevantBookings);
     } catch (err) {
-      setError(getApiErrorMessage(err) || 'Failed to load resource details.')
-    } finally { setLoading(false) }
-  }, [id, getApiErrorMessage])
+      setError(getApiErrorMessage(err) || 'Failed to load resource details.');
+    } finally {
+      setLoading(false);
+    }
+  }, [id, getApiErrorMessage]);
 
-  useEffect(() => { if (!isModalOpen) loadData() }, [loadData, isModalOpen])
-  
-  const handleLogout = () => { logout(); navigate('/signin', { replace: true }) }
-  const sidebarItems = useMemo(
-    () => getSidebarItemsByRole(role).map(item => ({ ...item, active: item.path === location.pathname })),
+  useEffect(() => { 
+    if (!isModalOpen) loadResourceData(); 
+  }, [loadResourceData, isModalOpen]);
+
+  const handleLogout = () => { 
+    logout(); 
+    navigate('/signin', { replace: true }); 
+  };
+
+  const sidebarItems = useMemo(() => 
+    getSidebarItemsByRole(role).map(item => ({ ...item, active: item.path === location.pathname })),
     [location.pathname, role]
-  )
-  const headerLabels = getHeaderLabelsByRole(role)
+  );
+  
+  const headerLabels = getHeaderLabelsByRole(role);
+  const takenDataMap = useMemo(() => mapBookingsToGrid(upcomingBookings), [upcomingBookings]);
 
-  const takenDataMap = useMemo(() => extractTakenData(takenBookings), [takenBookings]);
+  const filteredBookings = useMemo(() => {
+    if (!searchQuery) return upcomingBookings;
+    const lowerQuery = searchQuery.toLowerCase();
+    return upcomingBookings.filter(b => 
+      b.startTime.toLowerCase().includes(lowerQuery) || 
+      (b.purpose && b.purpose.toLowerCase().includes(lowerQuery))
+    );
+  }, [upcomingBookings, searchQuery]);
 
+  /**
+   * Generates sequential Date objects dynamically calculated from the 
+   * user's current pagination offset.
+   */
   const displayDates = useMemo(() => {
     const dates = [];
     const base = new Date();
     base.setHours(0, 0, 0, 0);
-    base.setDate(base.getDate() + (weekOffset * 7)); // Shift by weeks
-
+    base.setDate(base.getDate() + weekOffset * 7);
+    
     for (let i = 0; i < 7; i++) {
       const d = new Date(base);
       d.setDate(base.getDate() + i);
@@ -140,88 +190,137 @@ export default function ResourceBookingPage() {
   }, [weekOffset]);
 
   if (loading && !resource) return (
-    <div style={{ minHeight:'100vh', background:'linear-gradient(145deg,#e0f9ff 0%,#c2effa 45%,#d9f8fb 100%)', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:"'Plus Jakarta Sans',sans-serif" }}>
-      <RBPStyles />
-      <div style={{ textAlign:'center' }}>
-        <div style={{ position:'relative', width:56, height:56, margin:'0 auto 1rem' }}>
-          <div className="rbp-pulse-ring" />
-          <div className="rbp-spinner" />
-        </div>
-        <p style={{ color:'#2193b0', fontSize:'0.85rem', fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase' }}>Loading Resource…</p>
+    <div style={{ minHeight: '100vh', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Poppins', sans-serif" }}>
+      <PageStyles />
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ width: 40, height: 40, margin: '0 auto 1rem', border: '3px solid #e0e7ff', borderTop: '3px solid #4f46e5', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+        <p style={{ color: '#4f46e5', fontSize: '0.8125rem', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Loading Resource…</p>
       </div>
     </div>
-  )
+  );
 
   return (
-    <div className="rbp-root">
-      <RBPStyles />
-      <div className="rbp-orb rbp-orb-1" />
-      <div className="rbp-orb rbp-orb-2" />
-      <div className="rbp-orb rbp-orb-3" />
+    <div style={{ minHeight: '100vh', background: '#f8fafc', fontFamily: "'Poppins', sans-serif", color: '#0f172a' }}>
+      <PageStyles />
 
-      <UserSidebar isSidebarExpanded={isSidebarExpanded} onCollapse={() => setIsSidebarExpanded(false)} onExpand={() => setIsSidebarExpanded(true)} onItemNavigate={item => item.path && navigate(item.path)} onLogout={handleLogout} sidebarItems={sidebarItems} />
+      <UserSidebar
+        isSidebarExpanded={isSidebarExpanded}
+        onCollapse={() => setIsSidebarExpanded(false)}
+        onExpand={() => setIsSidebarExpanded(true)}
+        onItemNavigate={item => item.path && navigate(item.path)}
+        onLogout={handleLogout}
+        sidebarItems={sidebarItems}
+      />
 
-      <div className={`rbp-content-wrap ${isSidebarExpanded ? 'expanded' : ''}`}>
+      <div style={{ minHeight: '100vh', transition: 'padding-left 0.3s', paddingLeft: isSidebarExpanded ? 256 : 80 }}>
         <UserDashboardHeader onLogout={handleLogout} eyebrow={headerLabels.eyebrow} title="Resource Details" />
 
-        <main className="rbp-main">
+        <main style={{ maxWidth: 1100, margin: '0 auto', padding: '2rem 1.5rem 6rem' }}>
 
-          <button className="rbp-back-btn" onClick={() => navigate('/dashboard/user/resources')}>
+          <button className="back-btn" onClick={() => navigate('/dashboard/user/resources')}>
             ← Back to Catalog
           </button>
 
-          {error && <div className="rbp-error-box">{error}</div>}
+          {error && (
+            <div className="error-banner">
+              <span>⚠️</span> {error}
+            </div>
+          )}
 
           {resource && (
-            <div className="rbp-grid">
+            <div className="page-grid">
 
-              {/* ── Left column ── */}
-              <div className="rbp-left-col">
+              {/* Resource Profile Context Panel */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
 
-                <div className="rbp-card">
+                <div className="card">
                   {resource.imageUrl ? (
-                    <img src={resource.imageUrl} alt={resource.name} className="rbp-img" />
+                    <img src={resource.imageUrl} alt={resource.name} className="resource-img" />
                   ) : (
-                    <div className="rbp-img-placeholder">
-                      <span style={{ fontSize:'2.8rem' }}>🏢</span>
-                      <span className="rbp-img-label">Facility</span>
+                    <div className="resource-img-placeholder">
+                      <span style={{ fontSize: '2.5rem', opacity: 0.3 }}>🏢</span>
+                      <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#9ca3af', marginTop: 4 }}>No Image</span>
                     </div>
                   )}
 
-                  <h1 className="rbp-res-name">{resource.name}</h1>
-                  <p className="rbp-res-type">{formatResourceType(resource.type)}</p>
+                  <h1 style={{ fontSize: '1.4rem', fontWeight: 700, color: '#0f172a', margin: '0', letterSpacing: '-0.01em' }}>
+                    {resource.name}
+                  </h1>
+                  <p style={{ fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#6b7280', margin: '0.2rem 0 0 0' }}>
+                    {formatResourceType(resource.type)}
+                  </p>
 
-                  <div className="rbp-stats">
-                    <div className="rbp-stat-row"><span className="rbp-stat-lbl">Location</span><span className="rbp-stat-val">{resource.location}</span></div>
-                    <div className="rbp-stat-row"><span className="rbp-stat-lbl">Max Capacity</span><span className="rbp-stat-val">{resource.capacity} people</span></div>
-                    <div className="rbp-stat-row" style={{ borderBottom:'none' }}><span className="rbp-stat-lbl">Status</span><span className={resource.status === 'ACTIVE' ? 'rbp-badge-on' : 'rbp-badge-off'}>{resource.status}</span></div>
+                  <div style={{ marginTop: '1.5rem' }}>
+                    {[
+                      { label: 'Location', value: resource.location },
+                      { label: 'Capacity', value: `${resource.capacity} people` },
+                    ].map(({ label, value }) => (
+                      <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 0', borderBottom: '1px solid #f1f5f9' }}>
+                        <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#64748b' }}>{label}</span>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#0f172a' }}>{value}</span>
+                      </div>
+                    ))}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 0' }}>
+                      <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#64748b' }}>Status</span>
+                      <span className={resource.status === 'ACTIVE' ? 'badge-active' : 'badge-inactive'}>
+                        {resource.status}
+                      </span>
+                    </div>
                   </div>
 
-                  <button className="rbp-cta-btn" onClick={() => setIsModalOpen(true)} disabled={resource.status === 'OUT_OF_SERVICE'}>
+                  <button
+                    className="btn-primary w-full mt-6"
+                    onClick={() => setIsModalOpen(true)}
+                    disabled={resource.status === 'OUT_OF_SERVICE'}
+                  >
                     <span>📅</span> Request this Space
                   </button>
                 </div>
 
-                <div className="rbp-card">
-                  <p className="rbp-sec-title">Upcoming Reservations</p>
-                  <p className="rbp-sec-sub">Times already taken or awaiting approval.</p>
+                <div className="card">
+                  <div style={{ marginBottom: '1.25rem' }}>
+                    <p style={{ fontSize: '1.1rem', fontWeight: 700, color: '#0f172a', margin: '0 0 0.25rem' }}>Upcoming Bookings</p>
+                    <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '0' }}>Approved and pending schedules.</p>
+                  </div>
 
-                  {takenBookings.length === 0 ? (
-                    <div className="rbp-empty-state"><span style={{ fontSize:'1.8rem' }}>🌊</span><p>All clear — no upcoming bookings.</p></div>
+                  <div className="search-input-wrapper" style={{ maxWidth: '100%', marginBottom: '1rem' }}>
+                    <span className="search-icon">🔍</span>
+                    <input 
+                      type="text" 
+                      placeholder="Search by date (e.g. 2026-04)..." 
+                      className="search-input"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                  </div>
+
+                  {filteredBookings.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '1.5rem 1rem', background: '#f8fafc', border: '1px dashed #e2e8f0', borderRadius: 8 }}>
+                      <div style={{ fontSize: '1.5rem', opacity: 0.5, marginBottom: 4 }}>🗓️</div>
+                      <p style={{ fontSize: '0.8rem', fontWeight: 500, color: '#64748b', margin: 0 }}>
+                        {searchQuery ? 'No matching bookings found.' : 'No upcoming bookings.'}
+                      </p>
+                    </div>
                   ) : (
-                    <div>
-                      {takenBookings.map(b => (
-                        <div key={b.id} className="rbp-res-item">
-                          <div style={{ display:'flex', alignItems:'center', gap:'0.75rem' }}>
-                            <div className="rbp-day-badge">{b.startTime.split('T')[0].split('-')[2]}</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      {filteredBookings.map(b => (
+                        <div key={b.id} className="reservation-item">
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <div className="day-badge">
+                              {b.startTime.split('T')[0].split('-')[2]}
+                            </div>
                             <div>
-                              <p style={{ fontSize:'0.8rem', fontWeight:700, color:'#1a6880', margin:0 }}>{b.startTime.split('T')[0]}</p>
-                              <p style={{ fontSize:'0.68rem', fontWeight:700, color:'#2193b0', margin:0 }}>
-                                {b.startTime.split('T')[1].substring(0,5)} – {b.endTime.split('T')[1].substring(0,5)}
+                              <p style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#0f172a', margin: 0 }}>
+                                {b.startTime.split('T')[0]}
+                              </p>
+                              <p style={{ fontSize: '0.7rem', fontWeight: 500, color: '#64748b', margin: 0 }}>
+                                {b.startTime.split('T')[1].substring(0, 5)} – {b.endTime.split('T')[1].substring(0, 5)}
                               </p>
                             </div>
                           </div>
-                          {b.status === 'PENDING' && <span className="rbp-pending-pill">Pending</span>}
+                          {b.status === 'PENDING' && (
+                            <span className="pending-pill">Pending</span>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -229,91 +328,97 @@ export default function ResourceBookingPage() {
                 </div>
               </div>
 
-              {/* ── Right column: schedule ── */}
-              <div>
-                <div className="rbp-card">
+              {/* Resource Master Schedule Grid */}
+              <div className="card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+                  <div>
+                    <p style={{ fontSize: '1.1rem', fontWeight: 700, color: '#0f172a', margin: '0 0 0.25rem' }}>Daily Availability</p>
+                    <p style={{ fontSize: '0.8rem', color: '#64748b', margin: 0 }}>Schedule for the selected week.</p>
+                  </div>
                   
-                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', marginBottom:'1.25rem' }}>
-                    <div>
-                      <p className="rbp-sec-title">Daily Availability</p>
-                      <p className="rbp-sec-sub" style={{ marginBottom: 0 }}>Showing schedule for the selected 7 days.</p>
-                    </div>
-                    <div style={{ display:'flex', gap:'0.4rem' }}>
-                      <button onClick={() => setWeekOffset(w => w - 1)} className="rbp-btn-small">← Prev</button>
-                      <button onClick={() => setWeekOffset(0)} className="rbp-btn-small" disabled={weekOffset === 0}>Today</button>
-                      <button onClick={() => setWeekOffset(w => w + 1)} className="rbp-btn-small">Next →</button>
-                    </div>
+                  <div style={{ display: 'flex', gap: '0.4rem' }}>
+                    {[
+                      { label: '← Prev', action: () => setWeekOffset(w => w - 1), disabled: false },
+                      { label: 'Today',  action: () => setWeekOffset(0), disabled: weekOffset === 0 },
+                      { label: 'Next →', action: () => setWeekOffset(w => w + 1), disabled: false },
+                    ].map(({ label, action, disabled }) => (
+                      <button key={label} className="nav-btn" onClick={action} disabled={disabled}>
+                        {label}
+                      </button>
+                    ))}
                   </div>
+                </div>
 
-                  <div style={{ display:'flex', gap:'1.5rem', marginBottom:'1.25rem' }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:'0.45rem' }}><div className="rbp-legend-on" /><span style={{ fontSize:'0.72rem', color:'#2193b0', fontWeight:700 }}>Available</span></div>
-                    <div style={{ display:'flex', alignItems:'center', gap:'0.45rem' }}><div className="rbp-legend-taken" /><span style={{ fontSize:'0.72rem', color:'#d97706', fontWeight:700 }}>Booked</span></div>
-                    <div style={{ display:'flex', alignItems:'center', gap:'0.45rem' }}><div className="rbp-legend-off" /><span style={{ fontSize:'0.72rem', color:'#8ec9d8', fontWeight:700 }}>Unavailable</span></div>
-                  </div>
+                <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+                  <LegendItem color="#2193b0" label="Available" borderColor="#1a7a93" />
+                  <LegendItem color="#f59e0b" label="Booked" />
+                  <LegendItem color="#f1f5f9" label="Unavailable" borderColor="#cbd5e1" />
+                </div>
 
-                  <div style={{ overflowX:'auto', paddingBottom:'0.5rem' }}>
-                    <table style={{ borderCollapse:'separate', borderSpacing:'4px', width:'100%' }}>
-                      <thead>
-                        <tr>
-                          <th style={{ width:70 }} />
-                          {HOURS.map(h => (
-                            <th key={h} style={{ width:34, textAlign:'center', fontSize:'0.6rem', fontWeight:700, color:'#5ab4cb', paddingBottom:8, letterSpacing:'0.04em' }}>{h}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {displayDates.map(dateObj => {
-                          const daysMap = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
-                          const dayOfWeek = daysMap[dateObj.getDay()];
-                          const dateString = formatLocalYYYYMMDD(dateObj);
-                          const displayDay = DAY_SHORT[dayOfWeek];
-                          const displayDateText = `${dateObj.getDate()} ${dateObj.toLocaleString('default', { month: 'short' })}`;
+                <div style={{ overflowX: 'auto', paddingBottom: '0.5rem' }}>
+                  <table style={{ borderCollapse: 'separate', borderSpacing: '4px', width: '100%', minWidth: '600px' }}>
+                    <thead>
+                      <tr>
+                        <th style={{ width: 80 }} />
+                        {HOURS.map(h => (
+                          <th key={h} style={{ width: 36, textAlign: 'center', fontSize: '0.7rem', fontWeight: 600, color: '#9ca3af', paddingBottom: 8 }}>
+                            {h}:00
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {displayDates.map(dateObj => {
+                        const daysMap = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+                        const dayOfWeek  = daysMap[dateObj.getDay()];
+                        const dateString = formatLocalYYYYMMDD(dateObj);
+                        const displayDay = DAY_SHORT[dayOfWeek];
+                        const displayDate = `${dateObj.getDate()} ${dateObj.toLocaleString('default', { month: 'short' })}`;
 
-                          return (
-                            <tr key={dateString}>
-                              <td style={{ textAlign:'right', paddingRight:10, whiteSpace:'nowrap' }}>
-                                <div style={{ fontSize:'0.65rem', fontWeight:800, color:'#1a6880', textTransform:'uppercase' }}>{displayDay}</div>
-                                <div style={{ fontSize:'0.55rem', fontWeight:600, color:'#5ab4cb' }}>{displayDateText}</div>
-                              </td>
-                              {HOURS.map(hour => {
-                                const isActive = activeKeys.has(`${dayOfWeek}-${hour}`);
-                                const segments = takenDataMap.get(`${dateString}-${hour}`) || [];
-                                
-                                const baseClass = isActive ? 'rbp-cell-on' : 'rbp-cell-off';
-                                const baseTitle = isActive ? `${displayDay}, ${displayDateText} ${hour}:00 — Available` : 'Not Available';
+                        return (
+                          <tr key={dateString}>
+                            <td style={{ textAlign: 'right', paddingRight: 12, whiteSpace: 'nowrap' }}>
+                              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#0f172a' }}>{displayDay}</div>
+                              <div style={{ fontSize: '0.65rem', fontWeight: 500, color: '#64748b' }}>{displayDate}</div>
+                            </td>
+                            {HOURS.map(hour => {
+                              const isActive = activeKeys.has(`${dayOfWeek}-${hour}`);
+                              const segments = takenDataMap.get(`${dateString}-${hour}`) || [];
+                              const title = isActive
+                                ? `${displayDay}, ${displayDate} ${hour}:00 — Available`
+                                : 'Not Available';
 
-                                return (
-                                  <td key={hour}>
-                                    <div title={baseTitle} className={baseClass}>
-                                      {segments.map((seg, i) => {
-                                        const leftPercent = (seg.start / 60) * 100;
-                                        const widthPercent = ((seg.end - seg.start) / 60) * 100;
-                                        const segTitle = `Booked: ${seg.booking.startTime.split('T')[1].substring(0,5)} - ${seg.booking.endTime.split('T')[1].substring(0,5)}`;
-                                        
-                                        return (
-                                          <div 
-                                            key={i}
-                                            title={segTitle}
-                                            className="rbp-cell-booked-block"
-                                            style={{ left: `${leftPercent}%`, width: `${widthPercent}%` }}
-                                          />
-                                        )
-                                      })}
-                                    </div>
-                                  </td>
-                                )
-                              })}
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
+                              return (
+                                <td key={hour}>
+                                  <div
+                                    title={title}
+                                    className={isActive ? 'cell-available' : 'cell-unavailable'}
+                                  >
+                                    {segments.map((seg, i) => (
+                                      <div
+                                        key={i}
+                                        className="cell-booked-block"
+                                        title={`Booked: ${seg.booking.startTime.split('T')[1].substring(0, 5)} – ${seg.booking.endTime.split('T')[1].substring(0, 5)}`}
+                                        style={{
+                                          left:  `${(seg.start / 60) * 100}%`,
+                                          width: `${((seg.end - seg.start) / 60) * 100}%`,
+                                        }}
+                                      />
+                                    ))}
+                                  </div>
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
 
-                  <div className="rbp-grid-footer">
-                    <span>Hours: 08:00 – 19:00</span>
-                    <span>Hover over segments for details</span>
-                  </div>
+                <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '0.75rem', color: '#9ca3af', fontWeight: 500 }}>Operational Hours: 08:00 – 19:00</span>
+                  <span style={{ fontSize: '0.75rem', color: '#9ca3af', fontWeight: 500 }}>Hover cells for details</span>
                 </div>
               </div>
 
@@ -322,123 +427,146 @@ export default function ResourceBookingPage() {
         </main>
       </div>
 
-     <CreateBookingModal 
-        isOpen={isModalOpen} 
-        selectedResource={resource} 
-        activeKeys={activeKeys} 
-        modifyData={modifyData} 
-        onClose={() => { 
-          setIsModalOpen(false); 
-          if (modifyData) {
-            navigate('/dashboard/user/bookings');
-          } else {
-            navigate(location.pathname, { replace: true, state: {} }); 
-          }
-        }} 
-        onSuccess={() => { 
-          setIsModalOpen(false); 
-          if (modifyData) {
-            navigate('/dashboard/user/bookings');
-          } else {
+      <CreateBookingModal
+        isOpen={isModalOpen}
+        selectedResource={resource}
+        activeKeys={activeKeys}
+        modifyData={modifyData}
+        onClose={() => {
+          setIsModalOpen(false);
+          if (modifyData) navigate('/dashboard/user/bookings');
+          else navigate(location.pathname, { replace: true, state: {} });
+        }}
+        onSuccess={() => {
+          setIsModalOpen(false);
+          if (modifyData) navigate('/dashboard/user/bookings');
+          else {
             navigate(location.pathname, { replace: true, state: {} });
-            loadData(); 
+            loadResourceData();
           }
-        }} 
+        }}
       />
     </div>
-  )
+  );
 }
 
-function RBPStyles() {
+function LegendItem({ color, label, borderColor }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+      <div style={{
+        width: 14, height: 14, borderRadius: 4,
+        background: color,
+        border: borderColor ? `1px solid ${borderColor}` : 'none',
+      }} />
+      <span style={{ fontSize: '0.75rem', color: '#475569', fontWeight: 500 }}>{label}</span>
+    </div>
+  );
+}
+
+function PageStyles() {
   return (
     <style>{`
-      @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
 
-      .rbp-root { min-height: 100vh; background: linear-gradient(160deg, #e8fafe 0%, #caf4fb 30%, #b5edf8 60%, #d4f8fc 100%); font-family: 'Plus Jakarta Sans', sans-serif; color: #0a3d55; position: relative; overflow-x: hidden; }
-      .rbp-orb { position: fixed; border-radius: 50%; pointer-events: none; z-index: 0; }
-      .rbp-orb-1 { width: 520px; height: 520px; top: -160px; right: -100px; background: radial-gradient(circle, rgba(109,213,237,0.28) 0%, rgba(0,131,254,0.08) 55%, transparent 75%); animation: rbp-drift 12s ease-in-out infinite; }
-      .rbp-orb-2 { width: 380px; height: 380px; bottom: -80px; left: -60px; background: radial-gradient(circle, rgba(139,222,218,0.25) 0%, rgba(67,173,208,0.08) 55%, transparent 75%); animation: rbp-drift 16s ease-in-out infinite reverse; }
-      .rbp-orb-3 { width: 200px; height: 200px; top: 40%; left: 38%; background: radial-gradient(circle, rgba(0,255,240,0.07) 0%, transparent 70%); animation: rbp-drift 9s ease-in-out infinite; }
-      @keyframes rbp-drift { 0%,100%{transform:translateY(0) scale(1)} 50%{transform:translateY(-20px) scale(1.05)} }
+      @keyframes spin { to { transform: rotate(360deg) } }
+      @keyframes fadeUp { from { opacity: 0; transform: translateY(12px) } to { opacity: 1; transform: none } }
 
-      .rbp-spinner { width: 56px; height: 56px; border-radius: 50%; border: 3px solid transparent; border-top-color: #0083fe; border-left-color: #2193b0; animation: rbp-spin 0.8s linear infinite; }
-      .rbp-pulse-ring { position: absolute; inset: 0; border-radius: 50%; border: 2px solid #43add0; animation: rbp-pulse 1.4s ease-out infinite; }
-      @keyframes rbp-spin  { to { transform: rotate(360deg) } }
-      @keyframes rbp-pulse { 0%{transform:scale(0.85);opacity:1} 100%{transform:scale(1.5);opacity:0} }
+      /* Structural Layout */
+      .page-grid {
+        display: grid;
+        grid-template-columns: 320px 1fr;
+        gap: 1.5rem;
+        align-items: start;
+        animation: fadeUp 0.4s cubic-bezier(.22,1,.36,1) both;
+      }
+      @media (max-width: 960px) {
+        .page-grid { grid-template-columns: 1fr; }
+      }
 
-      .rbp-content-wrap { min-height: 100vh; transition: padding-left 0.3s; padding-left: 5rem; position: relative; z-index: 1; }
-      .rbp-content-wrap.expanded { padding-left: 16rem; }
-      .rbp-main { max-width: 74rem; margin: 0 auto; padding: 2rem 1.5rem 6rem; }
+      .card {
+        background: #ffffff;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        padding: 1.5rem;
+      }
 
-      .rbp-back-btn { display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #2193b0; background: rgba(255,255,255,0.75); border: 1px solid rgba(67,173,208,0.3); border-radius: 100px; padding: 0.45rem 1.1rem; cursor: pointer; margin-bottom: 1.75rem; box-shadow: 0 2px 10px rgba(33,147,176,0.1); transition: all 0.2s; }
-      .rbp-back-btn:hover { background: #fff; border-color: #2193b0; color: #0083fe; transform: translateX(-3px); box-shadow: 0 4px 16px rgba(0,131,254,0.18); }
+      /* Base Buttons */
+      .back-btn {
+        display: inline-flex; align-items: center; gap: 0.5rem;
+        font-size: 0.8125rem; font-weight: 500; font-family: 'Poppins', sans-serif;
+        color: #475569; background: transparent; border: none; cursor: pointer;
+        margin-bottom: 1.5rem; transition: color 0.2s;
+      }
+      .back-btn:hover { color: #0f172a; }
+
+      .btn-primary {
+        background: #4f46e5; color: #ffffff; border: none; cursor: pointer;
+        font-family: 'Poppins', sans-serif; font-size: 0.875rem; font-weight: 600;
+        padding: 0.65rem 1.5rem; border-radius: 8px; transition: all 0.2s ease;
+        display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+        box-shadow: 0 2px 4px rgba(79, 70, 229, 0.15);
+      }
+      .btn-primary:hover:not(:disabled) { background: #4338ca; box-shadow: 0 4px 10px rgba(79, 70, 229, 0.25); transform: translateY(-1px); }
+      .btn-primary:active { transform: translateY(0); }
+      .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+
+      .nav-btn {
+        background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px;
+        padding: 0.35rem 0.75rem; font-size: 0.75rem; font-weight: 500;
+        font-family: 'Poppins', sans-serif; color: #374151; cursor: pointer; transition: all 0.2s;
+      }
+      .nav-btn:hover:not(:disabled) { background: #f8fafc; color: #0f172a; border-color: #94a3b8; }
+      .nav-btn:disabled { opacity: 0.45; cursor: not-allowed; }
       
-      .rbp-btn-small { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 0.3rem 0.8rem; font-size: 0.7rem; font-weight: 700; color: #1a6880; cursor: pointer; transition: all 0.2s; font-family: 'Plus Jakarta Sans', sans-serif; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-      .rbp-btn-small:hover:not(:disabled) { background: #f0f9ff; color: #0083fe; border-color: #6dd5ed; transform: translateY(-1px); box-shadow: 0 2px 5px rgba(0,131,254,0.15); }
-      .rbp-btn-small:disabled { opacity: 0.5; cursor: not-allowed; }
+      .w-full { width: 100%; }
+      .mt-6 { margin-top: 1.5rem; }
 
-      .rbp-error-box { margin-bottom:1.5rem; border-radius:14px; background:rgba(254,226,226,0.85); border:1px solid rgba(239,68,68,0.25); padding:1rem 1.25rem; font-size:0.85rem; color:#991b1b; font-weight:600; }
+      /* Resource Visuals */
+      .resource-img { width: 100%; height: 180px; object-fit: cover; border-radius: 8px; margin-bottom: 1.25rem; border: 1px solid #e2e8f0; }
+      .resource-img-placeholder {
+        width: 100%; height: 180px; border-radius: 8px; margin-bottom: 1.25rem;
+        background: #f8fafc; border: 1px dashed #cbd5e1;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+      }
 
-      .rbp-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 1.5rem; align-items: start; }
-      .rbp-left-col { display: flex; flex-direction: column; gap: 1.25rem; }
+      /* Indicators and Badges */
+      .badge-active { font-size: 0.7rem; font-weight: 600; color: #059669; background: #d1fae5; padding: 0.2rem 0.6rem; border-radius: 100px; }
+      .badge-inactive { font-size: 0.7rem; font-weight: 600; color: #dc2626; background: #fee2e2; padding: 0.2rem 0.6rem; border-radius: 100px; }
+      .day-badge { width: 38px; height: 38px; border-radius: 8px; background: #4f46e5; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; font-weight: 600; color: #ffffff; flex-shrink: 0; box-shadow: 0 2px 4px rgba(79, 70, 229, 0.2); }
+      .pending-pill { font-size: 0.65rem; font-weight: 600; text-transform: uppercase; color: #d97706; background: #fef3c7; border-radius: 100px; padding: 0.2rem 0.6rem; border: 1px solid #fcd34d; }
 
-      /* 👇 FIXED: Removed the ::before animated rainbow gradient entirely */
-      .rbp-card { background: rgba(255,255,255,0.7); border: 1px solid rgba(67,173,208,0.25); border-radius: 22px; backdrop-filter: blur(20px); box-shadow: 0 4px 24px rgba(33,147,176,0.1), 0 1px 0 rgba(255,255,255,0.95) inset; padding: 1.5rem; position: relative; overflow: hidden; }
+      /* Interactive Filters */
+      .search-input-wrapper { position: relative; width: 100%; }
+      .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #9ca3af; font-size: 0.9rem; }
+      .search-input {
+        width: 100%; padding: 0.5rem 1rem 0.5rem 2.25rem; border-radius: 6px;
+        border: 1px solid #e2e8f0; font-family: 'Poppins', sans-serif; font-size: 0.8125rem;
+        color: #1e293b; outline: none; transition: all 0.2s; box-sizing: border-box; background: #f8fafc;
+      }
+      .search-input:focus { border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1); background: #ffffff; }
 
-      .rbp-img { width:100%; height:175px; object-fit:cover; border-radius:14px; margin-bottom:1.25rem; }
-      .rbp-img-placeholder { width:100%; height:175px; border-radius:14px; margin-bottom:1.25rem; background: linear-gradient(135deg, rgba(0,131,254,0.07), rgba(109,213,237,0.15), rgba(139,222,218,0.1)); border: 1px solid rgba(67,173,208,0.2); display: flex; flex-direction:column; align-items:center; justify-content:center; gap:0.4rem; }
-      .rbp-img-label { font-size:0.65rem; font-weight:700; color:#43add0; letter-spacing:0.12em; text-transform:uppercase; }
+      /* Content Lists */
+      .reservation-item { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; transition: background 0.15s; }
+      .reservation-item:hover { background: #f8fafc; }
 
-      /* 👇 FIXED: Changed Text Gradients to Solid Colors */
-      .rbp-res-name { font-size: 1.4rem; font-weight: 800; letter-spacing: -0.02em; margin: 0; color: #0f172a; }
-      .rbp-res-type { font-size:0.68rem; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:#43add0; margin-top:0.3rem; }
+      .error-banner { border-radius: 8px; background: #fef2f2; border: 1px solid #fecaca; padding: 0.875rem 1.25rem; font-size: 0.875rem; color: #b91c1c; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem; }
 
-      .rbp-stats { margin-top:1.25rem; }
-      .rbp-stat-row { display:flex; justify-content:space-between; align-items:center; padding:0.6rem 0; border-bottom:1px solid rgba(67,173,208,0.12); }
-      .rbp-stat-lbl { font-size:0.65rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:#7ec8da; }
-      .rbp-stat-val { font-size:0.84rem; font-weight:700; color:#1a6070; }
+      /* Visual Grid Elements */
+      .cell-available { 
+        position: relative; overflow: hidden; height: 32px; border-radius: 4px; 
+        background: #2193b0; border: 1px solid #1a7a93; 
+        transition: all 0.15s; cursor: pointer; box-shadow: 0 1px 2px rgba(33, 147, 176, 0.1); 
+      }
+      .cell-available:hover { 
+        background: #1a7a93; box-shadow: 0 4px 8px rgba(33, 147, 176, 0.25); 
+        transform: translateY(-1px); z-index: 5; 
+      }
       
-      /* 👇 FIXED: Changed Badges to Solid Colors */
-      .rbp-badge-on { font-size:0.63rem; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; color:#065f46; background:#d1fae5; border:1px solid #10b981; border-radius:100px; padding:0.22rem 0.8rem; }
-      .rbp-badge-off { font-size:0.63rem; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; color:#991b1b; background:#fee2e2; border:1px solid rgba(239,68,68,0.3); border-radius:100px; padding:0.22rem 0.8rem; }
-
-      /* 👇 FIXED: Changed Call to Action Button to Solid Blue */
-      .rbp-cta-btn { width:100%; margin-top:1.5rem; background: #2193b0; color:#fff; font-size:0.9rem; font-weight:800; letter-spacing:0.03em; padding:0.95rem; border-radius:14px; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:0.6rem; box-shadow: 0 4px 12px rgba(33,147,176,0.3); transition: all 0.3s; }
-      .rbp-cta-btn:hover:not(:disabled) { background: #1a7a93; transform:translateY(-2px); box-shadow:0 6px 16px rgba(33,147,176,0.4); }
-      .rbp-cta-btn:disabled { opacity:0.5; cursor:not-allowed; transform:none; }
-
-      /* 👇 FIXED: Changed Text Gradients to Solid Colors */
-      .rbp-sec-title { font-size:1.05rem; font-weight:800; letter-spacing:-0.01em; margin:0; color: #0f172a; }
-      .rbp-sec-sub { font-size:0.77rem; color:#5ab4cb; margin-top:0.25rem; font-weight:500; }
-
-      .rbp-empty-state { text-align:center; padding:1.4rem 1rem; background:linear-gradient(135deg,rgba(109,213,237,0.08),rgba(139,222,218,0.06)); border:1px dashed rgba(67,173,208,0.3); border-radius:14px; }
-      .rbp-empty-state p { font-size:0.78rem; font-weight:700; color:#43add0; margin:0.4rem 0 0; }
-
-      .rbp-res-item { display:flex; justify-content:space-between; align-items:center; padding:0.7rem 0.9rem; background:linear-gradient(135deg,rgba(109,213,237,0.1),rgba(139,222,218,0.07)); border:1px solid rgba(67,173,208,0.2); border-radius:12px; margin-bottom:0.55rem; transition:all 0.2s; }
-      .rbp-res-item:hover { background:linear-gradient(135deg,rgba(109,213,237,0.18),rgba(139,222,218,0.13)); border-color:rgba(67,173,208,0.38); transform:translateX(3px); }
+      .cell-unavailable { position: relative; overflow: hidden; height: 32px; border-radius: 4px; background: #f1f5f9; border: 1px solid #e2e8f0; }
       
-      /* 👇 FIXED: Changed Day Badge to Solid Blue */
-      .rbp-day-badge { width:38px; height:38px; border-radius:10px; background: #2193b0; display:flex; align-items:center; justify-content:center; font-size:0.82rem; font-weight:800; color:#fff; box-shadow:0 2px 8px rgba(33,147,176,0.2); flex-shrink:0; }
-      
-      /* 👇 FIXED: Changed Pending Pill to Solid Colors */
-      .rbp-pending-pill { font-size:0.6rem; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; color:#92400e; background: #fef3c7; border:1px solid #fcd34d; border-radius:100px; padding:0.2rem 0.65rem; white-space:nowrap; }
-
-      /* 👇 FIXED: Changed Available Cells to Solid Blue */
-      .rbp-cell-on { position:relative; overflow:hidden; height:30px; border-radius:6px; background: #2193b0; box-shadow:0 2px 4px rgba(33,147,176,0.2); transition:transform 0.15s,box-shadow 0.15s; cursor:pointer;}
-      .rbp-cell-on:hover { transform:scaleY(1.2); box-shadow:0 4px 12px rgba(33,147,176,0.4); z-index:10; }
-      .rbp-cell-off { position:relative; overflow:hidden; height:30px; border-radius:6px; background:rgba(67,173,208,0.07); border:1px solid rgba(67,173,208,0.1); }
-      
-      /* 👇 FIXED: Changed Booked Block to Solid Orange */
-      .rbp-cell-booked-block { position: absolute; top:0; bottom:0; background: #f59e0b; box-shadow:0 2px 4px rgba(245,158,11,0.3); opacity: 0.95; border-radius: 4px; z-index: 2; transition: filter 0.2s; }
-      .rbp-cell-booked-block:hover { filter: brightness(1.1); z-index: 15; }
-
-      /* 👇 FIXED: Changed Legends to Solid Colors */
-      .rbp-legend-on { width:14px; height:14px; border-radius:4px; background: #2193b0; box-shadow:0 2px 4px rgba(33,147,176,0.2); }
-      .rbp-legend-off { width:14px; height:14px; border-radius:4px; background:rgba(67,173,208,0.1); border:1px solid rgba(67,173,208,0.2); }
-      .rbp-legend-taken { width:14px; height:14px; border-radius:4px; background: #f59e0b; box-shadow:0 2px 4px rgba(245,158,11,0.2); }
-
-      .rbp-grid-footer { margin-top:1.25rem; padding-top:0.9rem; border-top:1px solid rgba(67,173,208,0.15); display:flex; justify-content:space-between; }
-      .rbp-grid-footer span { font-size:0.68rem; color:#8ec9d8; font-weight:600; }
+      .cell-booked-block { position: absolute; top: -1px; bottom: -1px; background: #f59e0b; border-radius: 3px; z-index: 2; border: 1px solid #d97706; transition: background 0.15s; }
+      .cell-booked-block:hover { background: #d97706; z-index: 10; }
     `}</style>
-  )
+  );
 }
