@@ -12,6 +12,8 @@ import UserDashboardHeader from '../user/components/UserDashboardHeader'
 import UserSidebar from '../user/components/UserSidebar'
 // Add booking modal to the imports
 import CreateBookingModal from './components/CreateBookingModal'
+import { Button } from '../../../components/ui/Button'
+import { Badge } from '../../../components/ui/Badge'
 
 // ─── Schedule grid constants ──────────────────────────────────────────────────
 const DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY']
@@ -145,15 +147,7 @@ function ScheduleViewModal({ resource, onClose }) {
 
 // ─── Status badge helper ──────────────────────────────────────────────────────
 function StatusBadge({ status }) {
-  const cls =
-    status === 'ACTIVE'
-      ? 'bg-emerald-50 text-emerald-700'
-      : 'bg-red-50 text-red-600'
-  return (
-    <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${cls}`}>
-      {status === 'ACTIVE' ? 'Active' : 'Out of Service'}
-    </span>
-  )
+  return <Badge status={status} />
 }
 
 // ─── Main Page (read-only for USER role) ─────────────────────────────────────
@@ -346,35 +340,33 @@ function UserResourcesPage() {
                         <td className="px-5 py-4 text-slate-600">{formatResourceType(resource.type)}</td>
                         <td className="px-5 py-4 text-slate-600">{resource.location}</td>
                         <td className="px-5 py-4 text-slate-600">{resource.capacity}</td>
-                        {/* 👇 FIXED BUTTONS CONTAINER 👇 */}
-                        <td className="px-5 py-4 text-slate-600">{resource.capacity}</td>
                         
-                        {/* Column 6: Status */}
+                        {/* Column 6: Schedule */}
+                        <td className="px-5 py-4">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setScheduleViewTarget(resource)}
+                          >
+                            View Schedule
+                          </Button>
+                        </td>
+
+                        {/* Column 7: Status */}
                         <td className="px-5 py-4">
                           <StatusBadge status={resource.status} />
                         </td>
 
-                        {/* Column 7: View Schedule (Neutral clean button) */}
-                        <td className="px-5 py-4 text-center">
-                          <button
-                            type="button"
-                            onClick={() => setScheduleViewTarget(resource)}
-                            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm transition hover:bg-slate-50 hover:text-slate-900"
-                          >
-                            View Schedule
-                          </button>
-                        </td>
-
-                        {/* Column 8: Book Room Action (SmartCampus Light Blue Gradient) */}
+                        {/* Column 8: Action */}
                         <td className="px-5 py-4 text-right">
-                          <button
-                            type="button"
+                          <Button
+                            variant="primary"
+                            size="sm"
                             onClick={() => navigate(`/dashboard/user/resources/${resource.id}`)}
                             disabled={resource.status === 'OUT_OF_SERVICE'}
-                            className="rounded-lg bg-gradient-to-r from-[#2193b0] to-[#6dd5ed] px-4 py-1.5 text-xs font-bold text-white shadow-sm transition-all hover:brightness-105 hover:shadow disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             Book Room
-                          </button>
+                          </Button>
                         </td>
                       </tr>
                     ))

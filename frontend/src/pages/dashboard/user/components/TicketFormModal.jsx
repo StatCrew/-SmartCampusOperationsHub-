@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { createTicket, updateTicket } from '../../../../api/ticketApi'
+import { sendAdminRoleBroadcast } from '../../../../api/adminApi'
 
 const CATEGORIES = ['GENERAL', 'PLUMBING', 'ELECTRICAL', 'EQUIPMENT', 'HVAC', 'NETWORK', 'CLEANING', 'OTHER']
 const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT']
@@ -141,6 +142,26 @@ export default function TicketFormModal({ open, mode, ticket, onClose, onSaved, 
         await updateTicket(ticket.id, payload, files)
       } else {
         await createTicket(payload, files)
+        
+        // Broadcast to ADMIN and TECHNICIAN
+        try {
+          await Promise.all([
+            sendAdminRoleBroadcast({
+              targetRole: 'ADMIN',
+              title: 'New Support Ticket',
+              message: `Ticket "${payload.title}" created in category ${payload.category}.`,
+              actionUrl: '/admin/tickets',
+              category: 'TICKET'
+            }),
+            sendAdminRoleBroadcast({
+              targetRole: 'TECHNICIAN',
+              title: 'New Maintenance Request',
+              message: `Urgent: "${payload.title}" requires attention in ${payload.category}.`,
+              actionUrl: '/dashboard/technician/tickets',
+              category: 'TICKET'
+            })
+          ])
+        } catch (e) { console.error('Broadcast failed:', e) }
       }
 
       onSaved()

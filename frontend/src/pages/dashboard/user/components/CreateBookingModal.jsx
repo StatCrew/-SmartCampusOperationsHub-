@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { createBooking, updateFullBooking } from '../../../../api/bookingApi';
+import { sendAdminRoleBroadcast } from '../../../../api/adminApi';
 import useAuth from '../../../../context/useAuth';
 
 /* Constant configurations for modal steps */
@@ -157,6 +158,22 @@ export default function CreateBookingModal({ isOpen, onClose, onSuccess, selecte
       }
 
       setSubmitted(true);
+
+      // Broadcast to Admins about new booking
+      if (!modifyData) {
+        try {
+          await sendAdminRoleBroadcast({
+            targetRole: 'ADMIN',
+            title: 'New Booking Request',
+            message: `A new booking has been requested for resource #${formData.resourceId} on ${formData.bookingDate}.`,
+            actionUrl: '/admin/bookings',
+            category: 'BOOKING'
+          });
+        } catch (notiErr) {
+          console.error('Failed to broadcast booking notification:', notiErr);
+        }
+      }
+
       setTimeout(() => { onSuccess?.(); }, 2000);
       
     } catch (err) {

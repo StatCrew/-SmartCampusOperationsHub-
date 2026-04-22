@@ -12,6 +12,7 @@ import {
   uploadResourceImage,
   formatResourceType,
 } from '../../../api/resourceApi'
+import { sendAdminRoleBroadcast } from '../../../api/adminApi'
 import useAuth from '../../../context/useAuth'
 import useToast from '../../../context/useToast'
 import { getHeaderLabelsByRole, getSidebarItemsByRole } from '../constants'
@@ -125,6 +126,19 @@ function ResourceModal({ initialData, onClose, onSaved, getApiErrorMessage }) {
 
       if (imageFile) {
         saved = await uploadResourceImage(saved.id, imageFile)
+      }
+
+      // Broadcast to Admins about new resource
+      if (!isEditing) {
+        try {
+          await sendAdminRoleBroadcast({
+            targetRole: 'ADMIN',
+            title: 'New Resource Added',
+            message: `Resource "${saved.name}" has been added to the campus inventory at ${saved.location}.`,
+            actionUrl: '/admin/resource-analytics',
+            category: 'SYSTEM'
+          });
+        } catch (notiErr) { console.error('Broadcast failed:', notiErr); }
       }
 
       onSaved(saved, isEditing)

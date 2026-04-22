@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import useAuth from '../../../../context/useAuth'
-import useNotifications from '../hooks/useNotifications'
+import { useNotificationContext } from '../../../../context/NotificationContext'
 
 function getInitials(nameOrEmail) {
   const source = (nameOrEmail || '').trim()
@@ -34,7 +34,7 @@ function UserDashboardHeader({ eyebrow = 'Student Profile', title = 'My Account'
     markOneAsRead,
     markAllAsRead,
     togglePreference,
-  } = useNotifications({ role, token, getApiErrorMessage })
+  } = useNotificationContext()
 
   const avatarUrl = user?.imageUrl || user?.avatarUrl || user?.profileImageUrl || null
   const avatarFallback = getInitials(user?.fullName || user?.email)
@@ -158,18 +158,36 @@ function UserDashboardHeader({ eyebrow = 'Student Profile', title = 'My Account'
 
                 <div className="grid grid-cols-2 gap-2">
                   {preferences.map((item) => (
-                    <button
+                    <div
                       key={item.category}
-                      type="button"
-                      onClick={() => togglePreference(item.category)}
-                      disabled={isSavingPreferences}
-                      className={`rounded-lg border px-2 py-1.5 text-left text-[11px] font-medium transition ${item.enabled
-                        ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                        : 'border-slate-200 bg-slate-50 text-slate-500'
-                        }`}
+                      className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 transition hover:bg-slate-100"
                     >
-                      {item.category}
-                    </button>
+                      <span className="text-[11px] font-medium text-slate-700">
+                        {item.category
+                          .toLowerCase()
+                          .split('_')
+                          .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+                          .join(' ')}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => togglePreference(item.category)}
+                        disabled={isSavingPreferences}
+                        className={`relative inline-flex h-4 w-7 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
+                          item.enabled ? 'bg-indigo-600' : 'bg-slate-300'
+                        }`}
+                        role="switch"
+                        aria-checked={item.enabled}
+                      >
+                        <span className="sr-only">Toggle {item.category}</span>
+                        <span
+                          aria-hidden="true"
+                          className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                            item.enabled ? 'translate-x-3' : 'translate-x-0'
+                          }`}
+                        />
+                      </button>
+                    </div>
                   ))}
                 </div>
               </div>

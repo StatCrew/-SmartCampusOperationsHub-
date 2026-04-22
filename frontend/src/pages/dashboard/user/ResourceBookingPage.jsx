@@ -7,17 +7,12 @@ import { getHeaderLabelsByRole, getSidebarItemsByRole } from '../constants';
 import UserDashboardHeader from './components/UserDashboardHeader';
 import UserSidebar from './components/UserSidebar';
 import CreateBookingModal from './components/CreateBookingModal';
+import { Button } from '../../../components/ui/Button';
+import { Badge } from '../../../components/ui/Badge';
 
 const DAY_SHORT = { MONDAY: 'Mon', TUESDAY: 'Tue', WEDNESDAY: 'Wed', THURSDAY: 'Thu', FRIDAY: 'Fri', SATURDAY: 'Sat', SUNDAY: 'Sun' };
 const HOURS = ['08', '09', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19'];
 
-/**
- * Formats a given Date object to a localized YYYY-MM-DD string format.
- * This ensures strict adherence to the local calendar day, preventing 
- * date-shifting bugs caused by implicit UTC conversions.
- * * @param {Date} date - The date object to format.
- * @returns {string} The formatted date string (e.g., "2026-04-28").
- */
 function formatLocalYYYYMMDD(date) {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -25,21 +20,13 @@ function formatLocalYYYYMMDD(date) {
   return `${y}-${m}-${d}`;
 }
 
-/**
- * Maps raw availability timeslots into a localized Set of string keys.
- * This allows O(1) time complexity lookups when rendering the availability grid.
- * * @param {Array} slots - The array of resource availability slots.
- * @returns {Set<string>} A set containing operational hour keys (e.g., "MONDAY-08").
- */
 function extractAvailabilityKeys(slots) {
   const keys = new Set();
   slots.forEach(s => {
     const startHour = parseInt(s.startTime.split(':')[0], 10);
     let endHour = parseInt(s.endTime.split(':')[0], 10);
     const endMin = parseInt(s.endTime.split(':')[1], 10);
-    
     if (endMin === 0 && endHour > startHour) endHour -= 1;
-    
     for (let h = startHour; h <= endHour; h++) {
       keys.add(`${s.dayOfWeek}-${String(h).padStart(2, '0')}`);
     }
@@ -47,20 +34,12 @@ function extractAvailabilityKeys(slots) {
   return keys;
 }
 
-/**
- * Normalizes existing bookings into a Map segregated by specific Date and Hour.
- * Enables the UI to calculate and render exact partial-hour blocks dynamically.
- * * @param {Array} bookings - The array of existing booking entities.
- * @returns {Map<string, Array>} A mapping of specific datetime keys to booking segments.
- */
 function mapBookingsToGrid(bookings) {
   const takenMap = new Map();
-  
   bookings.forEach(b => {
     const dateString = b.startTime.split('T')[0];
     const startT = b.startTime.split('T')[1].split(':');
     const endT = b.endTime.split('T')[1].split(':');
-    
     const startHour = parseInt(startT[0], 10);
     const startMin  = parseInt(startT[1], 10);
     const endHour   = parseInt(endT[0], 10);
@@ -68,11 +47,9 @@ function mapBookingsToGrid(bookings) {
 
     for (let h = startHour; h <= endHour; h++) {
       if (h === endHour && endMin === 0) break;
-      
       const key = `${dateString}-${String(h).padStart(2, '0')}`;
       const sMin = h === startHour ? startMin : 0;
       const eMin = h === endHour ? endMin : 60;
-      
       if (!takenMap.has(key)) takenMap.set(key, []);
       takenMap.get(key).push({ start: sMin, end: eMin, booking: b });
     }
@@ -98,24 +75,15 @@ export default function ResourceBookingPage() {
 
   const modifyData = location.state?.modifyBooking || null;
 
-  /**
-   * Automatically initializes the booking modal if the user is redirected
-   * here from an existing reservation modification flow.
-   */
   useEffect(() => {
     if (modifyData && resource && !isModalOpen) {
       setIsModalOpen(true);
     }
   }, [modifyData, resource, isModalOpen]);
 
-  /**
-   * Fetches core resource details, operating hours, and associated bookings.
-   * Performs client-side date filtering to ignore historical records.
-   */
   const loadResourceData = useCallback(async () => {
     setLoading(true);
     setError('');
-    
     try {
       const allResources = await getAllResources();
       const current = allResources.find(r => String(r.id) === String(id));
@@ -149,10 +117,7 @@ export default function ResourceBookingPage() {
     if (!isModalOpen) loadResourceData(); 
   }, [loadResourceData, isModalOpen]);
 
-  const handleLogout = () => { 
-    logout(); 
-    navigate('/signin', { replace: true }); 
-  };
+  const handleLogout = () => { logout(); navigate('/signin', { replace: true }); };
 
   const sidebarItems = useMemo(() => 
     getSidebarItemsByRole(role).map(item => ({ ...item, active: item.path === location.pathname })),
@@ -171,16 +136,11 @@ export default function ResourceBookingPage() {
     );
   }, [upcomingBookings, searchQuery]);
 
-  /**
-   * Generates sequential Date objects dynamically calculated from the 
-   * user's current pagination offset.
-   */
   const displayDates = useMemo(() => {
     const dates = [];
     const base = new Date();
     base.setHours(0, 0, 0, 0);
     base.setDate(base.getDate() + weekOffset * 7);
-    
     for (let i = 0; i < 7; i++) {
       const d = new Date(base);
       d.setDate(base.getDate() + i);
@@ -190,19 +150,16 @@ export default function ResourceBookingPage() {
   }, [weekOffset]);
 
   if (loading && !resource) return (
-    <div style={{ minHeight: '100vh', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Poppins', sans-serif" }}>
-      <PageStyles />
-      <div style={{ textAlign: 'center' }}>
-        <div style={{ width: 40, height: 40, margin: '0 auto 1rem', border: '3px solid #e0e7ff', borderTop: '3px solid #4f46e5', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-        <p style={{ color: '#4f46e5', fontSize: '0.8125rem', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Loading Resource…</p>
+    <div className="min-h-screen bg-slate-100 flex items-center justify-center p-8">
+      <div className="text-center">
+        <div className="h-10 w-10 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin mx-auto mb-4" />
+        <p className="text-xs font-bold text-indigo-600 uppercase tracking-widest">Loading Facility Details…</p>
       </div>
     </div>
   );
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f8fafc', fontFamily: "'Poppins', sans-serif", color: '#0f172a' }}>
-      <PageStyles />
-
+    <div className="min-h-screen bg-slate-100 text-slate-900">
       <UserSidebar
         isSidebarExpanded={isSidebarExpanded}
         onCollapse={() => setIsSidebarExpanded(false)}
@@ -212,213 +169,203 @@ export default function ResourceBookingPage() {
         sidebarItems={sidebarItems}
       />
 
-      <div style={{ minHeight: '100vh', transition: 'padding-left 0.3s', paddingLeft: isSidebarExpanded ? 256 : 80 }}>
+      <div className={`min-h-screen transition-all duration-300 ${isSidebarExpanded ? 'md:pl-64' : 'md:pl-20'}`}>
         <UserDashboardHeader onLogout={handleLogout} eyebrow={headerLabels.eyebrow} title="Resource Details" />
 
-        <main style={{ maxWidth: 1100, margin: '0 auto', padding: '2rem 1.5rem 6rem' }}>
-
-          <button className="back-btn" onClick={() => navigate('/dashboard/user/resources')}>
-            ← Back to Catalog
+        <main className="mx-auto w-full max-w-6xl p-4 pb-24 md:p-8">
+          
+          <button 
+            onClick={() => navigate('/dashboard/user/resources')}
+            className="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-indigo-600 transition-colors uppercase tracking-widest mb-6"
+          >
+            <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+            Back to Catalog
           </button>
 
           {error && (
-            <div className="error-banner">
-              <span>⚠️</span> {error}
+            <div className="mb-8 flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              <span className="material-symbols-outlined text-[20px]">error</span>
+              {error}
             </div>
           )}
 
           {resource && (
-            <div className="page-grid">
-
-              {/* Resource Profile Context Panel */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-
-                <div className="card">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              
+              {/* Left Sidebar: Info */}
+              <div className="lg:col-span-4 space-y-6">
+                <div className="rounded-3xl bg-white p-6 shadow-sm border border-slate-100 overflow-hidden">
                   {resource.imageUrl ? (
-                    <img src={resource.imageUrl} alt={resource.name} className="resource-img" />
+                    <img src={resource.imageUrl} alt={resource.name} className="w-full h-48 object-cover rounded-2xl mb-6 shadow-md border border-slate-100" />
                   ) : (
-                    <div className="resource-img-placeholder">
-                      <span style={{ fontSize: '2.5rem', opacity: 0.3 }}>🏢</span>
-                      <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#9ca3af', marginTop: 4 }}>No Image</span>
+                    <div className="w-full h-48 bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl mb-6 flex flex-col items-center justify-center">
+                      <span className="material-symbols-outlined text-slate-300 text-5xl">domain</span>
+                      <p className="mt-2 text-[10px] font-black uppercase tracking-widest text-slate-400">Inventory # {resource.id}</p>
                     </div>
                   )}
 
-                  <h1 style={{ fontSize: '1.4rem', fontWeight: 700, color: '#0f172a', margin: '0', letterSpacing: '-0.01em' }}>
-                    {resource.name}
-                  </h1>
-                  <p style={{ fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#6b7280', margin: '0.2rem 0 0 0' }}>
-                    {formatResourceType(resource.type)}
-                  </p>
+                  <h1 className="text-2xl font-black text-slate-900 tracking-tight leading-none mb-1">{resource.name}</h1>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600 mb-6">{formatResourceType(resource.type)}</p>
 
-                  <div style={{ marginTop: '1.5rem' }}>
-                    {[
-                      { label: 'Location', value: resource.location },
-                      { label: 'Capacity', value: `${resource.capacity} people` },
-                    ].map(({ label, value }) => (
-                      <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 0', borderBottom: '1px solid #f1f5f9' }}>
-                        <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#64748b' }}>{label}</span>
-                        <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#0f172a' }}>{value}</span>
-                      </div>
-                    ))}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 0' }}>
-                      <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#64748b' }}>Status</span>
-                      <span className={resource.status === 'ACTIVE' ? 'badge-active' : 'badge-inactive'}>
-                        {resource.status}
-                      </span>
+                  <div className="space-y-4 pt-4 border-t border-slate-50">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="font-bold text-slate-400 uppercase tracking-tighter text-[10px]">Location</span>
+                      <span className="font-bold text-slate-900">{resource.location}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="font-bold text-slate-400 uppercase tracking-tighter text-[10px]">Capacity</span>
+                      <span className="font-bold text-slate-900">{resource.capacity} PAX</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="font-bold text-slate-400 uppercase tracking-tighter text-[10px]">Current Status</span>
+                      <Badge status={resource.status} />
                     </div>
                   </div>
 
-                  <button
-                    className="btn-primary w-full mt-6"
+                  <Button
+                    className="w-full mt-8 shadow-xl shadow-indigo-600/20"
                     onClick={() => setIsModalOpen(true)}
                     disabled={resource.status === 'OUT_OF_SERVICE'}
                   >
-                    <span>📅</span> Request this Space
-                  </button>
+                    <span className="material-symbols-outlined mr-2 text-[20px]">calendar_add_on</span>
+                    {modifyData ? 'Request Change' : 'Secure This Space'}
+                  </Button>
                 </div>
 
-                <div className="card">
-                  <div style={{ marginBottom: '1.25rem' }}>
-                    <p style={{ fontSize: '1.1rem', fontWeight: 700, color: '#0f172a', margin: '0 0 0.25rem' }}>Upcoming Bookings</p>
-                    <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '0' }}>Approved and pending schedules.</p>
-                  </div>
-
-                  <div className="search-input-wrapper" style={{ maxWidth: '100%', marginBottom: '1rem' }}>
-                    <span className="search-icon">🔍</span>
+                <div className="rounded-3xl bg-white p-6 shadow-sm border border-slate-100">
+                  <h4 className="text-[11px] font-black text-slate-900 uppercase tracking-widest mb-6">Confirmed Schedules</h4>
+                  
+                  <div className="relative mb-6">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-300 text-[18px]">search</span>
                     <input 
                       type="text" 
-                      placeholder="Search by date (e.g. 2026-04)..." 
-                      className="search-input"
+                      placeholder="Filter by date..." 
+                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-100 bg-slate-50 text-xs font-bold text-slate-700 outline-none focus:bg-white focus:ring-4 focus:ring-indigo-500/10 transition"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                     />
                   </div>
 
-                  {filteredBookings.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '1.5rem 1rem', background: '#f8fafc', border: '1px dashed #e2e8f0', borderRadius: 8 }}>
-                      <div style={{ fontSize: '1.5rem', opacity: 0.5, marginBottom: 4 }}>🗓️</div>
-                      <p style={{ fontSize: '0.8rem', fontWeight: 500, color: '#64748b', margin: 0 }}>
-                        {searchQuery ? 'No matching bookings found.' : 'No upcoming bookings.'}
-                      </p>
-                    </div>
-                  ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                      {filteredBookings.map(b => (
-                        <div key={b.id} className="reservation-item">
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            <div className="day-badge">
+                  <div className="space-y-3">
+                    {filteredBookings.length === 0 ? (
+                      <div className="py-8 text-center bg-slate-50 rounded-2xl border-2 border-dashed border-slate-100">
+                        <span className="material-symbols-outlined text-slate-300 text-3xl mb-2">event_busy</span>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">No activity found</p>
+                      </div>
+                    ) : (
+                      filteredBookings.slice(0, 5).map(b => (
+                        <div key={b.id} className="flex items-center justify-between p-3 rounded-2xl bg-slate-50/50 border border-transparent hover:border-indigo-100 hover:bg-white transition-all group">
+                          <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-black text-sm shadow-lg shadow-indigo-600/10">
                               {b.startTime.split('T')[0].split('-')[2]}
                             </div>
                             <div>
-                              <p style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#0f172a', margin: 0 }}>
-                                {b.startTime.split('T')[0]}
-                              </p>
-                              <p style={{ fontSize: '0.7rem', fontWeight: 500, color: '#64748b', margin: 0 }}>
-                                {b.startTime.split('T')[1].substring(0, 5)} – {b.endTime.split('T')[1].substring(0, 5)}
-                              </p>
+                              <p className="text-[11px] font-black text-slate-900 leading-none mb-1">{b.startTime.split('T')[0]}</p>
+                              <p className="text-[10px] font-bold text-slate-400">{b.startTime.split('T')[1].substring(0, 5)} - {b.endTime.split('T')[1].substring(0, 5)}</p>
                             </div>
                           </div>
                           {b.status === 'PENDING' && (
-                            <span className="pending-pill">Pending</span>
+                            <span className="text-[8px] font-black uppercase tracking-tighter px-2 py-1 bg-amber-100 text-amber-700 rounded-lg">Wait</span>
                           )}
                         </div>
-                      ))}
-                    </div>
-                  )}
+                      ))
+                    )}
+                  </div>
                 </div>
               </div>
 
-              {/* Resource Master Schedule Grid */}
-              <div className="card">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-                  <div>
-                    <p style={{ fontSize: '1.1rem', fontWeight: 700, color: '#0f172a', margin: '0 0 0.25rem' }}>Daily Availability</p>
-                    <p style={{ fontSize: '0.8rem', color: '#64748b', margin: 0 }}>Schedule for the selected week.</p>
-                  </div>
-                  
-                  <div style={{ display: 'flex', gap: '0.4rem' }}>
-                    {[
-                      { label: '← Prev', action: () => setWeekOffset(w => w - 1), disabled: false },
-                      { label: 'Today',  action: () => setWeekOffset(0), disabled: weekOffset === 0 },
-                      { label: 'Next →', action: () => setWeekOffset(w => w + 1), disabled: false },
-                    ].map(({ label, action, disabled }) => (
-                      <button key={label} className="nav-btn" onClick={action} disabled={disabled}>
-                        {label}
+              {/* Right Panel: Availability Grid */}
+              <div className="lg:col-span-8">
+                <div className="rounded-3xl bg-white p-8 shadow-sm border border-slate-100 h-full">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-8">
+                    <div>
+                      <h3 className="text-xl font-black text-slate-900 tracking-tight leading-none mb-2 text-center sm:text-left">Availability Grid</h3>
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-widest text-center sm:text-left">Weekly Operational View</p>
+                    </div>
+                    
+                    <div className="flex items-center justify-center gap-2">
+                      <button onClick={() => setWeekOffset(w => w - 1)} className="h-10 w-10 rounded-xl border border-slate-100 hover:bg-slate-50 transition text-slate-400">
+                        <span className="material-symbols-outlined">chevron_left</span>
                       </button>
-                    ))}
+                      <button onClick={() => setWeekOffset(0)} className="px-4 h-10 rounded-xl border border-slate-100 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:bg-indigo-600 hover:text-white transition disabled:opacity-50 disabled:cursor-not-allowed" disabled={weekOffset === 0}>
+                        Today
+                      </button>
+                      <button onClick={() => setWeekOffset(w => w + 1)} className="h-10 w-10 rounded-xl border border-slate-100 hover:bg-slate-50 transition text-slate-400">
+                        <span className="material-symbols-outlined">chevron_right</span>
+                      </button>
+                    </div>
                   </div>
-                </div>
 
-                <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-                  <LegendItem color="#2193b0" label="Available" borderColor="#1a7a93" />
-                  <LegendItem color="#f59e0b" label="Booked" />
-                  <LegendItem color="#f1f5f9" label="Unavailable" borderColor="#cbd5e1" />
-                </div>
+                  <div className="flex flex-wrap gap-4 mb-8 justify-center sm:justify-start">
+                    <LegendItem color="bg-indigo-500" label="Available" />
+                    <LegendItem color="bg-amber-500" label="Booked" />
+                    <LegendItem color="bg-slate-100" label="Closed" />
+                  </div>
 
-                <div style={{ overflowX: 'auto', paddingBottom: '0.5rem' }}>
-                  <table style={{ borderCollapse: 'separate', borderSpacing: '4px', width: '100%', minWidth: '600px' }}>
-                    <thead>
-                      <tr>
-                        <th style={{ width: 80 }} />
-                        {HOURS.map(h => (
-                          <th key={h} style={{ width: 36, textAlign: 'center', fontSize: '0.7rem', fontWeight: 600, color: '#9ca3af', paddingBottom: 8 }}>
-                            {h}:00
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {displayDates.map(dateObj => {
-                        const daysMap = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
-                        const dayOfWeek  = daysMap[dateObj.getDay()];
-                        const dateString = formatLocalYYYYMMDD(dateObj);
-                        const displayDay = DAY_SHORT[dayOfWeek];
-                        const displayDate = `${dateObj.getDate()} ${dateObj.toLocaleString('default', { month: 'short' })}`;
+                  <div className="overflow-x-auto no-scrollbar pb-4">
+                    <table className="w-full border-separate border-spacing-1.5 min-w-[600px]">
+                      <thead>
+                        <tr>
+                          <th className="w-16" />
+                          {HOURS.map(h => (
+                            <th key={h} className="text-center pb-4 text-[10px] font-bold text-slate-300 uppercase tracking-tighter">
+                              {h}:00
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {displayDates.map(dateObj => {
+                          const daysMap = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+                          const dayOfWeek  = daysMap[dateObj.getDay()];
+                          const dateString = formatLocalYYYYMMDD(dateObj);
+                          const displayDay = DAY_SHORT[dayOfWeek];
+                          const displayDate = `${dateObj.getDate()} ${dateObj.toLocaleString('default', { month: 'short' })}`;
 
-                        return (
-                          <tr key={dateString}>
-                            <td style={{ textAlign: 'right', paddingRight: 12, whiteSpace: 'nowrap' }}>
-                              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#0f172a' }}>{displayDay}</div>
-                              <div style={{ fontSize: '0.65rem', fontWeight: 500, color: '#64748b' }}>{displayDate}</div>
-                            </td>
-                            {HOURS.map(hour => {
-                              const isActive = activeKeys.has(`${dayOfWeek}-${hour}`);
-                              const segments = takenDataMap.get(`${dateString}-${hour}`) || [];
-                              const title = isActive
-                                ? `${displayDay}, ${displayDate} ${hour}:00 — Available`
-                                : 'Not Available';
+                          return (
+                            <tr key={dateString}>
+                              <td className="pr-4 text-right">
+                                <p className="text-[11px] font-black text-slate-900 uppercase leading-none mb-0.5">{displayDay}</p>
+                                <p className="text-[10px] font-bold text-slate-300 whitespace-nowrap">{displayDate}</p>
+                              </td>
+                              {HOURS.map(hour => {
+                                const isActive = activeKeys.has(`${dayOfWeek}-${hour}`);
+                                const segments = takenDataMap.get(`${dateString}-${hour}`) || [];
+                                
+                                return (
+                                  <td key={hour}>
+                                    <div className={`relative h-10 rounded-xl transition-all cursor-pointer overflow-hidden border ${isActive ? 'bg-indigo-500 border-indigo-400 shadow-sm hover:shadow-md hover:scale-105 group' : 'bg-slate-50 border-slate-100 opacity-60'}`}>
+                                      {segments.map((seg, i) => (
+                                        <div
+                                          key={i}
+                                          className="absolute inset-y-0 bg-amber-500 border-x border-amber-600/20 z-10 shadow-sm transition-colors hover:bg-amber-400"
+                                          style={{
+                                            left:  `${(seg.start / 60) * 100}%`,
+                                            width: `${((seg.end - seg.start) / 60) * 100}%`,
+                                          }}
+                                          title={`Booked: ${seg.booking.startTime.split('T')[1].substring(0, 5)} - ${seg.booking.endTime.split('T')[1].substring(0, 5)}`}
+                                        />
+                                      ))}
+                                      {isActive && (
+                                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                          <span className="text-[10px] text-white font-black uppercase">Free</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
 
-                              return (
-                                <td key={hour}>
-                                  <div
-                                    title={title}
-                                    className={isActive ? 'cell-available' : 'cell-unavailable'}
-                                  >
-                                    {segments.map((seg, i) => (
-                                      <div
-                                        key={i}
-                                        className="cell-booked-block"
-                                        title={`Booked: ${seg.booking.startTime.split('T')[1].substring(0, 5)} – ${seg.booking.endTime.split('T')[1].substring(0, 5)}`}
-                                        style={{
-                                          left:  `${(seg.start / 60) * 100}%`,
-                                          width: `${((seg.end - seg.start) / 60) * 100}%`,
-                                        }}
-                                      />
-                                    ))}
-                                  </div>
-                                </td>
-                              );
-                            })}
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-
-                <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: '0.75rem', color: '#9ca3af', fontWeight: 500 }}>Operational Hours: 08:00 – 19:00</span>
-                  <span style={{ fontSize: '0.75rem', color: '#9ca3af', fontWeight: 500 }}>Hover cells for details</span>
+                  <div className="mt-8 pt-6 border-t border-slate-50 flex flex-col sm:flex-row justify-between items-center gap-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    <p>Operating Window: 08:00 — 19:00</p>
+                    <p className="text-indigo-500">Selection automatically handles conflicts</p>
+                  </div>
                 </div>
               </div>
 
@@ -450,123 +397,11 @@ export default function ResourceBookingPage() {
   );
 }
 
-function LegendItem({ color, label, borderColor }) {
+function LegendItem({ color, label }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-      <div style={{
-        width: 14, height: 14, borderRadius: 4,
-        background: color,
-        border: borderColor ? `1px solid ${borderColor}` : 'none',
-      }} />
-      <span style={{ fontSize: '0.75rem', color: '#475569', fontWeight: 500 }}>{label}</span>
+    <div className="flex items-center gap-2">
+      <div className={`w-3 h-3 rounded-full ${color}`} />
+      <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{label}</span>
     </div>
-  );
-}
-
-function PageStyles() {
-  return (
-    <style>{`
-      @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
-
-      @keyframes spin { to { transform: rotate(360deg) } }
-      @keyframes fadeUp { from { opacity: 0; transform: translateY(12px) } to { opacity: 1; transform: none } }
-
-      /* Structural Layout */
-      .page-grid {
-        display: grid;
-        grid-template-columns: 320px 1fr;
-        gap: 1.5rem;
-        align-items: start;
-        animation: fadeUp 0.4s cubic-bezier(.22,1,.36,1) both;
-      }
-      @media (max-width: 960px) {
-        .page-grid { grid-template-columns: 1fr; }
-      }
-
-      .card {
-        background: #ffffff;
-        border-radius: 12px;
-        border: 1px solid #e2e8f0;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        padding: 1.5rem;
-      }
-
-      /* Base Buttons */
-      .back-btn {
-        display: inline-flex; align-items: center; gap: 0.5rem;
-        font-size: 0.8125rem; font-weight: 500; font-family: 'Poppins', sans-serif;
-        color: #475569; background: transparent; border: none; cursor: pointer;
-        margin-bottom: 1.5rem; transition: color 0.2s;
-      }
-      .back-btn:hover { color: #0f172a; }
-
-      .btn-primary {
-        background: #4f46e5; color: #ffffff; border: none; cursor: pointer;
-        font-family: 'Poppins', sans-serif; font-size: 0.875rem; font-weight: 600;
-        padding: 0.65rem 1.5rem; border-radius: 8px; transition: all 0.2s ease;
-        display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
-        box-shadow: 0 2px 4px rgba(79, 70, 229, 0.15);
-      }
-      .btn-primary:hover:not(:disabled) { background: #4338ca; box-shadow: 0 4px 10px rgba(79, 70, 229, 0.25); transform: translateY(-1px); }
-      .btn-primary:active { transform: translateY(0); }
-      .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
-
-      .nav-btn {
-        background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px;
-        padding: 0.35rem 0.75rem; font-size: 0.75rem; font-weight: 500;
-        font-family: 'Poppins', sans-serif; color: #374151; cursor: pointer; transition: all 0.2s;
-      }
-      .nav-btn:hover:not(:disabled) { background: #f8fafc; color: #0f172a; border-color: #94a3b8; }
-      .nav-btn:disabled { opacity: 0.45; cursor: not-allowed; }
-      
-      .w-full { width: 100%; }
-      .mt-6 { margin-top: 1.5rem; }
-
-      /* Resource Visuals */
-      .resource-img { width: 100%; height: 180px; object-fit: cover; border-radius: 8px; margin-bottom: 1.25rem; border: 1px solid #e2e8f0; }
-      .resource-img-placeholder {
-        width: 100%; height: 180px; border-radius: 8px; margin-bottom: 1.25rem;
-        background: #f8fafc; border: 1px dashed #cbd5e1;
-        display: flex; flex-direction: column; align-items: center; justify-content: center;
-      }
-
-      /* Indicators and Badges */
-      .badge-active { font-size: 0.7rem; font-weight: 600; color: #059669; background: #d1fae5; padding: 0.2rem 0.6rem; border-radius: 100px; }
-      .badge-inactive { font-size: 0.7rem; font-weight: 600; color: #dc2626; background: #fee2e2; padding: 0.2rem 0.6rem; border-radius: 100px; }
-      .day-badge { width: 38px; height: 38px; border-radius: 8px; background: #4f46e5; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; font-weight: 600; color: #ffffff; flex-shrink: 0; box-shadow: 0 2px 4px rgba(79, 70, 229, 0.2); }
-      .pending-pill { font-size: 0.65rem; font-weight: 600; text-transform: uppercase; color: #d97706; background: #fef3c7; border-radius: 100px; padding: 0.2rem 0.6rem; border: 1px solid #fcd34d; }
-
-      /* Interactive Filters */
-      .search-input-wrapper { position: relative; width: 100%; }
-      .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #9ca3af; font-size: 0.9rem; }
-      .search-input {
-        width: 100%; padding: 0.5rem 1rem 0.5rem 2.25rem; border-radius: 6px;
-        border: 1px solid #e2e8f0; font-family: 'Poppins', sans-serif; font-size: 0.8125rem;
-        color: #1e293b; outline: none; transition: all 0.2s; box-sizing: border-box; background: #f8fafc;
-      }
-      .search-input:focus { border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1); background: #ffffff; }
-
-      /* Content Lists */
-      .reservation-item { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; transition: background 0.15s; }
-      .reservation-item:hover { background: #f8fafc; }
-
-      .error-banner { border-radius: 8px; background: #fef2f2; border: 1px solid #fecaca; padding: 0.875rem 1.25rem; font-size: 0.875rem; color: #b91c1c; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem; }
-
-      /* Visual Grid Elements */
-      .cell-available { 
-        position: relative; overflow: hidden; height: 32px; border-radius: 4px; 
-        background: #2193b0; border: 1px solid #1a7a93; 
-        transition: all 0.15s; cursor: pointer; box-shadow: 0 1px 2px rgba(33, 147, 176, 0.1); 
-      }
-      .cell-available:hover { 
-        background: #1a7a93; box-shadow: 0 4px 8px rgba(33, 147, 176, 0.25); 
-        transform: translateY(-1px); z-index: 5; 
-      }
-      
-      .cell-unavailable { position: relative; overflow: hidden; height: 32px; border-radius: 4px; background: #f1f5f9; border: 1px solid #e2e8f0; }
-      
-      .cell-booked-block { position: absolute; top: -1px; bottom: -1px; background: #f59e0b; border-radius: 3px; z-index: 2; border: 1px solid #d97706; transition: background 0.15s; }
-      .cell-booked-block:hover { background: #d97706; z-index: 10; }
-    `}</style>
   );
 }

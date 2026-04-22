@@ -8,6 +8,7 @@ import useTickets from './hooks/useTickets'
 
 import TicketFormModal from './components/TicketFormModal'
 import TicketDetailsModal from './components/TicketDetailsModal'
+import { Button } from '../../../components/ui/Button'
 
 const STATUS_META = {
   OPEN: { label: 'Open', bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' },
@@ -97,80 +98,114 @@ function UserTicketsPage() {
         />
 
         <div className={`min-h-screen transition-all duration-300 ${isSidebarExpanded ? 'md:pl-64' : 'md:pl-20'}`}>
-          <UserDashboardHeader eyebrow="Student Support" title="My Tickets" />
+          <UserDashboardHeader
+            onLogout={handleLogout}
+            eyebrow="Academic Support"
+            title="Service Hub"
+          />
 
           <main className="mx-auto w-full max-w-7xl p-4 pb-24 md:p-8">
-            {errorMessage && (
-                <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                  {errorMessage}
-                </div>
-            )}
-
-            {successMessage && (
-                <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-                  {successMessage}
-                </div>
-            )}
-
-            {/* Header */}
-            <section className="mb-6 rounded-2xl bg-white p-6 shadow-sm">
-              <div className="flex justify-between items-center">
+            <section className="mb-8 rounded-3xl bg-gradient-to-br from-indigo-900 to-slate-950 p-8 text-white shadow-xl">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
                 <div>
-                  <h2 className="text-2xl font-bold">Support Requests</h2>
-                  <p className="text-sm text-slate-600 mt-2">
-                    Track issues and create requests.
+                  <h2 className="text-3xl font-black tracking-tight">Support Stream</h2>
+                  <p className="mt-2 text-indigo-100/70 max-w-md font-medium">
+                    Submit maintenance requests or report issues. You have {stats.open} active investigations ongoing.
                   </p>
                 </div>
-
-                <button
-                    onClick={openCreateTicket}
-                    className="bg-indigo-600 text-white px-4 py-2 rounded-lg"
-                >
-                  Create Ticket
-                </button>
+                <div className="flex gap-3">
+                  <Button variant="outline" onClick={loadTickets} className="border-white/20 text-white hover:bg-white/10">
+                    <span className="material-symbols-outlined mr-2">refresh</span> Sync List
+                  </Button>
+                  <Button onClick={openCreateTicket} className="bg-white text-indigo-950 hover:bg-indigo-50 border-none shadow-lg px-8">
+                    Create Request
+                  </Button>
+                </div>
               </div>
             </section>
 
-            {/* Stats */}
-            <section className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <StatCard title="Total" value={stats.total} />
-              <StatCard title="Open" value={stats.open} />
-              <StatCard title="Progress" value={stats.progress} />
-              <StatCard title="Resolved" value={stats.resolved} />
+            <section className="grid grid-cols-1 gap-6 md:grid-cols-4 mb-8">
+              <div className="rounded-[2rem] bg-white p-6 shadow-sm border border-slate-100 transition-all hover:shadow-md">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Total Submissions</p>
+                <h3 className="text-3xl font-black text-slate-900">{stats.total}</h3>
+              </div>
+              <div className="rounded-[2rem] bg-white p-6 shadow-sm border border-slate-100 transition-all hover:shadow-md">
+                <p className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-2">Open Issues</p>
+                <h3 className="text-3xl font-black text-amber-600">{stats.open}</h3>
+              </div>
+              <div className="rounded-[2rem] bg-white p-6 shadow-sm border border-slate-100 transition-all hover:shadow-md">
+                <p className="text-[10px] font-black uppercase tracking-widest text-indigo-500 mb-2">In Progress</p>
+                <h3 className="text-3xl font-black text-indigo-600">{stats.progress}</h3>
+              </div>
+              <div className="rounded-[2rem] bg-white p-6 shadow-sm border border-slate-100 transition-all hover:shadow-md">
+                <p className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-2">Resolved</p>
+                <h3 className="text-3xl font-black text-emerald-600">{stats.resolved}</h3>
+              </div>
             </section>
 
-            {/* Table */}
-            <section className="mt-6 bg-white p-6 rounded-2xl shadow-sm">
-              <input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search..."
-                  className="mb-4 w-full md:w-80 border px-3 py-2 rounded"
-              />
+            <section className="rounded-3xl bg-white p-8 shadow-sm border border-slate-100">
+              <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div>
+                  <h3 className="text-xl font-black text-slate-900 tracking-tight">Active Investigations</h3>
+                  <p className="text-sm font-medium text-slate-500">Service requests submitted for campus maintenance.</p>
+                </div>
+                <div className="relative group max-w-sm w-full">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors">
+                    <span className="material-symbols-outlined text-[20px]">search</span>
+                  </span>
+                  <input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Filter by title, category..."
+                    className="w-full rounded-2xl border border-slate-200 bg-white py-2.5 pl-12 pr-5 text-sm font-medium outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 shadow-sm"
+                  />
+                </div>
+              </div>
 
-              <table className="w-full text-sm">
-                <thead>
-                <tr>
-                  <th>Ticket</th>
-                  <th>Status</th>
-                  <th></th>
-                </tr>
-                </thead>
-
-                <tbody>
-                {filteredTickets.map((ticket) => (
-                    <tr key={ticket.id}>
-                      <td>{ticket.title}</td>
-                      <td><TicketBadge status={ticket.status} /></td>
-                      <td>
-                        <button onClick={() => handleViewTicket(ticket)}>
-                          View
-                        </button>
-                      </td>
+              <div className="overflow-x-auto rounded-2xl border border-slate-100">
+                <table className="min-w-full divide-y divide-slate-200 text-sm">
+                  <thead className="bg-slate-50 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">
+                    <tr>
+                      <th className="px-6 py-4">Reference</th>
+                      <th className="px-6 py-4">Submission Date</th>
+                      <th className="px-6 py-4">Current State</th>
+                      <th className="px-6 py-4 text-right">Operations</th>
                     </tr>
-                ))}
-                </tbody>
-              </table>
+                  </thead>
+
+                  <tbody className="divide-y divide-slate-50 bg-white text-slate-700">
+                    {filteredTickets.map((ticket) => (
+                      <tr key={ticket.id} className="hover:bg-slate-50/50 transition-colors">
+                        <td className="px-6 py-4">
+                          <div className="font-bold text-slate-900 tracking-tight">{ticket.title}</div>
+                          <div className="text-[10px] text-slate-400 font-medium uppercase tracking-widest">ID: {ticket.id}</div>
+                        </td>
+                        <td className="px-6 py-4 font-medium">
+                          {ticket.createdAt ? new Date(ticket.createdAt).toLocaleDateString() : '—'}
+                        </td>
+                        <td className="px-6 py-4"><TicketBadge status={ticket.status} /></td>
+                        <td className="px-6 py-4 text-right">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleViewTicket(ticket)}
+                            className="rounded-xl font-black uppercase tracking-widest text-[10px] px-4"
+                          >
+                            Inspect
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                    {filteredTickets.length === 0 && (
+                      <tr>
+                        <td colSpan="4" className="px-6 py-20 text-center text-slate-400 font-medium italic">
+                          No matching support requests found.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </section>
           </main>
         </div>
