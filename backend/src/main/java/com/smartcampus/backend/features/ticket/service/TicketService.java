@@ -95,6 +95,7 @@ public class TicketService {
 
     // Delete Ticket
     public void deleteTicket(Long id) {
+
         // Find ticket (enforcing ownership)
         Ticket existing = getMyTicketById(id);
 
@@ -343,7 +344,6 @@ public class TicketService {
         ticket.setFeedback(feedback);
         return ticketRepository.save(ticket);
     }
-
 
 
 

@@ -90,4 +90,3 @@ public class TicketResponse extends RepresentationModel<TicketResponse> {
     }   
     
 }
-

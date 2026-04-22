@@ -1,10 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { createTicket, createTicketComment, deleteTicket, getUserTicketAttachmentUrl, getUserTicketById, getUserTickets, updateTicket, rateUserTicket } from '../../../api/ticketApi'
 import useAuth from '../../../context/useAuth'
 import { getSidebarItemsByRole } from '../constants'
 import UserDashboardHeader from './components/UserDashboardHeader'
 import UserSidebar from './components/UserSidebar'
+import useTickets from './hooks/useTickets'
+
+import TicketFormModal from './components/TicketFormModal'
+import TicketDetailsModal from './components/TicketDetailsModal'
 
 const STATUS_META = {
   OPEN: { label: 'Open', bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' },
@@ -14,7 +18,7 @@ const STATUS_META = {
   REJECTED: { label: 'Rejected', bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' },
 }
 
-function TicketBadge({ status }) {
+export function TicketBadge({ status }) {
   const meta = STATUS_META[status] || STATUS_META.OPEN
   return (
     <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-bold ${meta.bg} ${meta.text} ${meta.border}`}>
@@ -23,11 +27,8 @@ function TicketBadge({ status }) {
   )
 }
 
-function formatDateTime(value) {
-  if (!value) {
-    return '-'
-  }
-
+export function formatDateTime(value) {
+  if (!value) return '-'
   try {
     return new Date(value).toLocaleString()
   } catch {
@@ -35,7 +36,7 @@ function formatDateTime(value) {
   }
 }
 
-function extractStorageKey(fileUrl) {
+export function extractStorageKey(fileUrl) {
   if (!fileUrl) return null
   try {
     const parsed = new URL(fileUrl)
@@ -45,7 +46,7 @@ function extractStorageKey(fileUrl) {
   }
 }
 
-function isImageAttachment(fileUrl) {
+export function isImageAttachment(fileUrl) {
   return /\.(png|jpe?g|gif|bmp|webp|svg)$/i.test(String(fileUrl || ''))
 }
 
@@ -536,217 +537,55 @@ function UserTicketsPage() {
   const location = useLocation()
   const { role, user, logout, getApiErrorMessage } = useAuth()
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false)
-  const [tickets, setTickets] = useState([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [errorMessage, setErrorMessage] = useState('')
-  const [successMessage, setSuccessMessage] = useState('')
-  const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState('ALL')
-  const [isFormOpen, setIsFormOpen] = useState(false)
-  const [formMode, setFormMode] = useState('create')
-  const [activeTicket, setActiveTicket] = useState(null)
-  const [previewTicket, setPreviewTicket] = useState(null)
-  const [isDetailsOpen, setIsDetailsOpen] = useState(false)
-  const [processingId, setProcessingId] = useState(null)
-  const [commentText, setCommentText] = useState('')
-  const [isCommentSubmitting, setIsCommentSubmitting] = useState(false)
-  const [attachmentUrls, setAttachmentUrls] = useState({})
-  const [isAttachmentsLoading, setIsAttachmentsLoading] = useState(false)
-  const [isActionProcessing, setIsActionProcessing] = useState(false)
 
-  const loadTickets = useCallback(async () => {
-    setIsLoading(true)
-    setErrorMessage('')
-
-    try {
-      const data = await getUserTickets()
-      setTickets(data || [])
-    } catch (error) {
-      setErrorMessage(getApiErrorMessage(error))
-    } finally {
-      setIsLoading(false)
-    }
-  }, [getApiErrorMessage])
-
-  useEffect(() => {
-    loadTickets()
-  }, [loadTickets])
+  const {
+    filteredTickets,
+    isLoading,
+    errorMessage,
+    successMessage,
+    search,
+    setSearch,
+    statusFilter,
+    setStatusFilter,
+    isFormOpen,
+    formMode,
+    activeTicket,
+    isDetailsOpen,
+    previewTicket,
+    processingId,
+    commentText,
+    setCommentText,
+    isCommentSubmitting,
+    attachmentUrls,
+    isAttachmentsLoading,
+    isActionProcessing,
+    stats,
+    loadTickets,
+    openCreateTicket,
+    closeTicketForm,
+    closeTicketDetails,
+    handleViewTicket,
+    handleEditFromDetails,
+    handleDelete,
+    handleAddComment,
+    handleUpdateComment,
+    handleDeleteComment,
+    handleRateTicket,
+    editingCommentId,
+    setEditingCommentId,
+    editingCommentText,
+    setEditingCommentText,
+  } = useTickets(getApiErrorMessage)
 
   const handleLogout = () => {
     logout()
     navigate('/signin', { replace: true })
   }
 
-  const openCreateTicket = () => {
-    setFormMode('create')
-    setActiveTicket(null)
-    setIsFormOpen(true)
-  }
-
-  const closeTicketForm = () => {
-    setIsFormOpen(false)
-    setActiveTicket(null)
-  }
-
-  const closeTicketDetails = () => {
-    setIsDetailsOpen(false)
-    setPreviewTicket(null)
-    setCommentText('')
-    setAttachmentUrls({})
-    setIsAttachmentsLoading(false)
-  }
-
-  const loadAttachmentUrls = useCallback(async (ticketData) => {
-    const attachments = Array.isArray(ticketData?.attachments) ? ticketData.attachments : []
-    if (attachments.length === 0) {
-      setAttachmentUrls({})
-      return
-    }
-
-    setIsAttachmentsLoading(true)
-    try {
-      const entries = await Promise.all(attachments.map(async (attachment) => {
-        const key = extractStorageKey(attachment)
-        if (!key) return [attachment, null]
-        try {
-          const signed = await getUserTicketAttachmentUrl(ticketData.id, key)
-          return [attachment, signed?.url || null]
-        } catch {
-          return [attachment, null]
-        }
-      }))
-
-      setAttachmentUrls(Object.fromEntries(entries.filter(([, value]) => value)))
-    } finally {
-      setIsAttachmentsLoading(false)
-    }
-  }, [])
-
-  const loadTicketDetails = useCallback(async (ticketId) => {
-    const data = await getUserTicketById(ticketId)
-    setPreviewTicket(data || null)
-    setCommentText('')
-    await loadAttachmentUrls(data)
-    return data || null
-  }, [loadAttachmentUrls])
-
-  const handleViewTicket = async (ticket) => {
-    setProcessingId(ticket.id)
-    setErrorMessage('')
-    setSuccessMessage('')
-
-    try {
-      await loadTicketDetails(ticket.id)
-      setIsDetailsOpen(true)
-    } catch (error) {
-      setErrorMessage(getApiErrorMessage(error))
-    } finally {
-      setProcessingId(null)
-    }
-  }
-
-  const handleEditTicket = async (ticket) => {
-    setProcessingId(ticket.id)
-    setErrorMessage('')
-    setSuccessMessage('')
-
-    try {
-      const data = await getUserTicketById(ticket.id)
-      setActiveTicket(data || ticket)
-      setFormMode('edit')
-      setIsFormOpen(true)
-    } catch (error) {
-      setErrorMessage(getApiErrorMessage(error))
-    } finally {
-      setProcessingId(null)
-    }
-  }
-
-  const handleEditFromDetails = async (ticket) => {
-    closeTicketDetails()
-    await handleEditTicket(ticket)
-  }
-
-  const handleAddComment = async () => {
-    if (!previewTicket?.id || !commentText.trim()) {
-      return
-    }
-
-    setIsCommentSubmitting(true)
-    setErrorMessage('')
-
-    try {
-      await createTicketComment(previewTicket.id, commentText.trim())
-      await loadTicketDetails(previewTicket.id)
-    } catch (error) {
-      setErrorMessage(getApiErrorMessage(error))
-    } finally {
-      setIsCommentSubmitting(false)
-    }
-  }
-
-  const handleRateTicket = async (rating, feedback) => {
-    if (!previewTicket?.id) return
-
-    setIsActionProcessing(true)
-    setErrorMessage('')
-    try {
-      await rateUserTicket(previewTicket.id, rating, feedback)
-      await loadTicketDetails(previewTicket.id)
-    } catch (error) {
-      setErrorMessage(getApiErrorMessage(error))
-    } finally {
-      setIsActionProcessing(false)
-    }
-  }
-
   const sidebarItems = useMemo(
     () => getSidebarItemsByRole(role).map((item) => ({ ...item, active: item.path === location.pathname })),
     [location.pathname, role],
   )
-
-  const filteredTickets = useMemo(() => {
-    const q = search.trim().toLowerCase()
-    return tickets.filter((ticket) => {
-      const matchesStatus = statusFilter === 'ALL' || ticket.status === statusFilter
-      const matchesSearch = !q || [ticket.title, ticket.description, ticket.category, ticket.priority]
-        .filter(Boolean)
-        .some((value) => String(value).toLowerCase().includes(q))
-
-      return matchesStatus && matchesSearch
-    })
-  }, [search, statusFilter, tickets])
-
-  const stats = useMemo(() => ({
-    total: tickets.length,
-    open: tickets.filter((ticket) => ticket.status === 'OPEN').length,
-    progress: tickets.filter((ticket) => ticket.status === 'IN_PROGRESS').length,
-    resolved: tickets.filter((ticket) => ticket.status === 'RESOLVED').length,
-  }), [tickets])
-
-  const handleDelete = async (ticket) => {
-    const confirmed = window.confirm(`Delete ticket #${ticket.id}?`)
-    if (!confirmed) {
-      return
-    }
-
-    setProcessingId(ticket.id)
-    setErrorMessage('')
-    setSuccessMessage('')
-
-    try {
-      await deleteTicket(ticket.id)
-      if (previewTicket?.id === ticket.id) {
-        closeTicketDetails()
-      }
-      setSuccessMessage('Ticket deleted successfully.')
-      await loadTickets()
-    } catch (error) {
-      setErrorMessage(getApiErrorMessage(error))
-    } finally {
-      setProcessingId(null)
-    }
-  }
 
   const handleDeleteFromDetails = async (ticket) => {
     await handleDelete(ticket)
@@ -924,6 +763,12 @@ function UserTicketsPage() {
         currentUserEmail={user?.email}
         onRate={handleRateTicket}
         isActionProcessing={isActionProcessing}
+        onDeleteComment={handleDeleteComment}
+        onUpdateComment={handleUpdateComment}
+        editingCommentId={editingCommentId}
+        setEditingCommentId={setEditingCommentId}
+        editingCommentText={editingCommentText}
+        setEditingCommentText={setEditingCommentText}
       />
     </div>
   )

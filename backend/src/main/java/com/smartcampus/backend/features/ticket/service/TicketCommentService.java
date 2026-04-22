@@ -11,7 +11,10 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import org.springframework.transaction.annotation.Transactional;
+
 @Service
+@Transactional
 @RequiredArgsConstructor
 public class TicketCommentService {
 
@@ -22,7 +25,6 @@ public class TicketCommentService {
 
         Ticket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new RuntimeException("Ticket not found"));
-
 
 
         if (ticket.getStatus() == TicketStatus.CLOSED) {
@@ -80,6 +82,11 @@ public class TicketCommentService {
         if (comment.getCreatedBy() == null || !comment.getCreatedBy().equals(user.getEmail())) {
             throw new RuntimeException("Not allowed to delete this comment");
         }
+
+        ticketRepository.findById(ticketId).ifPresent(ticket -> {
+            ticket.getComments().remove(comment);
+            ticketRepository.save(ticket);
+        });
 
         commentRepository.delete(comment);
     }
