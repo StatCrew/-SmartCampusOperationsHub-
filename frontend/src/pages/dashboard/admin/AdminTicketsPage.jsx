@@ -24,6 +24,15 @@ function formatDateTime(value) {
   }
 }
 
+function formatTimeOnly(value) {
+  if (!value) return '-'
+  try {
+    return new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  } catch {
+    return String(value)
+  }
+}
+
 function isImageAttachment(fileUrl) {
   return /\.(png|jpe?g|gif|bmp|webp|svg)$/i.test(String(fileUrl || ''))
 }
@@ -325,7 +334,7 @@ function TicketDetailsModal({
                     type="button"
                     onClick={() => onUpdateStatus(ticket, 'CLOSED')}
                     disabled={isActionProcessing}
-                    className="rounded-xl bg-emerald-600 px-8 py-3.5 text-[11px] font-black text-white uppercase tracking-widest transition-all duration-300 hover:bg-emerald-500 hover:scale-105 active:scale-95 disabled:opacity-40"
+                    className="rounded-xl bg-red-600 px-8 py-3.5 text-[11px] font-black text-white uppercase tracking-widest transition-all duration-300 hover:bg-red-500 hover:scale-105 active:scale-95 disabled:opacity-40"
                   >
                     Close Ticket
                   </button>
@@ -399,7 +408,7 @@ function TicketDetailsModal({
                               <p className="text-sm font-bold leading-relaxed pr-6">{comment.message}</p>
                               <div className={`flex items-center gap-2 mt-2 opacity-50 ${isMe ? 'justify-end' : 'justify-start'}`}>
                                 <span className="text-[9px] font-black tracking-widest uppercase">
-                                  {formatDateTime(comment.createdAt).split(',')[1]?.trim() || formatDateTime(comment.createdAt)}
+                                  {formatTimeOnly(comment.createdAt)}
                                 </span>
                                 {isMe && <span className="material-symbols-outlined text-[14px]">done_all</span>}
                               </div>
@@ -428,7 +437,7 @@ function TicketDetailsModal({
                         </div>
                         {!isMe && (
                           <span className="mt-1.5 ml-3 text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">
-                            {comment.createdBy || 'Staff Support'}
+                            {comment.userName || comment.createdBy || 'Staff Support'}
                           </span>
                         )}
                       </div>

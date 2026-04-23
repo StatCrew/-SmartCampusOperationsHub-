@@ -12,11 +12,25 @@ const STATUS_META = {
   IN_PROGRESS: { label: 'In Progress', bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-200', dot: 'bg-indigo-500' },
   RESOLVED: { label: 'Resolved', bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', dot: 'bg-emerald-500' },
   CLOSED: { label: 'Closed', bg: 'bg-slate-50', text: 'text-slate-600', border: 'border-slate-200', dot: 'bg-slate-400' },
+  REJECTED: { label: 'Rejected', bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200', dot: 'bg-red-500' },
 }
 
 function formatDateTime(value) {
   if (!value) return '-'
-  try { return new Date(value).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) } catch { return String(value) }
+  try {
+    return new Date(value).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })
+  } catch {
+    return String(value)
+  }
+}
+
+function formatTimeOnly(value) {
+  if (!value) return '-'
+  try {
+    return new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  } catch {
+    return String(value)
+  }
 }
 
 function isImageAttachment(fileUrl) {
@@ -358,7 +372,7 @@ function TechnicianTicketDetailsModal({
                               <p className="text-sm font-bold leading-relaxed pr-6">{comment.message}</p>
                               <div className={`flex items-center gap-2 mt-2 opacity-50 ${isMe ? 'justify-end' : 'justify-start'}`}>
                                 <span className="text-[9px] font-black tracking-widest uppercase">
-                                  {formatDateTime(comment.createdAt).split(',')[1]?.trim() || formatDateTime(comment.createdAt)}
+                                  {formatTimeOnly(comment.createdAt)}
                                 </span>
                                 {isMe && <span className="material-symbols-outlined text-[14px]">done_all</span>}
                               </div>
@@ -387,7 +401,7 @@ function TechnicianTicketDetailsModal({
                         </div>
                         {!isMe && (
                           <span className="mt-1.5 ml-3 text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">
-                            Reported User
+                            {comment.userName || comment.createdBy || 'Reported User'}
                           </span>
                         )}
                       </div>
