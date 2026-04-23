@@ -20,6 +20,7 @@ export default function TicketFormModal({ open, mode, ticket, onClose, onSaved, 
     contactNumber: '',
   })
   const [files, setFiles] = useState([])
+  const [existingAttachments, setExistingAttachments] = useState([])
   const [fileError, setFileError] = useState('')
   const [isDragging, setIsDragging] = useState(false)
   const fileInputRef = useRef(null)
@@ -54,6 +55,11 @@ export default function TicketFormModal({ open, mode, ticket, onClose, onSaved, 
     setTouched({})
     setIsSubmitting(false)
     setFiles([])
+    setExistingAttachments(
+      mode?.toUpperCase() === 'EDIT' && Array.isArray(ticket?.attachments)
+        ? ticket.attachments
+        : []
+    )
   }, [open, ticket, mode])
 
   const errors = {}
@@ -67,15 +73,17 @@ export default function TicketFormModal({ open, mode, ticket, onClose, onSaved, 
     errors.contactNumber = 'Contact number must be exactly 10 digits'
   }
 
-  const isFormValid = Object.keys(errors).length === 0 && files.length <= 3
+  const totalAttachmentCount = files.length + existingAttachments.length
+  const isFormValid = Object.keys(errors).length === 0 && totalAttachmentCount <= 3
 
   const processFiles = (event) => {
     const selectedFiles = Array.from(event.target.files || [])
     if (selectedFiles.length === 0) return
 
-    if (selectedFiles.length > 3) {
-      setFileError('Maximum 3 images allowed. Only the first 3 were selected.')
-      setFiles(selectedFiles.slice(0, 3))
+    const maxNew = 3 - existingAttachments.length
+    if (selectedFiles.length > maxNew) {
+      setFileError(`Maximum 3 images total. You can add ${maxNew} more.`)
+      setFiles(selectedFiles.slice(0, Math.max(0, maxNew)))
     } else {
       setFileError('')
       setFiles(selectedFiles)
@@ -117,7 +125,7 @@ export default function TicketFormModal({ open, mode, ticket, onClose, onSaved, 
   const handleSubmit = async (event) => {
     event.preventDefault()
 
-    if (files.length > 3) {
+    if (totalAttachmentCount > 3) {
       setFileError('Please remove images to stay within the 3-file limit.')
       return
     }
@@ -140,8 +148,8 @@ export default function TicketFormModal({ open, mode, ticket, onClose, onSaved, 
         resourceId: formData.resourceId ? Number(formData.resourceId) : null,
       }
 
-      if (mode === 'edit') {
-        await updateTicket(ticket.id, payload, files)
+      if (mode?.toUpperCase() === 'EDIT') {
+        await updateTicket(ticket.id, { ...payload, existingAttachments }, files)
       } else {
         await createTicket(payload, files)
         
@@ -315,9 +323,9 @@ export default function TicketFormModal({ open, mode, ticket, onClose, onSaved, 
             <div className="flex items-center justify-between ml-1">
               <label className="text-[12px] lg:text-[12px] font-black uppercase tracking-[0.25em] text-slate-400">Visual Evidence</label>
               <div className="flex items-center gap-2">
-                <div className={`h-1.5 w-1.5 rounded-full transition-colors ${files.length >= 3 ? 'bg-red-500' : 'bg-indigo-500'}`} />
-                <span className={`text-[12px] lg:text-[12px] font-black uppercase tracking-widest ${files.length >= 3 ? 'text-red-500' : 'text-slate-400'}`}>
-                  {files.length} / 3 Files
+                <div className={`h-1.5 w-1.5 rounded-full transition-colors ${totalAttachmentCount >= 3 ? 'bg-red-500' : 'bg-indigo-500'}`} />
+                <span className={`text-[12px] lg:text-[12px] font-black uppercase tracking-widest ${totalAttachmentCount >= 3 ? 'text-red-500' : 'text-slate-400'}`}>
+                  {totalAttachmentCount} / 3 Files
                 </span>
               </div>
             </div>
@@ -363,28 +371,63 @@ export default function TicketFormModal({ open, mode, ticket, onClose, onSaved, 
               )}
             </div>
 
-            {/* Selected Files Preview */}
+            {/* Existing Attachments Preview (edit mode) */}
+            {existingAttachments.length > 0 && (
+              <div className="mt-4">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3 ml-1">Current Attachments</p>
+                <div className="grid grid-cols-3 gap-3 lg:gap-4 animate-in fade-in slide-in-from-bottom-4">
+                  {existingAttachments.map((url, index) => (
+                    <div key={`existing-${index}`} className="group relative aspect-square rounded-[1.25rem] border-2 border-indigo-100 bg-white overflow-hidden shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1 p-1">
+                      <img
+                        src={url}
+                        alt={`attachment ${index + 1}`}
+                        className="h-full w-full object-cover rounded-[1rem]"
+                        onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.innerHTML = '<div class="h-full w-full flex items-center justify-center bg-slate-50 rounded-[1rem]"><span class="material-symbols-outlined text-slate-300 text-3xl">image</span></div>' }}
+                      />
+                      <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded-lg bg-indigo-600 text-[8px] font-black text-white uppercase tracking-widest">Saved</div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setExistingAttachments(prev => prev.filter((_, i) => i !== index))
+                        }}
+                        className="absolute top-2 right-2 grid h-6 w-6 place-items-center rounded-full bg-red-500 text-white shadow-lg opacity-0 scale-75 transition-all duration-300 group-hover:opacity-100 group-hover:scale-100 hover:bg-red-600 z-10"
+                      >
+                        <span className="material-symbols-outlined text-[14px]">close</span>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* New Files Preview */}
             {files.length > 0 && (
-              <div className="grid grid-cols-3 gap-3 lg:gap-4 mt-4 animate-in fade-in slide-in-from-bottom-4">
-                {files.map((file, index) => (
-                  <div key={index} className="group relative aspect-square rounded-[1.25rem] border border-slate-200 bg-white overflow-hidden shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1 p-1">
-                    <img
-                      src={URL.createObjectURL(file)}
-                      alt="preview"
-                      className="h-full w-full object-cover rounded-[1rem]"
-                    />
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        removeFile(index)
-                      }}
-                      className="absolute top-2 right-2 grid h-6 w-6 place-items-center rounded-full bg-red-500 text-white shadow-lg opacity-0 scale-75 transition-all duration-300 group-hover:opacity-100 group-hover:scale-100 hover:bg-red-600 z-10"
-                    >
-                      <span className="material-symbols-outlined text-[14px]">close</span>
-                    </button>
-                  </div>
-                ))}
+              <div className="mt-4">
+                {existingAttachments.length > 0 && (
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3 ml-1">New Uploads</p>
+                )}
+                <div className="grid grid-cols-3 gap-3 lg:gap-4 animate-in fade-in slide-in-from-bottom-4">
+                  {files.map((file, index) => (
+                    <div key={index} className="group relative aspect-square rounded-[1.25rem] border border-slate-200 bg-white overflow-hidden shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1 p-1">
+                      <img
+                        src={URL.createObjectURL(file)}
+                        alt="preview"
+                        className="h-full w-full object-cover rounded-[1rem]"
+                      />
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          removeFile(index)
+                        }}
+                        className="absolute top-2 right-2 grid h-6 w-6 place-items-center rounded-full bg-red-500 text-white shadow-lg opacity-0 scale-75 transition-all duration-300 group-hover:opacity-100 group-hover:scale-100 hover:bg-red-600 z-10"
+                      >
+                        <span className="material-symbols-outlined text-[14px]">close</span>
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>

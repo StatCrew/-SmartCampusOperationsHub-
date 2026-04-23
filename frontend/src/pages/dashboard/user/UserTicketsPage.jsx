@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { createTicketComment, deleteTicket, deleteTicketComment, getUserTicketAttachmentUrl as getTicketAttachmentUrl, getUserTicketById as getTicketById, getUserTickets as getTickets, updateTicketComment } from '../../../api/ticketApi'
+import { createTicketComment, deleteTicket, deleteTicketComment, getUserTicketAttachmentUrl as getTicketAttachmentUrl, getUserTicketById as getTicketById, getUserTickets as getTickets, rateUserTicket, updateTicketComment } from '../../../api/ticketApi'
 import useAuth from '../../../context/useAuth'
 import { getHeaderLabelsByRole, getSidebarItemsByRole } from '../constants'
 import UserDashboardHeader from './components/UserDashboardHeader'
@@ -65,6 +65,7 @@ function UserTicketsPage() {
   const [attachmentUrls, setAttachmentUrls] = useState({})
   const [editingCommentId, setEditingCommentId] = useState(null)
   const [editingCommentText, setEditingCommentText] = useState('')
+  const [isActionProcessing, setIsActionProcessing] = useState(false)
 
   const loadTickets = useCallback(async () => {
     setIsLoading(true)
@@ -239,6 +240,21 @@ function UserTicketsPage() {
     }
   }
 
+  const handleRateTicket = async (rating, feedback) => {
+    if (!previewTicket?.id) return
+    setIsActionProcessing(true)
+    setErrorMessage('')
+    try {
+      await rateUserTicket(previewTicket.id, rating, feedback)
+      await loadTicketDetails(previewTicket.id)
+      await loadTickets()
+    } catch (error) {
+      setErrorMessage(getApiErrorMessage(error))
+    } finally {
+      setIsActionProcessing(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900">
       <UserSidebar
@@ -405,6 +421,8 @@ function UserTicketsPage() {
         isDeleting={processingId === previewTicket?.id}
         attachmentUrls={attachmentUrls}
         currentUserEmail={user?.email}
+        onRate={handleRateTicket}
+        isActionProcessing={isActionProcessing}
         onDeleteComment={handleDeleteComment}
         onUpdateComment={handleUpdateComment}
         editingCommentId={editingCommentId}

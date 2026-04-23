@@ -61,6 +61,7 @@ public class UserService {
     public ProfileUpdateResponse updateMyProfile(User authenticatedUser, UpdateUserRequest request) {
         User user = loadAuthenticatedUser(authenticatedUser);
         user.setFullName(request.fullName().trim());
+        user.setPhoneNumber(request.phoneNumber() != null ? request.phoneNumber().trim() : null);
 
         String requestedEmail = normalizeEmail(request.email());
         User savedUser = userRepository.save(user);
@@ -216,6 +217,7 @@ public class UserService {
         user.setEmail(normalizedEmail);
         user.setRole(request.role());
         user.setActive(Boolean.TRUE.equals(request.active()));
+        user.setPhoneNumber(request.phoneNumber() != null ? request.phoneNumber().trim() : null);
 
         if (emailChanged) {
             user.setEmailVerified(false);
@@ -385,7 +387,8 @@ public class UserService {
                 user.getRole().name(),
                 user.isEmailVerified(),
                 Boolean.TRUE.equals(user.getActive()),
-                user.getCreatedAt());
+                user.getCreatedAt(),
+                user.getPhoneNumber());
     }
 
     private String normalizeEmail(String email) {

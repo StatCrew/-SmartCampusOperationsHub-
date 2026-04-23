@@ -1,7 +1,7 @@
-import UserOverviewPage from './user/UserOverviewPage'
+import UserDashboardPage from './user/UserDashboardPage'
 
 function UserDashboard() {
-  return <UserOverviewPage />
+  return <UserDashboardPage />
 }
 
 export default UserDashboard

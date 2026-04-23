@@ -68,6 +68,7 @@ function useUserProfile({ user, role, syncProfile, getApiErrorMessage }) {
           : Boolean(user?.emailVerified),
       provider: profile?.provider || user?.provider || 'LOCAL',
       imageUrl: user?.imageUrl || '',
+      phoneNumber: profile?.phoneNumber || user?.phoneNumber || '',
     }),
     [profile, role, user],
   )

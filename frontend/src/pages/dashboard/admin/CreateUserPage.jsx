@@ -20,8 +20,8 @@ function CreateUserPage() {
   const { role, logout, getApiErrorMessage } = useAuth()
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true)
   const [formData, setFormData] = useState(initialFormData)
-  const [formError, setFormError] = useState('')
-  const [formSuccess, setFormSuccess] = useState('')
+  const [fieldErrors, setFieldErrors] = useState({})
+  const [showPassword, setShowPassword] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleLogout = () => {
@@ -29,41 +29,64 @@ function CreateUserPage() {
     navigate('/signin', { replace: true })
   }
 
-  const handleInputChange = (event) => {
-    const { name, value } = event.target
-    setFormData((previous) => ({ ...previous, [name]: value }))
-    setFormError('')
-    setFormSuccess('')
+  const passwordRequirements = [
+    { label: 'At least 8 characters', test: (pw) => pw.length >= 8 },
+    { label: 'One uppercase letter', test: (pw) => /[A-Z]/.test(pw) },
+    { label: 'One lowercase letter', test: (pw) => /[a-z]/.test(pw) },
+    { label: 'One number', test: (pw) => /[0-9]/.test(pw) },
+    { label: 'One special character', test: (pw) => /[^A-Za-z0-9]/.test(pw) },
+  ]
+
+  const validateField = (name, value) => {
+    let err = ''
+    switch (name) {
+      case 'fullName':
+        if (!value.trim()) err = 'Full name is required.'
+        else if (!/^[a-zA-Z\s]{2,50}$/.test(value.trim())) err = 'Name must be 2-50 letters only.'
+        break
+      case 'email':
+        if (!value.trim()) err = 'Email is required.'
+        else if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(value)) err = 'Invalid email address.'
+        break
+      case 'password':
+        if (!value) err = 'Password is required.'
+        else {
+          const failed = passwordRequirements.filter(req => !req.test(value))
+          if (failed.length > 0) err = 'Password is too weak.'
+        }
+        break
+      default:
+        break
+    }
+    return err
   }
 
-  const validate = () => {
-    if (!formData.fullName.trim()) {
-      return 'Full name is required.'
+  const handleInputChange = (event) => {
+    const { name, value } = event.target
+    let processedValue = value
+    
+    if (name === 'fullName') {
+      processedValue = value.replace(/[^a-zA-Z\s]/g, '')
     }
 
-    if (!formData.email.trim()) {
-      return 'Email is required.'
-    }
-
-    if (!formData.password.trim()) {
-      return 'Password is required.'
-    }
-
-    return ''
+    setFormData((prev) => ({ ...prev, [name]: processedValue }))
+    setFieldErrors((prev) => ({ ...prev, [name]: validateField(name, processedValue) }))
   }
 
   const handleSubmit = async (event) => {
     event.preventDefault()
-    const validationError = validate()
+    
+    const nameErr = validateField('fullName', formData.fullName)
+    const emailErr = validateField('email', formData.email)
+    const passErr = validateField('password', formData.password)
 
-    if (validationError) {
-      setFormError(validationError)
+    if (nameErr || emailErr || passErr) {
+      setFieldErrors({ fullName: nameErr, email: emailErr, password: passErr })
       return
     }
 
     setIsSubmitting(true)
-    setFormError('')
-    setFormSuccess('')
+    setFieldErrors({})
 
     try {
       await createUser({
@@ -75,13 +98,9 @@ function CreateUserPage() {
       })
 
       setFormData(initialFormData)
-      setFormSuccess('User account created successfully.')
-
-      setTimeout(() => {
-        navigate('/admin/users')
-      }, 700)
+      navigate('/admin/users')
     } catch (error) {
-      setFormError(getApiErrorMessage(error))
+      setFieldErrors({ submit: getApiErrorMessage(error) })
     } finally {
       setIsSubmitting(false)
     }
@@ -127,9 +146,76 @@ function CreateUserPage() {
                   name="fullName"
                   value={formData.fullName}
                   onChange={handleInputChange}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+                  className={`w-full rounded-lg border px-3 py-2 outline-none transition focus:ring-2 ${
+                    fieldErrors.fullName ? 'border-red-500 focus:ring-red-100' : 'border-slate-300 focus:border-indigo-500 focus:ring-indigo-100'
+                  }`}
                   placeholder="Jane Smith"
                 />
+                {fieldErrors.fullName && <p className="mt-1 text-xs text-red-600 font-medium">{fieldErrors.fullName}</p>}
+              </div>
+
+              <div>
+                <label htmlFor="email" className="mb-1 block text-sm font-medium text-slate-700">
+                  Email
+                </label>
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  className={`w-full rounded-lg border px-3 py-2 outline-none transition focus:ring-2 ${
+                    fieldErrors.email ? 'border-red-500 focus:ring-red-100' : 'border-slate-300 focus:border-indigo-500 focus:ring-indigo-100'
+                  }`}
+                  placeholder="user@campus.edu"
+                />
+                {fieldErrors.email && <p className="mt-1 text-xs text-red-600 font-medium">{fieldErrors.email}</p>}
+              </div>
+
+              <div>
+                <label htmlFor="password" className="mb-1 block text-sm font-medium text-slate-700">
+                  Password
+                </label>
+                <div className="relative">
+                  <input
+                    id="password"
+                    name="password"
+                    type={showPassword ? 'text' : 'password'}
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    className={`w-full rounded-lg border px-3 py-2 pr-11 outline-none transition focus:ring-2 ${
+                      fieldErrors.password ? 'border-red-500 focus:ring-red-100' : 'border-slate-300 focus:border-indigo-500 focus:ring-indigo-100'
+                    }`}
+                    placeholder="Set a strong password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">
+                      {showPassword ? 'visibility_off' : 'visibility'}
+                    </span>
+                  </button>
+                </div>
+                
+                {/* Password Checklist */}
+                <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5">
+                  {passwordRequirements.map((req, index) => {
+                    const isMet = req.test(formData.password)
+                    return (
+                      <div key={index} className="flex items-center gap-1.5">
+                        <span className={`material-symbols-outlined text-[14px] ${isMet ? 'text-emerald-500' : 'text-slate-300'}`}>
+                          {isMet ? 'check_circle' : 'circle'}
+                        </span>
+                        <span className={`text-[11px] font-medium ${isMet ? 'text-emerald-600' : 'text-slate-500'}`}>
+                          {req.label}
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+                {fieldErrors.password && <p className="mt-2 text-xs text-red-600 font-medium">{fieldErrors.password}</p>}
               </div>
 
               <div>
@@ -141,7 +227,7 @@ function CreateUserPage() {
                   name="role"
                   value={formData.role}
                   onChange={handleInputChange}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
                 >
                   <option value="USER">USER</option>
                   <option value="ADMIN">ADMIN</option>
@@ -160,50 +246,15 @@ function CreateUserPage() {
                   onChange={(event) =>
                     setFormData((previous) => ({ ...previous, active: event.target.value === 'true' }))
                   }
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
                 >
                   <option value="true">Active</option>
                   <option value="false">Inactive</option>
                 </select>
               </div>
 
-              <div>
-                <label htmlFor="email" className="mb-1 block text-sm font-medium text-slate-700">
-                  Email
-                </label>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-                  placeholder="user@campus.edu"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="password" className="mb-1 block text-sm font-medium text-slate-700">
-                  Password
-                </label>
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-                  placeholder="Minimum 8 characters"
-                />
-              </div>
-
-              {formError ? (
-                <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{formError}</p>
-              ) : null}
-              {formSuccess ? (
-                <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-                  {formSuccess}
-                </p>
+              {fieldErrors.submit ? (
+                <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{fieldErrors.submit}</p>
               ) : null}
 
               <div className="flex gap-3 pt-2">

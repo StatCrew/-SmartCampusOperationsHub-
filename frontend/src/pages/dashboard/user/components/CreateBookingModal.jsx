@@ -26,7 +26,7 @@ const fmtDuration = (s, e) => {
 };
 
 export default function CreateBookingModal({ isOpen, onClose, onSuccess, selectedResource, activeKeys, modifyData }) {
-  const { getApiErrorMessage } = useAuth();
+  const { role, getApiErrorMessage } = useAuth();
   
   /* Component State */
   const [step, setStep] = useState(1);
@@ -159,8 +159,8 @@ export default function CreateBookingModal({ isOpen, onClose, onSuccess, selecte
 
       setSubmitted(true);
 
-      // Broadcast to Admins about new booking
-      if (!modifyData) {
+      // Broadcast to Admins about new booking (only if current user is an admin)
+      if (!modifyData && role === 'ADMIN') {
         try {
           await sendAdminRoleBroadcast({
             targetRole: 'ADMIN',

@@ -24,7 +24,7 @@ function UserDashboardPage() {
   const [tickets, setTickets] = useState([])
   const [bookings, setBookings] = useState([])
   const [loadingStats, setLoadingStats] = useState(true)
-  
+
   const { notifications } = useNotificationContext()
 
   const loadDynamicStats = useCallback(async () => {
@@ -111,47 +111,77 @@ function UserDashboardPage() {
           title="Student Nexus"
         />
 
-        <main className="mx-auto w-full max-w-7xl p-4 pb-24 md:p-8">
-          <section className="mb-8 rounded-3xl bg-gradient-to-br from-indigo-900 to-slate-950 p-8 text-white shadow-xl">
+        <main className="mx-auto w-full max-w-6xl p-4 pb-24 md:p-8">
+          <section className="mb-8 rounded-3xl bg-gradient-to-br from-indigo-900 to-slate-900 p-8 text-white shadow-xl">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
               <div>
                 <h2 className="text-3xl font-black tracking-tight">
                   Welcome back, {mergedProfile?.fullName?.split(' ')[0] || 'Student'}!
                 </h2>
                 <p className="mt-2 text-indigo-100/70 max-w-md font-medium">
-                  Your campus command center. You have {bookings.filter(b => b.status === 'PENDING').length} pending reservations and {tickets.filter(t => t.status === 'OPEN').length} active support tickets.
+                  Your campus command center. You have {bookings.filter(b => b.status === 'PENDING').length} pending reservations and {tickets.filter(t => t.status !== 'CLOSED' && t.status !== 'RESOLVED').length} active support tickets.
                 </p>
               </div>
-              <div className="flex gap-3">
-                <Button onClick={() => navigate('/dashboard/user/bookings')} className="bg-white text-indigo-950 hover:bg-indigo-50 border-none shadow-lg px-8">
-                  Book Facility
-                </Button>
-              </div>
+
             </div>
           </section>
-          {profileError ? (
-            <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+
+          {profileError && (
+            <div className="mb-6 flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              <span className="material-symbols-outlined text-[20px]">error</span>
               {profileError}
             </div>
-          ) : null}
+          )}
+
+          {/* Stats Grid */}
+          <div className="mb-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              { label: 'Total Bookings', value: loadingStats ? '—' : bookings.length, icon: 'book_online', color: 'text-indigo-600' },
+              { label: 'Active Tickets', value: loadingStats ? '—' : tickets.filter(t => t.status !== 'CLOSED' && t.status !== 'RESOLVED' && t.status !== 'REJECTED').length, icon: 'confirmation_number', color: 'text-amber-600' },
+              { label: 'Account Status', value: loadingProfile ? '—' : 'Verified', icon: 'verified_user', color: 'text-emerald-600', isText: true },
+              { label: 'Department', value: loadingProfile ? '—' : (mergedProfile?.department || 'General'), icon: 'domain', color: 'text-slate-600', isText: true }
+            ].map((stat, i) => (
+              <div key={i} className="rounded-2xl bg-white p-6 shadow-sm border border-slate-100 transition-all hover:shadow-md">
+                <div className="flex items-center justify-between mb-4">
+                  <div className={`flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50 ${stat.color}`}>
+                    <span className="material-symbols-outlined">{stat.icon}</span>
+                  </div>
+                </div>
+                <p className="text-sm font-bold text-slate-400 uppercase tracking-wider">{stat.label}</p>
+                <h3 className={`mt-1 font-black text-slate-900 tracking-tight ${stat.isText ? 'text-xl truncate' : 'text-3xl'}`}>{stat.value}</h3>
+              </div>
+            ))}
+          </div>
 
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-            <div className="space-y-6 lg:col-span-1">
-              <section className="rounded-[2rem] bg-white p-6 shadow-sm border border-slate-100">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-6">Account</p>
+            {/* Main Content */}
+            <div className="lg:col-span-2">
+              <div className="rounded-3xl bg-white shadow-sm border border-slate-100 overflow-hidden h-full">
+                <ActivityFeed
+                  activities={activities}
+                  title="Event Log"
+                  subtitle="Recent system notifications and activity"
+                />
+              </div>
+            </div>
+
+            {/* Sidebar: Quick Info */}
+            <div className="space-y-6">
+              <section className="rounded-3xl bg-white p-6 shadow-sm border border-slate-100">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-6">Account Overview</p>
                 <div className="flex items-center gap-4 mb-6">
-                  <div className="h-16 w-16 rounded-2xl bg-indigo-600 flex items-center justify-center text-white text-xl font-black shadow-lg shadow-indigo-600/20">
+                  <div className="h-14 w-14 rounded-2xl bg-indigo-600 flex items-center justify-center text-white text-xl font-black shadow-lg shadow-indigo-600/20">
                     {initials}
                   </div>
                   <div>
-                    <h4 className="font-black text-slate-900 tracking-tight">{mergedProfile?.fullName || 'User'}</h4>
+                    <h4 className="font-black text-slate-900 tracking-tight line-clamp-1">{mergedProfile?.fullName || 'User'}</h4>
                     <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{studentId || 'STUDENT'}</p>
                   </div>
                 </div>
                 <div className="space-y-4 border-t border-slate-50 pt-6">
                   <div className="flex justify-between items-center">
                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Email Status</span>
-                    <Badge variant="success">Verified</Badge>
+                    <Badge variant={profileError ? "danger" : "success"}>{profileError ? 'Error' : 'Verified'}</Badge>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Total Reservations</span>
@@ -159,75 +189,37 @@ function UserDashboardPage() {
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Active Requests</span>
-                    <span className="text-sm font-black text-slate-900">{tickets.length}</span>
+                    <span className="text-sm font-black text-slate-900">{tickets.filter(t => t.status !== 'CLOSED' && t.status !== 'RESOLVED').length}</span>
                   </div>
                 </div>
               </section>
 
-              <section className="grid grid-cols-2 gap-4">
-                <div className="rounded-[2rem] bg-indigo-50 p-6 border border-indigo-100">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-2">Bookings</p>
-                  <h3 className="text-2xl font-black text-indigo-600">{bookings.length}</h3>
+              <div className="rounded-3xl bg-white p-6 shadow-sm border border-slate-100">
+                <h4 className="text-sm font-bold text-slate-900 uppercase tracking-widest mb-4 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-indigo-600 text-[18px]">bolt</span>
+                  Quick Links
+                </h4>
+                <div className="space-y-3">
+                  <button onClick={() => navigate('/dashboard/user/resources')} className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-colors text-sm font-semibold text-slate-700 border border-transparent hover:border-slate-100">
+                    <span className="flex items-center gap-3">
+                      <span className="material-symbols-outlined text-slate-400">add_business</span> Book Facility
+                    </span>
+                    <span className="material-symbols-outlined text-slate-300">chevron_right</span>
+                  </button>
+                  <button onClick={() => navigate('/dashboard/user/bookings')} className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-colors text-sm font-semibold text-slate-700 border border-transparent hover:border-slate-100">
+                    <span className="flex items-center gap-3">
+                      <span className="material-symbols-outlined text-slate-400">book_online</span> My Bookings
+                    </span>
+                    <span className="material-symbols-outlined text-slate-300">chevron_right</span>
+                  </button>
+                  <button onClick={() => navigate('/dashboard/user/tickets')} className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-colors text-sm font-semibold text-slate-700 border border-transparent hover:border-slate-100">
+                    <span className="flex items-center gap-3">
+                      <span className="material-symbols-outlined text-slate-400">confirmation_number</span> Support Tickets
+                    </span>
+                    <span className="material-symbols-outlined text-slate-300">chevron_right</span>
+                  </button>
                 </div>
-                <div className="rounded-[2rem] bg-amber-50 p-6 border border-amber-100">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-amber-400 mb-2">Tickets</p>
-                  <h3 className="text-2xl font-black text-amber-600">{tickets.length}</h3>
-                </div>
-              </section>
-            </div>
-
-            <div className="lg:col-span-2 space-y-8">
-              <section className="rounded-3xl bg-white p-8 shadow-sm border border-slate-100">
-                <div className="flex items-center justify-between mb-8">
-                  <div>
-                    <h3 className="text-xl font-black text-slate-900 tracking-tight">Profile</h3>
-                    <p className="text-sm font-medium text-slate-500">Your contact details and account info.</p>
-                  </div>
-                  <Button variant="outline" onClick={reloadProfile} className="w-11 h-11 !p-0 rounded-2xl">
-                    <span className="material-symbols-outlined">refresh</span>
-                  </Button>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="space-y-1">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Full Name</p>
-                    <p className="text-sm font-bold text-slate-900">{mergedProfile?.fullName || '—'}</p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Email</p>
-                    <p className="text-sm font-bold text-slate-900">{mergedProfile?.email || '—'}</p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Department</p>
-                    <p className="text-sm font-bold text-slate-900">{mergedProfile?.department || 'General'}</p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Contact</p>
-                    <p className="text-sm font-bold text-slate-900">{mergedProfile?.phoneNumber || 'Not provided'}</p>
-                  </div>
-                </div>
-              </section>
-
-              <section className="rounded-3xl bg-white p-8 shadow-sm border border-slate-100">
-                <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <h3 className="text-xl font-black text-slate-900 tracking-tight">Update Profile</h3>
-                    <p className="text-sm font-medium text-slate-500">Change your name, email, or contact info.</p>
-                  </div>
-                </div>
-                <UserProfileDetailsCard
-                  loadingProfile={loadingProfile}
-                  profile={mergedProfile}
-                  onReloadProfile={reloadProfile}
-                />
-              </section>
-
-              <section className="rounded-3xl bg-white p-8 shadow-sm border border-slate-100">
-                <ActivityFeed
-                  activities={activities}
-                  title="Recent Activity"
-                  subtitle="Latest updates on your bookings and support requests."
-                />
-              </section>
+              </div>
             </div>
           </div>
         </main>

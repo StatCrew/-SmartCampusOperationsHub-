@@ -14,6 +14,7 @@ import UserSidebar from '../user/components/UserSidebar'
 import { Button } from '../../../components/ui/Button'
 import { Badge } from '../../../components/ui/Badge'
 import { Card } from '../../../components/ui/Card'
+import CreateUserModal from './components/CreateUserModal'
 
 const PAGE_SIZE = 10
 
@@ -41,6 +42,7 @@ function AdminUsersPage() {
   const [pageInfo, setPageInfo] = useState({ totalPages: 0, totalElements: 0 })
   const [editingUser, setEditingUser] = useState(null)
   const [editForm, setEditForm] = useState(emptyEditForm)
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
 
   const loadUsers = useCallback(async () => {
     setIsLoadingUsers(true)
@@ -153,9 +155,31 @@ function AdminUsersPage() {
     }
   }
 
+  const handleEditFieldChange = (name, value) => {
+    let processedValue = value
+    if (name === 'fullName') {
+      processedValue = value.replace(/[^a-zA-Z\s]/g, '')
+    }
+    setEditForm(prev => ({ ...prev, [name]: processedValue }))
+  }
+
+  const validateEditForm = () => {
+    if (!editForm.fullName.trim()) return 'Full name is required.'
+    if (!/^[a-zA-Z\s]{2,50}$/.test(editForm.fullName.trim())) return 'Name must be 2-50 letters only.'
+    if (!editForm.email.trim()) return 'Email is required.'
+    if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(editForm.email.trim())) return 'Invalid email address.'
+    return ''
+  }
+
   const handleEditSubmit = async (event) => {
     event.preventDefault()
     if (!editingUser) {
+      return
+    }
+
+    const valErr = validateEditForm()
+    if (valErr) {
+      setErrorMessage(valErr)
       return
     }
 
@@ -226,7 +250,7 @@ function AdminUsersPage() {
                 </Button>
 
                 <Button
-                    onClick={() => navigate('/admin/users/create')}
+                    onClick={() => setIsCreateModalOpen(true)}
                     variant="secondary"
                 >
                   Register User
@@ -464,7 +488,7 @@ function AdminUsersPage() {
                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Full Name</label>
                 <input
                   value={editForm.fullName}
-                  onChange={(event) => setEditForm((previous) => ({ ...previous, fullName: event.target.value }))}
+                  onChange={(event) => handleEditFieldChange('fullName', event.target.value)}
                   className="w-full rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-medium outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10"
                 />
               </div>
@@ -474,7 +498,7 @@ function AdminUsersPage() {
                 <input
                   type="email"
                   value={editForm.email}
-                  onChange={(event) => setEditForm((previous) => ({ ...previous, email: event.target.value }))}
+                  onChange={(event) => handleEditFieldChange('email', event.target.value)}
                   className="w-full rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-medium outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10"
                 />
               </div>
@@ -528,6 +552,15 @@ function AdminUsersPage() {
           </div>
         </div>
       ) : null}
+
+      <CreateUserModal 
+        isOpen={isCreateModalOpen} 
+        onClose={() => setIsCreateModalOpen(false)} 
+        onSuccess={() => {
+          setSuccessMessage('User registered successfully')
+          refreshUsers()
+        }}
+      />
     </div>
   )
 }

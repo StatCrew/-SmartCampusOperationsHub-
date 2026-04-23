@@ -256,6 +256,7 @@ export default function UserBookingsPage() {
                   ) : (
                     filteredBookings.map(booking => {
                       const canCancel = booking.status === 'PENDING' || booking.status === 'APPROVED';
+                      const canModify = booking.status === 'PENDING';
                       const canDelete = booking.status === 'CANCELLED' || booking.status === 'REJECTED';
                       const resName = resourceMap[booking.resourceId] || `Resource #${booking.resourceId}`;
 
@@ -291,6 +292,18 @@ export default function UserBookingsPage() {
                           </td>
                           <td className="px-6 py-4 text-right">
                             <div className="flex justify-end gap-2">
+                              {canModify && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => navigate(`/dashboard/user/resources/${booking.resourceId}`, {
+                                    state: { modifyBooking: booking }
+                                  })}
+                                  className="text-indigo-600 border-indigo-100 hover:bg-indigo-50"
+                                >
+                                  <span className="material-symbols-outlined mr-1 text-[18px]">edit_calendar</span> Modify
+                                </Button>
+                              )}
                               {booking.status === 'APPROVED' && (
                                 <Button size="sm" variant="outline" onClick={() => setTicketTarget(booking)} className="text-indigo-600 border-indigo-100 hover:bg-indigo-50">
                                   <span className="material-symbols-outlined mr-1 text-[18px]">confirmation_number</span> Ticket

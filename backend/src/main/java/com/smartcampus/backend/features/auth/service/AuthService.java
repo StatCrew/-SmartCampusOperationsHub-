@@ -94,6 +94,7 @@ public class AuthService {
                 .fullName(request.fullName().trim())
                 .email(normalizedEmail)
                 .password(passwordEncoder.encode(request.password()))
+                .phoneNumber(request.phoneNumber() != null ? request.phoneNumber().trim() : null)
                 .role(Role.USER)
                 .provider(AuthProvider.LOCAL)
                 .emailVerified(false)
@@ -344,7 +345,8 @@ public class AuthService {
                 authenticatedUser.getRole().name(),
                 authenticatedUser.isEmailVerified(),
                 Boolean.TRUE.equals(authenticatedUser.getActive()),
-                authenticatedUser.getProvider().name());
+                authenticatedUser.getProvider().name(),
+                authenticatedUser.getPhoneNumber());
     }
 
     @Transactional
@@ -383,7 +385,8 @@ public class AuthService {
                 user.getRole().name(),
                 user.isEmailVerified(),
                 Boolean.TRUE.equals(user.getActive()),
-                user.getProvider().name());
+                user.getProvider().name(),
+                user.getPhoneNumber());
 
         return new AuthResponse(accessToken, refreshToken, "Bearer", summary);
     }

@@ -272,9 +272,11 @@ export default function TicketDetailsModal({
               <div className="rounded-[2.5rem] bg-gradient-to-br from-indigo-500 to-indigo-600 p-8 text-white shadow-xl shadow-indigo-500/20 animate-in slide-in-from-bottom-4 duration-700">
                 <div className="flex items-center gap-3 mb-6">
                   <div className="h-8 w-8 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                    <span className="material-symbols-outlined text-[20px]">star</span>
+                    <span className="material-symbols-outlined text-[20px]">{ticket.rating > 0 ? 'verified' : 'star'}</span>
                   </div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.25em] text-indigo-100">Rate this Resolution</p>
+                  <p className="text-[10px] font-black uppercase tracking-[0.25em] text-indigo-100">
+                    {ticket.rating > 0 ? 'Your Rating' : 'Rate this Resolution'}
+                  </p>
                 </div>
                 
                 <div className="flex flex-col md:flex-row items-center gap-8">
@@ -283,9 +285,10 @@ export default function TicketDetailsModal({
                       <button
                         key={star}
                         type="button"
-                        onClick={() => setRating(star)}
-                        className={`material-symbols-outlined text-[36px] transition-all duration-300 hover:scale-125 active:scale-95 ${
-                          star <= rating ? 'text-amber-300 fill-1 drop-shadow-[0_0_8px_rgba(252,211,77,0.5)]' : 'text-indigo-200/50 hover:text-indigo-100'
+                        onClick={() => ticket.rating === 0 && setRating(star)}
+                        disabled={ticket.rating > 0}
+                        className={`material-symbols-outlined text-[36px] transition-all duration-300 ${ticket.rating === 0 ? 'hover:scale-125 active:scale-95' : ''} ${
+                          star <= (ticket.rating || rating) ? 'text-amber-300 fill-1 drop-shadow-[0_0_8px_rgba(252,211,77,0.5)]' : 'text-indigo-200/50 hover:text-indigo-100'
                         }`}
                       >
                         star
@@ -293,22 +296,33 @@ export default function TicketDetailsModal({
                     ))}
                   </div>
                   
-                  <div className="flex-1 flex items-center gap-3 w-full">
-                    <input
-                      value={feedback}
-                      onChange={(e) => setFeedback(e.target.value)}
-                      placeholder="Any thoughts on our service?"
-                      className="flex-1 bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl px-6 py-3.5 text-sm font-semibold placeholder:text-indigo-100/50 outline-none focus:ring-4 focus:ring-white/10 transition-all"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => onRate(rating, feedback)}
-                      disabled={isActionProcessing || rating === 0}
-                      className="rounded-xl bg-white px-8 py-3.5 text-[11px] font-black text-indigo-600 uppercase tracking-widest transition-all duration-300 hover:bg-amber-300 hover:text-slate-900 active:scale-95 disabled:opacity-40 disabled:scale-100 shadow-lg"
-                    >
-                      Submit
-                    </button>
-                  </div>
+                  {ticket.rating > 0 ? (
+                    <div className="flex-1">
+                      <p className="text-sm font-bold text-indigo-50 leading-relaxed italic">
+                        "{ticket.feedback || 'No written feedback provided.'}"
+                      </p>
+                      <p className="mt-2 text-[10px] font-black uppercase tracking-widest text-indigo-200/70">
+                        Thank you for your feedback!
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="flex-1 flex items-center gap-3 w-full">
+                      <input
+                        value={feedback}
+                        onChange={(e) => setFeedback(e.target.value)}
+                        placeholder="Any thoughts on our service?"
+                        className="flex-1 bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl px-6 py-3.5 text-sm font-semibold placeholder:text-indigo-100/50 outline-none focus:ring-4 focus:ring-white/10 transition-all"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => onRate(rating, feedback)}
+                        disabled={isActionProcessing || rating === 0}
+                        className="rounded-xl bg-white px-8 py-3.5 text-[11px] font-black text-indigo-600 uppercase tracking-widest transition-all duration-300 hover:bg-amber-300 hover:text-slate-900 active:scale-95 disabled:opacity-40 disabled:scale-100 shadow-lg"
+                      >
+                        Submit
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

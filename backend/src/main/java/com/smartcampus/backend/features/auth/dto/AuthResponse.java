@@ -13,7 +13,8 @@ public record AuthResponse(
             String role,
             boolean emailVerified,
             boolean active,
-            String provider
+            String provider,
+            String phoneNumber
     ) {
     }
 }

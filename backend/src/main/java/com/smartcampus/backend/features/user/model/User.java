@@ -53,6 +53,9 @@ public class User implements UserDetails {
     @Column(length = 500)
     private String specialties;
 
+    @Column(length = 20)
+    private String phoneNumber;
+
     @Builder.Default
     @Column(nullable = false)
     private boolean emailVerified = false;

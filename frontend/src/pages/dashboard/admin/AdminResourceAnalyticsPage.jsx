@@ -33,10 +33,76 @@ function StatCard({ label, value, icon, colorClass, sub, delay = 0 }) {
   )
 }
 
+// ── Custom SVG Charts ─────────────────────────────────────────────
+function CustomPieChart({ data, colors }) {
+  const total = data.reduce((sum, item) => sum + item.value, 0)
+  let currentAngle = 0
+
+  return (
+    <div className="relative h-48 w-48 mx-auto">
+      <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90">
+        {data.map((item, i) => {
+          if (item.value === 0) return null
+          const startAngle = currentAngle
+          const angle = (item.value / total) * 360
+          currentAngle += angle
+
+          // Path for doughnut slice
+          const x1 = 50 + 40 * Math.cos((Math.PI * startAngle) / 180)
+          const y1 = 50 + 40 * Math.sin((Math.PI * startAngle) / 180)
+          const x2 = 50 + 40 * Math.cos((Math.PI * (startAngle + angle)) / 180)
+          const y2 = 50 + 40 * Math.sin((Math.PI * (startAngle + angle)) / 180)
+
+          const largeArcFlag = angle > 180 ? 1 : 0
+
+          return (
+            <path
+              key={i}
+              d={`M ${x1} ${y1} A 40 40 0 ${largeArcFlag} 1 ${x2} ${y2}`}
+              fill="none"
+              stroke={colors[i % colors.length]}
+              strokeWidth="12"
+              className="transition-all duration-700 hover:opacity-80 cursor-pointer"
+              strokeLinecap="round"
+            />
+          )
+        })}
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-2xl font-black text-slate-900">{total}</span>
+        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Total</span>
+      </div>
+    </div>
+  )
+}
+
+function CustomBarChart({ data, color }) {
+  const max = Math.max(...data.map(d => d.value), 1)
+  
+  return (
+    <div className="space-y-4">
+      {data.map((item, i) => (
+        <div key={i} className="group">
+          <div className="flex items-center justify-between mb-1.5 px-1">
+            <span className="text-[11px] font-bold text-slate-600 truncate max-w-[180px]">{item.label}</span>
+            <span className="text-[11px] font-black text-slate-900">{item.value}</span>
+          </div>
+          <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden">
+            <div 
+              className={`h-full rounded-full transition-all duration-1000 ${color}`}
+              style={{ width: `${(item.value / max) * 100}%` }}
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export default function AdminResourceAnalyticsPage() {
   const navigate  = useNavigate()
   const location  = useLocation()
-  const { role, user, logout, getApiErrorMessage } = useAuth()
+  const { role, logout, getApiErrorMessage } = useAuth()
 
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true)
   const [resources,  setResources]  = useState([])
@@ -169,6 +235,77 @@ export default function AdminResourceAnalyticsPage() {
             <StatCard label="Utilization" value={loading ? '—' : `${utilizationRate}%`} icon="analytics" colorClass="text-emerald-600" sub={`${bookedResources} Resources used`} />
             <StatCard label="Total Volume" value={loading ? '—' : totalBookings} icon="confirmation_number" colorClass="text-amber-600" sub="Combined requests" />
             <StatCard label="Approval Ratio" value={loading ? '—' : `${approvalRate}%`} icon="task_alt" colorClass="text-rose-600" sub={`${approvedBookings} Validations`} />
+          </div>
+
+          {/* Visual Insights Section */}
+          <div className="mb-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Category Distribution */}
+            <section className="rounded-3xl bg-white p-8 shadow-sm border border-slate-100 flex flex-col items-center">
+              <div className="w-full flex items-center justify-between mb-8">
+                <div>
+                  <h3 className="text-lg font-black text-slate-900 tracking-tight">Usage by Category</h3>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Resource allocation</p>
+                </div>
+                <div className="h-10 w-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                  <span className="material-symbols-outlined text-[20px]">pie_chart</span>
+                </div>
+              </div>
+              
+              <div className="flex flex-col md:flex-row items-center gap-12 w-full">
+                <CustomPieChart 
+                  data={Object.entries(TYPE_CONFIG).map(([type, cfg]) => ({
+                    label: cfg.label,
+                    value: typeCounts[type] || 0
+                  }))}
+                  colors={['#4f46e5', '#6366f1', '#818cf8', '#a5b4fc']}
+                />
+                <div className="flex-1 space-y-3 w-full">
+                  {Object.entries(TYPE_CONFIG).map(([type, cfg], i) => {
+                    const count = typeCounts[type] || 0
+                    const percent = typeCounts.ALL > 0 ? Math.round((count / typeCounts.ALL) * 100) : 0
+                    const colors = ['bg-indigo-600', 'bg-indigo-500', 'bg-indigo-400', 'bg-indigo-300']
+                    
+                    return (
+                      <div key={type} className="flex items-center justify-between p-3 rounded-2xl bg-slate-50/50 border border-slate-100/50 group hover:border-indigo-100 transition-all">
+                        <div className="flex items-center gap-3">
+                          <div className={`h-2.5 w-2.5 rounded-full ${colors[i % colors.length]}`} />
+                          <span className="text-[11px] font-bold text-slate-600">{cfg.label}</span>
+                        </div>
+                        <span className="text-[11px] font-black text-slate-900">{percent}%</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            </section>
+
+            {/* Top Resources Bar Chart */}
+            <section className="rounded-3xl bg-white p-8 shadow-sm border border-slate-100">
+              <div className="flex items-center justify-between mb-8">
+                <div>
+                  <h3 className="text-lg font-black text-slate-900 tracking-tight">Top Demand Resources</h3>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Highest utilization</p>
+                </div>
+                <div className="h-10 w-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                  <span className="material-symbols-outlined text-[20px]">leaderboard</span>
+                </div>
+              </div>
+
+              <CustomBarChart 
+                data={enrichedResources
+                  .sort((a, b) => b.total - a.total)
+                  .slice(0, 5)
+                  .map(r => ({ label: r.name, value: r.total }))
+                }
+                color="bg-amber-500"
+              />
+              
+              <div className="mt-8 pt-6 border-t border-slate-50 flex items-center justify-between">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest italic">
+                  * Based on total historical booking volume
+                </p>
+              </div>
+            </section>
           </div>
 
           {/* Filters & Table */}

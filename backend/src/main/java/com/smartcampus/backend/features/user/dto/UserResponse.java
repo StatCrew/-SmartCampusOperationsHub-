@@ -9,7 +9,8 @@ public record UserResponse(
         String role,
         boolean emailVerified,
         boolean active,
-        Instant createdAt
+        Instant createdAt,
+        String phoneNumber
 ) {
 }
 

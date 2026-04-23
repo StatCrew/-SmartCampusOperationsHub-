@@ -7,7 +7,7 @@ public record MeResponse(
         String role,
         boolean emailVerified,
         boolean active,
-        String provider
+        String provider,
+        String phoneNumber
 ) {
 }
-

@@ -1,6 +1,7 @@
 export const roleSidebarItems = {
   USER: [
     { icon: 'dashboard', label: 'Dashboard', path: '/dashboard/user' },
+    { icon: 'person', label: 'Profile', path: '/dashboard/user/profile' },
     { icon: 'book_online', label: 'Bookings', path: '/dashboard/user/bookings' },
     { icon: 'inventory_2', label: 'Resources', path: '/dashboard/user/resources' },
     { icon: 'confirmation_number', label: 'Tickets', path: '/dashboard/user/tickets' },

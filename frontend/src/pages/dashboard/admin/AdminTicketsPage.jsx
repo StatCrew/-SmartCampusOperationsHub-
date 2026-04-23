@@ -493,6 +493,42 @@ function TicketDetailsModal({
           </p>
           <div />
         </div>
+
+        {/* Rating and Feedback Section (Read-only for Admin) */}
+        {(ticket.rating > 0 || ticket.feedback) && (
+          <div className="mt-8 rounded-[2.5rem] bg-indigo-50/50 border border-indigo-100 p-8">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="h-8 w-8 rounded-full bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-600/20">
+                <span className="material-symbols-outlined text-[20px]">reviews</span>
+              </div>
+              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">User Satisfaction Review</p>
+            </div>
+            
+            <div className="flex flex-col md:flex-row items-center gap-8">
+              <div className="flex gap-1.5">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <span
+                    key={star}
+                    className={`material-symbols-outlined text-[32px] ${
+                      star <= ticket.rating ? 'text-amber-400 fill-1' : 'text-slate-200'
+                    }`}
+                  >
+                    star
+                  </span>
+                ))}
+              </div>
+              
+              <div className="flex-1">
+                <div className="rounded-2xl bg-white border border-slate-100 px-6 py-4 shadow-sm">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">User Feedback</p>
+                  <p className="text-sm font-bold text-slate-700 italic">
+                    "{ticket.feedback || 'No written feedback provided.'}"
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

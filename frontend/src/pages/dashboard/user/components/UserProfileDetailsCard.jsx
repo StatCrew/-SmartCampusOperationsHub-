@@ -5,25 +5,80 @@ function UserProfileDetailsCard({ loadingProfile, profile, onReloadProfile }) {
   const { updateMyProfile, completeEmailChange, getApiErrorMessage } = useAuth()
   const [fullName, setFullName] = useState(profile?.fullName || '')
   const [email, setEmail] = useState(profile?.email || '')
+  const [phoneNumber, setPhoneNumber] = useState(profile?.phoneNumber || '')
   const [otp, setOtp] = useState('')
   const [pendingEmail, setPendingEmail] = useState('')
   const [emailVerificationRequired, setEmailVerificationRequired] = useState(false)
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
+  const [fieldErrors, setFieldErrors] = useState({
+    fullName: '',
+    email: '',
+    phoneNumber: '',
+  })
   const [error, setError] = useState('')
 
   useEffect(() => {
     setFullName(profile?.fullName || '')
     setEmail(profile?.email || '')
-  }, [profile?.fullName, profile?.email])
+    setPhoneNumber(profile?.phoneNumber || '')
+  }, [profile?.fullName, profile?.email, profile?.phoneNumber])
 
   const emailChanged = useMemo(
     () => email.trim().toLowerCase() !== (profile.email || '').trim().toLowerCase(),
     [email, profile.email],
   )
 
+  const validateField = (name, value) => {
+    let err = ''
+    if (name === 'fullName') {
+      if (!value.trim()) {
+        err = 'Full name is required.'
+      } else if (!/^[a-zA-Z\s]{2,50}$/.test(value.trim())) {
+        err = 'Name must be 2-50 characters (letters only).'
+      }
+    } else if (name === 'email') {
+      if (!value.trim()) {
+        err = 'Email is required.'
+      } else if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(value)) {
+        err = 'Invalid email address.'
+      }
+    } else if (name === 'phoneNumber') {
+      if (value.trim() && !/^\d{10}$/.test(value.trim())) {
+        err = 'Phone number must be exactly 10 digits.'
+      }
+    }
+    return err
+  }
+
+  const handleNameChange = (val) => {
+    const cleanVal = val.replace(/[^a-zA-Z\s]/g, '')
+    setFullName(cleanVal)
+    setFieldErrors(prev => ({ ...prev, fullName: validateField('fullName', cleanVal) }))
+  }
+
+  const handleEmailChange = (val) => {
+    setEmail(val)
+    setFieldErrors(prev => ({ ...prev, email: validateField('email', val) }))
+  }
+
+  const handlePhoneChange = (val) => {
+    setPhoneNumber(val)
+    setFieldErrors(prev => ({ ...prev, phoneNumber: validateField('phoneNumber', val) }))
+  }
+
   const handleSave = async (event) => {
     event.preventDefault()
+    
+    const nameErr = validateField('fullName', fullName)
+    const emailErr = emailChanged ? validateField('email', email) : ''
+    const phoneErr = validateField('phoneNumber', phoneNumber)
+
+    if (nameErr || emailErr || phoneErr) {
+      setFieldErrors({ fullName: nameErr, email: emailErr, phoneNumber: phoneErr })
+      return
+    }
+
     setLoading(true)
     setError('')
     setMessage('')
@@ -32,11 +87,13 @@ function UserProfileDetailsCard({ loadingProfile, profile, onReloadProfile }) {
       const response = await updateMyProfile({
           fullName,
         email: emailChanged ? email : '',
+        phoneNumber,
       })
 
       if (response?.profile) {
         setFullName(response.profile.fullName || fullName)
         setEmail(response.profile.email || email)
+        setPhoneNumber(response.profile.phoneNumber || phoneNumber)
       }
 
       if (response?.emailVerificationRequired) {
@@ -109,19 +166,39 @@ function UserProfileDetailsCard({ loadingProfile, profile, onReloadProfile }) {
                 <p className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-500">Full Name</p>
                 <input
                   value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:bg-white"
+                  onChange={(e) => handleNameChange(e.target.value)}
+                  className={`w-full rounded-lg border px-3 py-2 text-sm text-slate-900 outline-none transition focus:ring-2 ${
+                    fieldErrors.fullName ? 'border-red-500 focus:ring-red-100' : 'border-slate-200 bg-slate-50 focus:border-indigo-500 focus:bg-white'
+                  }`}
                   type="text"
                 />
+                {fieldErrors.fullName && <p className="mt-1 text-[10px] font-medium text-red-600">{fieldErrors.fullName}</p>}
               </div>
               <div>
                 <p className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-500">Email</p>
                 <input
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:bg-white"
+                  onChange={(e) => handleEmailChange(e.target.value)}
+                  className={`w-full rounded-lg border px-3 py-2 text-sm text-slate-900 outline-none transition focus:ring-2 ${
+                    fieldErrors.email ? 'border-red-500 focus:ring-red-100' : 'border-slate-200 bg-slate-50 focus:border-indigo-500 focus:bg-white'
+                  }`}
                   type="email"
                 />
+                {fieldErrors.email && <p className="mt-1 text-[10px] font-medium text-red-600">{fieldErrors.email}</p>}
+              </div>
+              <div>
+                <p className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-500">Phone Number</p>
+                <input
+                  value={phoneNumber}
+                  onChange={(e) => handlePhoneChange(e.target.value)}
+                  maxLength={10}
+                  className={`w-full rounded-lg border px-3 py-2 text-sm text-slate-900 outline-none transition focus:ring-2 ${
+                    fieldErrors.phoneNumber ? 'border-red-500 focus:ring-red-100' : 'border-slate-200 bg-slate-50 focus:border-indigo-500 focus:bg-white'
+                  }`}
+                  type="tel"
+                  placeholder="10 digit number"
+                />
+                {fieldErrors.phoneNumber && <p className="mt-1 text-[10px] font-medium text-red-600">{fieldErrors.phoneNumber}</p>}
               </div>
               <div>
                 <p className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-500">Role</p>

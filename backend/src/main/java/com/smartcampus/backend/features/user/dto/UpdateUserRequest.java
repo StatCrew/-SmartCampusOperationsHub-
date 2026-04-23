@@ -10,7 +10,8 @@ public record UpdateUserRequest(
                 regexp = "^$|^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$",
                 message = "Email must be valid"
         )
-        String email
+        String email,
+        String phoneNumber
 ) {
 }
 
