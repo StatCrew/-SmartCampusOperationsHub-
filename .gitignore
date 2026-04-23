@@ -28,3 +28,5 @@ backend/.env.*    # ignore all variants
 .idea/
 .DS_Store
 Thumbs.db
+
+aws.env

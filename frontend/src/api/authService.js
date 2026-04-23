@@ -3,7 +3,9 @@ import axios from 'axios'
 const API_BASE_URL = (
   import.meta.env.VITE_API_BASE_URL ||
   import.meta.env.VITE_BACKEND_API_URL ||
-  'http://localhost:8080'
+  (typeof window !== 'undefined' && window.location.hostname !== 'localhost' 
+    ? `${window.location.protocol}//${window.location.hostname}:8080` 
+    : 'http://localhost:8080')
 ).replace(/\/$/, '')
 const AUTH_PREFIX = import.meta.env.VITE_AUTH_PREFIX || '/api/v1/auth'
 const GOOGLE_AUTH_PATH = import.meta.env.VITE_GOOGLE_AUTH_PATH || '/oauth2/authorization/google'
