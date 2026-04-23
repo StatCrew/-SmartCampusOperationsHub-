@@ -461,7 +461,7 @@ function TechnicianTicketsPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const { role, user, logout, syncProfile, getApiErrorMessage } = useAuth()
-  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false)
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true)
   const [profile, setProfile] = useState(user)
   const [loadingProfile, setLoadingProfile] = useState(true)
   const [profileError, setProfileError] = useState('')
@@ -678,7 +678,7 @@ function TechnicianTicketsPage() {
       />
 
       <div className={`min-h-screen transition-all duration-300 ${isSidebarExpanded ? 'md:pl-64' : 'md:pl-20'}`}>
-        <UserDashboardHeader eyebrow={headerLabels.eyebrow} title="Assigned Tickets" />
+        <UserDashboardHeader eyebrow={headerLabels.eyebrow} title="Tickets" />
 
         <main className="mx-auto w-full max-w-7xl p-4 pb-24 md:p-8">
           {profileError ? (
@@ -693,20 +693,20 @@ function TechnicianTicketsPage() {
           ) : null}
 
           <section className="mb-6 rounded-3xl bg-white p-8 shadow-sm border border-slate-100">
-            <h2 className="text-3xl font-black text-slate-900 tracking-tight">
-              Hello, {loadingProfile ? 'Technician' : profile?.fullName || 'Technician'}!
-            </h2>
-            <p className="mt-3 text-sm font-semibold text-slate-500 leading-relaxed max-w-2xl">
-              Manage your active service queue, provide technical updates, and document resolution reports for campus incidents.
+              <h2 className="text-3xl font-black text-slate-900 tracking-tight">
+               Welcome, {loadingProfile ? 'Technician' : profile?.fullName || 'Technician'}!
+             </h2>
+             <p className="mt-3 text-sm font-semibold text-slate-500 leading-relaxed max-w-2xl">
+               Review assigned tickets, add updates, and close completed work.
             </p>
           </section>
 
           <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {[
-              { label: 'Assigned', val: stats.total, color: 'text-slate-900', icon: 'assignment' },
-              { label: 'Awaiting Response', val: stats.open, color: 'text-amber-600', icon: 'pending' },
-              { label: 'In Progress', val: stats.progress, color: 'text-indigo-600', icon: 'handyman' },
-              { label: 'Completed', val: stats.resolved, color: 'text-emerald-600', icon: 'task_alt' },
+              { label: 'Total', val: stats.total, color: 'text-slate-900', icon: 'assignment' },
+              { label: 'Open', val: stats.open, color: 'text-amber-600', icon: 'pending' },
+              { label: 'Working', val: stats.progress, color: 'text-indigo-600', icon: 'handyman' },
+              { label: 'Done', val: stats.resolved, color: 'text-emerald-600', icon: 'task_alt' },
             ].map((s) => (
               <div key={s.label} className="rounded-2xl bg-white p-6 shadow-sm border border-slate-100 transition-all hover:shadow-md">
                 <div className="flex items-center justify-between mb-4">
@@ -720,18 +720,18 @@ function TechnicianTicketsPage() {
 
           <section className="mt-8">
             <div className="mb-6 flex items-center justify-between">
-              <h3 className="text-xl font-black text-slate-900 tracking-tight">Active Work Queue</h3>
+              <h3 className="text-xl font-black text-slate-900 tracking-tight">Assigned Tickets</h3>
             </div>
 
             {isLoading ? (
               <div className="py-24 text-center">
                 <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-indigo-600" />
-                <p className="mt-4 text-sm font-black uppercase tracking-widest text-slate-400">Syncing with task server...</p>
+                <p className="mt-4 text-sm font-black uppercase tracking-widest text-slate-400">Loading tickets...</p>
               </div>
             ) : tickets.length === 0 ? (
               <div className="rounded-3xl border-2 border-dashed border-slate-200 bg-slate-50 p-12 text-center">
                 <span className="material-symbols-outlined text-slate-300 text-6xl">upcoming</span>
-                <p className="mt-4 text-sm font-black uppercase tracking-widest text-slate-400">Your queue is currently empty.</p>
+                <p className="mt-4 text-sm font-black uppercase tracking-widest text-slate-400">No tickets assigned.</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -779,7 +779,7 @@ function TechnicianTicketsPage() {
                           disabled={processingId === ticket.id}
                           className="w-full rounded-xl bg-slate-900 py-3.5 text-[10px] font-black uppercase tracking-widest text-white transition-all hover:bg-indigo-600 hover:shadow-[0_12px_24px_-8px_rgba(79,70,229,0.4)]"
                         >
-                          View Investigation
+                          Open
                         </button>
                       </div>
                     </div>

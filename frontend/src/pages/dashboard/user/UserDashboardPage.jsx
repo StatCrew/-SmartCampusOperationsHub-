@@ -138,7 +138,7 @@ function UserDashboardPage() {
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
             <div className="space-y-6 lg:col-span-1">
               <section className="rounded-[2rem] bg-white p-6 shadow-sm border border-slate-100">
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-6">My Account</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-6">Account</p>
                 <div className="flex items-center gap-4 mb-6">
                   <div className="h-16 w-16 rounded-2xl bg-indigo-600 flex items-center justify-center text-white text-xl font-black shadow-lg shadow-indigo-600/20">
                     {initials}
@@ -180,8 +180,8 @@ function UserDashboardPage() {
               <section className="rounded-3xl bg-white p-8 shadow-sm border border-slate-100">
                 <div className="flex items-center justify-between mb-8">
                   <div>
-                    <h3 className="text-xl font-black text-slate-900 tracking-tight">My Profile</h3>
-                    <p className="text-sm font-medium text-slate-500">Your campus identity and contact details.</p>
+                    <h3 className="text-xl font-black text-slate-900 tracking-tight">Profile</h3>
+                    <p className="text-sm font-medium text-slate-500">Your contact details and account info.</p>
                   </div>
                   <Button variant="outline" onClick={reloadProfile} className="w-11 h-11 !p-0 rounded-2xl">
                     <span className="material-symbols-outlined">refresh</span>
@@ -210,8 +210,8 @@ function UserDashboardPage() {
               <section className="rounded-3xl bg-white p-8 shadow-sm border border-slate-100">
                 <div className="flex items-center justify-between mb-6">
                   <div>
-                    <h3 className="text-xl font-black text-slate-900 tracking-tight">Edit Profile</h3>
-                    <p className="text-sm font-medium text-slate-500">Update your name, email, or contact info.</p>
+                    <h3 className="text-xl font-black text-slate-900 tracking-tight">Update Profile</h3>
+                    <p className="text-sm font-medium text-slate-500">Change your name, email, or contact info.</p>
                   </div>
                 </div>
                 <UserProfileDetailsCard

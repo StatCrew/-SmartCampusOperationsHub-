@@ -3,8 +3,8 @@ import useAuth from '../../../../context/useAuth'
 
 function UserProfileDetailsCard({ loadingProfile, profile, onReloadProfile }) {
   const { updateMyProfile, completeEmailChange, getApiErrorMessage } = useAuth()
-  const [fullName, setFullName] = useState(profile.fullName)
-  const [email, setEmail] = useState(profile.email)
+  const [fullName, setFullName] = useState(profile?.fullName || '')
+  const [email, setEmail] = useState(profile?.email || '')
   const [otp, setOtp] = useState('')
   const [pendingEmail, setPendingEmail] = useState('')
   const [emailVerificationRequired, setEmailVerificationRequired] = useState(false)
@@ -13,9 +13,9 @@ function UserProfileDetailsCard({ loadingProfile, profile, onReloadProfile }) {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    setFullName(profile.fullName || '')
-    setEmail(profile.email || '')
-  }, [profile.fullName, profile.email])
+    setFullName(profile?.fullName || '')
+    setEmail(profile?.email || '')
+  }, [profile?.fullName, profile?.email])
 
   const emailChanged = useMemo(
     () => email.trim().toLowerCase() !== (profile.email || '').trim().toLowerCase(),
@@ -30,7 +30,7 @@ function UserProfileDetailsCard({ loadingProfile, profile, onReloadProfile }) {
 
     try {
       const response = await updateMyProfile({
-        fullName,
+          fullName,
         email: emailChanged ? email : '',
       })
 
@@ -82,7 +82,7 @@ function UserProfileDetailsCard({ loadingProfile, profile, onReloadProfile }) {
   return (
     <section className="rounded-2xl bg-white p-6 shadow-sm lg:col-span-2">
       <div className="mb-6 flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-slate-900">Profile Details</h3>
+        <h3 className="text-lg font-semibold text-slate-900">Update Profile</h3>
         <button
           type="button"
           onClick={onReloadProfile}
@@ -126,13 +126,13 @@ function UserProfileDetailsCard({ loadingProfile, profile, onReloadProfile }) {
               <div>
                 <p className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-500">Role</p>
                 <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900">
-                  {profile.role}
+                  {profile?.role || 'USER'}
                 </div>
               </div>
               <div>
                 <p className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-500">Account Source</p>
                 <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900">
-                  {profile.provider}
+                  {profile?.provider || 'Local'}
                 </div>
               </div>
             </div>
@@ -142,13 +142,13 @@ function UserProfileDetailsCard({ loadingProfile, profile, onReloadProfile }) {
               disabled={loading}
               className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {loading ? 'Saving...' : 'Save Changes'}
+              {loading ? 'Saving...' : 'Update Profile'}
             </button>
           </form>
 
           {emailVerificationRequired ? (
             <form className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4" onSubmit={handleVerifyEmailChange}>
-              <p className="text-sm font-semibold text-amber-900">Verify your new email</p>
+              <p className="text-sm font-semibold text-amber-900">Confirm your new email</p>
               <p className="mt-1 text-xs text-amber-800">
                 Enter the 6-digit code sent to <span className="font-semibold">{pendingEmail || email}</span>.
               </p>
@@ -167,7 +167,7 @@ function UserProfileDetailsCard({ loadingProfile, profile, onReloadProfile }) {
                   disabled={loading || otp.length !== 6}
                   className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {loading ? 'Verifying...' : 'Verify Email'}
+                  {loading ? 'Verifying...' : 'Confirm Email'}
                 </button>
               </div>
             </form>
@@ -175,7 +175,7 @@ function UserProfileDetailsCard({ loadingProfile, profile, onReloadProfile }) {
         </>
       )}
 
-      <p className="mt-6 text-xs text-slate-500">Profile details are loaded from `GET /api/v1/auth/me`.</p>
+      <p className="mt-6 text-xs text-slate-500">Profile data comes from `GET /api/v1/auth/me`.</p>
     </section>
   )
 }

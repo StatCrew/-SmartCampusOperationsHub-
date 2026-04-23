@@ -49,7 +49,7 @@ function UserTicketsPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const { role, logout, getApiErrorMessage, user } = useAuth()
-  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false)
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true)
   const [tickets, setTickets] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState('')
@@ -251,7 +251,7 @@ function UserTicketsPage() {
       />
 
       <div className={`min-h-screen transition-all duration-300 ${isSidebarExpanded ? 'md:pl-64' : 'md:pl-20'}`}>
-        <UserDashboardHeader eyebrow={headerLabels.eyebrow} title={headerLabels.title} />
+        <UserDashboardHeader eyebrow={headerLabels.eyebrow} title="Tickets" />
 
         <main className="mx-auto w-full max-w-7xl p-4 pb-24 md:p-8">
           {errorMessage ? (
@@ -263,9 +263,9 @@ function UserTicketsPage() {
           <section className="mb-6 rounded-3xl bg-white p-8 shadow-sm border border-slate-100">
             <div className="flex flex-wrap items-start justify-between gap-6">
               <div className="max-w-2xl">
-                <h2 className="text-3xl font-black text-slate-900 tracking-tight">Personal Assistance</h2>
+                <h2 className="text-3xl font-black text-slate-900 tracking-tight">My Tickets</h2>
                 <p className="mt-3 text-sm font-semibold text-slate-500 leading-relaxed">
-                  Track your service requests, communicate with campus staff, and monitor the progress of your incident reports in real-time.
+                  View your tickets, send messages, and check progress in one place.
                 </p>
                 <button
                   type="button"
@@ -280,10 +280,10 @@ function UserTicketsPage() {
 
           <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {[
-              { label: 'Total Requests', val: stats.total, color: 'text-slate-900', icon: 'history' },
-              { label: 'Pending Review', val: stats.open, color: 'text-amber-600', icon: 'pending' },
-              { label: 'Under Repair', val: stats.progress, color: 'text-indigo-600', icon: 'handyman' },
-              { label: 'Resolved', val: stats.resolved, color: 'text-emerald-600', icon: 'verified' },
+              { label: 'Total', val: stats.total, color: 'text-slate-900', icon: 'history' },
+              { label: 'Open', val: stats.open, color: 'text-amber-600', icon: 'pending' },
+              { label: 'Working', val: stats.progress, color: 'text-indigo-600', icon: 'handyman' },
+              { label: 'Done', val: stats.resolved, color: 'text-emerald-600', icon: 'verified' },
             ].map((s) => (
               <div key={s.label} className="rounded-2xl bg-white p-6 shadow-sm border border-slate-100 transition-all hover:shadow-md">
                 <div className="flex items-center justify-between mb-4">
@@ -302,7 +302,7 @@ function UserTicketsPage() {
                 <input
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Search your tickets..."
+                  placeholder="Search tickets..."
                   className="w-full bg-transparent text-sm font-bold text-slate-700 outline-none placeholder:text-slate-300"
                 />
               </div>
@@ -318,7 +318,7 @@ function UserTicketsPage() {
                         : 'bg-white text-slate-500 border border-slate-100 hover:bg-slate-50'
                       }`}
                   >
-                    {status === 'ALL' ? 'Everything' : status.replace('_', ' ')}
+                    {status === 'ALL' ? 'All Tickets' : status.replace('_', ' ')}
                   </button>
                 ))}
               </div>
@@ -327,12 +327,12 @@ function UserTicketsPage() {
             {isLoading ? (
               <div className="py-24 text-center">
                 <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-indigo-600" />
-                <p className="mt-4 text-sm font-black uppercase tracking-widest text-slate-400">Fetching your records...</p>
+                <p className="mt-4 text-sm font-black uppercase tracking-widest text-slate-400">Loading tickets...</p>
               </div>
             ) : filteredTickets.length === 0 ? (
               <div className="rounded-3xl border-2 border-dashed border-slate-200 bg-slate-50 p-12 text-center">
                 <span className="material-symbols-outlined text-slate-300 text-6xl">receipt_long</span>
-                <p className="mt-4 text-sm font-black uppercase tracking-widest text-slate-400">No tickets found in this view.</p>
+                <p className="mt-4 text-sm font-black uppercase tracking-widest text-slate-400">No tickets found.</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -349,18 +349,18 @@ function UserTicketsPage() {
                     <h4 className="text-xl font-black text-slate-900 tracking-tight line-clamp-1 mb-2 group-hover:text-indigo-600 transition-colors">
                       {ticket.title || `Ticket #${ticket.id}`}
                     </h4>
-                    <p className="text-xs font-semibold text-slate-500 line-clamp-2 mb-6 min-h-[32px]">
-                      {ticket.description || 'No additional details.'}
+                      <p className="text-xs font-semibold text-slate-500 line-clamp-2 mb-6 min-h-[32px]">
+                        {ticket.description || 'No details provided.'}
                     </p>
 
                     <div className="mt-auto space-y-4">
                       <div className="grid grid-cols-2 gap-4 border-t border-slate-50 pt-4">
                         <div>
-                          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Category</p>
+                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Category</p>
                           <p className="text-[11px] font-bold text-slate-700">{ticket.category || 'General'}</p>
                         </div>
                         <div>
-                          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Created</p>
+                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Created</p>
                           <p className="text-[11px] font-bold text-slate-700">{formatDateTime(ticket.createdAt).split(',')[0]}</p>
                         </div>
                       </div>
@@ -370,7 +370,7 @@ function UserTicketsPage() {
                         disabled={processingId === ticket.id}
                         className="w-full rounded-xl bg-slate-50 py-3 text-[10px] font-black uppercase tracking-widest text-slate-600 transition-all hover:bg-slate-900 hover:text-white"
                       >
-                        View Details
+                        Open
                       </button>
                     </div>
                   </div>
