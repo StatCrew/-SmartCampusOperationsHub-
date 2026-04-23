@@ -9,7 +9,7 @@ function UserOverviewPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const { role, user, logout } = useAuth()
-  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false)
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true)
 
   const handleLogout = () => {
     logout()

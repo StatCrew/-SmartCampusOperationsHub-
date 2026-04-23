@@ -143,7 +143,7 @@ export default function AdminBookingAnalyticsPage() {
   const location = useLocation()
   const { role, logout, getApiErrorMessage } = useAuth()
 
-  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false)
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true)
   const [analytics,    setAnalytics]    = useState(null)
   const [bookings,     setBookings]     = useState([])
   const [loading,      setLoading]      = useState(true)

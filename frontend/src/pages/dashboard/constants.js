@@ -1,44 +1,30 @@
 export const roleSidebarItems = {
   USER: [
     { icon: 'dashboard', label: 'Dashboard', path: '/dashboard/user' },
-    // ADDED: Student Bookings Page
-    { icon: 'book_online', label: 'My Bookings', path: '/dashboard/user/bookings' },
-    //resource 
+    { icon: 'book_online', label: 'Bookings', path: '/dashboard/user/bookings' },
     { icon: 'inventory_2', label: 'Resources', path: '/dashboard/user/resources' },
-    //Ticketing system
-    { icon: 'confirmation_number', label: 'My Tickets', path: '/dashboard/user/tickets' },
-
+    { icon: 'confirmation_number', label: 'Tickets', path: '/dashboard/user/tickets' },
   ],
   ADMIN: [
     { icon: 'dashboard', label: 'Dashboard', path: '/admin/dashboard' },
-    { icon: 'group', label: 'Users', path: '/admin/users' },
-    // ADDED: Admin Analytics & Booking Requests
-
-    { icon: 'list_alt', label: 'Booking Requests', path: '/admin/bookings' },
-    //{ icon: 'analytics', label: 'Booking Analytics', path: '/admin/analytics' },
-    { icon: 'bar_chart', label: 'Resource Analytics', path: '/admin/resource-analytics' },
-    // { icon: 'cloud_upload', label: 'Storage Test', path: '/admin/storage-test' },
+    { icon: 'group', label: 'People', path: '/admin/users' },
+    { icon: 'list_alt', label: 'Bookings', path: '/admin/bookings' },
+    { icon: 'bar_chart', label: 'Reports', path: '/admin/resource-analytics' },
     { icon: 'inventory_2', label: 'Resources', path: '/admin/resources' },
-    
-    { label: 'QR Scanner', icon: 'qr_code_scanner', path: '/dashboard/admin/scanner' },
-
-    // Admin Ticketing system
-    { icon: 'confirmation_number', label: 'Manage Tickets', path: '/admin/tickets' },
-
+    { label: 'Scan', icon: 'qr_code_scanner', path: '/dashboard/admin/scanner' },
+    { icon: 'confirmation_number', label: 'Tickets', path: '/admin/tickets' },
   ],
   TECHNICIAN: [
     { icon: 'dashboard', label: 'Dashboard', path: '/dashboard/technician' },
-    { icon: 'inventory_2', label: 'Resources', path: '/dashboard/user/resources' }, // ← ADD
-
-    // Technician Ticketing system
-    { icon: 'build', label: 'Assigned Tickets', path: '/dashboard/technician/tickets' },
+    { icon: 'inventory_2', label: 'Resources', path: '/dashboard/user/resources' },
+    { icon: 'build', label: 'Tickets', path: '/dashboard/technician/tickets' },
   ],
 }
 
 export const roleHeaderLabels = {
-  USER: { eyebrow: 'Student Dashboard', title: 'My Account' },
-  ADMIN: { eyebrow: 'Admin Dashboard', title: 'Admin Dashboard' },
-  TECHNICIAN: { eyebrow: 'Technician Dashboard', title: 'My Workspace' },
+  USER: { eyebrow: 'Student Dashboard', title: 'Dashboard' },
+  ADMIN: { eyebrow: 'Admin Dashboard', title: 'Dashboard' },
+  TECHNICIAN: { eyebrow: 'Technician Dashboard', title: 'Workspace' },
 }
 
 export function getSidebarItemsByRole(role) {

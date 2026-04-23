@@ -143,7 +143,7 @@ function TicketDetailsModal({
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
       <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={onClose} />
-      
+
       <div className="relative w-full max-w-6xl rounded-[2.5rem] bg-white p-8 lg:p-10 shadow-[0_32px_64px_-12px_rgba(0,0,0,0.14)] overflow-y-auto max-h-[92vh] no-scrollbar">
         {/* Header Section */}
         <div className="mb-8 flex items-start justify-between">
@@ -161,7 +161,7 @@ function TicketDetailsModal({
               </h3>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-3">
             {sla && ticket.status === 'OPEN' && (
               <div className={`flex items-center gap-2 rounded-2xl border px-4 py-2 text-xs font-bold ${sla.bg} ${sla.color} ${sla.border} animate-pulse shadow-sm`}>
@@ -182,7 +182,7 @@ function TicketDetailsModal({
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
           {/* Left Column: Information Cards */}
           <div className="lg:col-span-7 space-y-6">
-            
+
             {/* Request Context Card */}
             <InfoCard label="Request Description" icon="description">
               <div className="whitespace-pre-wrap leading-relaxed text-slate-600 font-semibold italic border-l-4 border-indigo-200 pl-4 py-1 mt-2">
@@ -232,7 +232,7 @@ function TicketDetailsModal({
                   <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{attachments.length} Files</span>
                 )}
               </div>
-              
+
               {attachments.length > 0 ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                   {attachments.map((attachment, index) => {
@@ -378,9 +378,8 @@ function TicketDetailsModal({
 
                     return (
                       <div key={comment.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} group/msg animate-in fade-in slide-in-from-bottom-2`}>
-                        <div className={`relative max-w-[85%] rounded-[1.5rem] p-4 shadow-sm transition-all duration-300 ${
-                          isMe ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-white text-slate-700 rounded-tl-none border border-slate-100'
-                        }`}>
+                        <div className={`relative max-w-[85%] rounded-[1.5rem] p-4 shadow-sm transition-all duration-300 ${isMe ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-white text-slate-700 rounded-tl-none border border-slate-100'
+                          }`}>
                           {isEditing ? (
                             <div className="space-y-3 min-w-[200px]">
                               <textarea
@@ -503,14 +502,14 @@ function AdminTicketsPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const { role, user, logout, getApiErrorMessage } = useAuth()
-  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false)
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true)
   const [tickets, setTickets] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('ALL')
-  const [priorityFilter, setPriorityFilter] = useState('ALL')
+  const [priorityFilter] = useState('ALL')
   const [technicians, setTechnicians] = useState([])
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [selectedTicket, setSelectedTicket] = useState(null)
@@ -530,7 +529,7 @@ function AdminTicketsPage() {
 
     try {
       const data = await getAdminTickets()
-      const sorted = Array.isArray(data) 
+      const sorted = Array.isArray(data)
         ? [...data].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
         : []
       setTickets(sorted)
@@ -685,7 +684,7 @@ function AdminTicketsPage() {
 
   const handleDeleteComment = async (commentId) => {
     if (!window.confirm('Delete this comment?') || !selectedTicket) return
-    
+
     setIsActionProcessing(true)
     try {
       await deleteTicketComment(selectedTicket.id, commentId)
@@ -699,7 +698,7 @@ function AdminTicketsPage() {
 
   const handleUpdateComment = async (commentId) => {
     if (!editingCommentText.trim() || !selectedTicket) return
-    
+
     setIsActionProcessing(true)
     try {
       await updateTicketComment(selectedTicket.id, commentId, editingCommentText.trim())
@@ -831,8 +830,8 @@ function AdminTicketsPage() {
                     type="button"
                     onClick={() => setStatusFilter(status)}
                     className={`rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${statusFilter === status
-                        ? 'bg-slate-900 text-white shadow-lg'
-                        : 'bg-white text-slate-500 border border-slate-100 hover:bg-slate-50'
+                      ? 'bg-slate-900 text-white shadow-lg'
+                      : 'bg-white text-slate-500 border border-slate-100 hover:bg-slate-50'
                       }`}
                   >
                     {status === 'ALL' ? 'All Status' : status.replace('_', ' ')}

@@ -135,7 +135,7 @@ function TechnicianTicketDetailsModal({
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
       <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={onClose} />
-      
+
       <div className="relative w-full max-w-6xl rounded-[2.5rem] bg-white p-8 lg:p-10 shadow-[0_32px_64px_-12px_rgba(0,0,0,0.14)] overflow-y-auto max-h-[92vh] no-scrollbar">
         {/* Header Section */}
         <div className="mb-8 flex items-start justify-between">
@@ -153,7 +153,7 @@ function TechnicianTicketDetailsModal({
               </h3>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-3">
             {sla && ticket.status === 'IN_PROGRESS' && (
               <div className={`flex items-center gap-2 rounded-2xl border px-4 py-2 text-xs font-bold ${sla.bg} ${sla.color} ${sla.border} animate-pulse shadow-sm`}>
@@ -174,7 +174,7 @@ function TechnicianTicketDetailsModal({
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
           {/* Left Column: Information Cards */}
           <div className="lg:col-span-7 space-y-6">
-            
+
             {/* Request Context Card */}
             <InfoCard label="Issue Investigation" icon="find_in_page">
               <div className="whitespace-pre-wrap leading-relaxed text-slate-600 font-semibold italic border-l-4 border-indigo-200 pl-4 py-1 mt-2">
@@ -224,7 +224,7 @@ function TechnicianTicketDetailsModal({
                   <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{attachments.length} Files</span>
                 )}
               </div>
-              
+
               {attachments.length > 0 ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                   {attachments.map((attachment, index) => {
@@ -337,9 +337,8 @@ function TechnicianTicketDetailsModal({
 
                     return (
                       <div key={comment.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} group/msg animate-in fade-in slide-in-from-bottom-2`}>
-                        <div className={`relative max-w-[85%] rounded-[1.5rem] p-4 shadow-sm transition-all duration-300 ${
-                          isMe ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-white text-slate-700 rounded-tl-none border border-slate-100'
-                        }`}>
+                        <div className={`relative max-w-[85%] rounded-[1.5rem] p-4 shadow-sm transition-all duration-300 ${isMe ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-white text-slate-700 rounded-tl-none border border-slate-100'
+                          }`}>
                           {isEditing ? (
                             <div className="space-y-3 min-w-[200px]">
                               <textarea
@@ -388,7 +387,7 @@ function TechnicianTicketDetailsModal({
                         </div>
                         {!isMe && (
                           <span className="mt-1.5 ml-3 text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">
-                             Reported User
+                            Reported User
                           </span>
                         )}
                       </div>
@@ -462,7 +461,7 @@ function TechnicianTicketsPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const { role, user, logout, syncProfile, getApiErrorMessage } = useAuth()
-  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false)
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true)
   const [profile, setProfile] = useState(user)
   const [loadingProfile, setLoadingProfile] = useState(true)
   const [profileError, setProfileError] = useState('')
@@ -521,7 +520,7 @@ function TechnicianTicketsPage() {
 
     try {
       const data = await getTechnicianTickets()
-      const sorted = Array.isArray(data) 
+      const sorted = Array.isArray(data)
         ? [...data].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
         : []
       setTickets(sorted)
@@ -615,7 +614,7 @@ function TechnicianTicketsPage() {
 
   const handleDeleteComment = async (commentId) => {
     if (!window.confirm('Delete this comment?') || !selectedTicket) return
-    
+
     setIsActionProcessing(true)
     try {
       await deleteTicketComment(selectedTicket.id, commentId)
@@ -629,7 +628,7 @@ function TechnicianTicketsPage() {
 
   const handleUpdateComment = async (commentId) => {
     if (!editingCommentText.trim() || !selectedTicket) return
-    
+
     setIsActionProcessing(true)
     try {
       await updateTicketComment(selectedTicket.id, commentId, editingCommentText.trim())
@@ -679,7 +678,7 @@ function TechnicianTicketsPage() {
       />
 
       <div className={`min-h-screen transition-all duration-300 ${isSidebarExpanded ? 'md:pl-64' : 'md:pl-20'}`}>
-        <UserDashboardHeader eyebrow={headerLabels.eyebrow} title="Assigned Tickets" />
+        <UserDashboardHeader eyebrow={headerLabels.eyebrow} title="Tickets" />
 
         <main className="mx-auto w-full max-w-7xl p-4 pb-24 md:p-8">
           {profileError ? (
@@ -694,25 +693,25 @@ function TechnicianTicketsPage() {
           ) : null}
 
           <section className="mb-6 rounded-3xl bg-white p-8 shadow-sm border border-slate-100">
-            <h2 className="text-3xl font-black text-slate-900 tracking-tight">
-              Hello, {loadingProfile ? 'Technician' : profile?.fullName || 'Technician'}!
-            </h2>
-            <p className="mt-3 text-sm font-semibold text-slate-500 leading-relaxed max-w-2xl">
-              Manage your active service queue, provide technical updates, and document resolution reports for campus incidents.
+              <h2 className="text-3xl font-black text-slate-900 tracking-tight">
+               Welcome, {loadingProfile ? 'Technician' : profile?.fullName || 'Technician'}!
+             </h2>
+             <p className="mt-3 text-sm font-semibold text-slate-500 leading-relaxed max-w-2xl">
+               Review assigned tickets, add updates, and close completed work.
             </p>
           </section>
 
           <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {[
-              { label: 'Assigned', val: stats.total, color: 'text-slate-900', icon: 'assignment' },
-              { label: 'Awaiting Response', val: stats.open, color: 'text-amber-600', icon: 'pending' },
-              { label: 'In Progress', val: stats.progress, color: 'text-indigo-600', icon: 'handyman' },
-              { label: 'Completed', val: stats.resolved, color: 'text-emerald-600', icon: 'task_alt' },
+              { label: 'Total', val: stats.total, color: 'text-slate-900', icon: 'assignment' },
+              { label: 'Open', val: stats.open, color: 'text-amber-600', icon: 'pending' },
+              { label: 'Working', val: stats.progress, color: 'text-indigo-600', icon: 'handyman' },
+              { label: 'Done', val: stats.resolved, color: 'text-emerald-600', icon: 'task_alt' },
             ].map((s) => (
               <div key={s.label} className="rounded-2xl bg-white p-6 shadow-sm border border-slate-100 transition-all hover:shadow-md">
                 <div className="flex items-center justify-between mb-4">
-                   <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{s.label}</p>
-                   <span className={`material-symbols-outlined ${s.color} opacity-40`}>{s.icon}</span>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{s.label}</p>
+                  <span className={`material-symbols-outlined ${s.color} opacity-40`}>{s.icon}</span>
                 </div>
                 <h3 className={`text-4xl font-black ${s.color}`}>{isLoading ? '—' : s.val}</h3>
               </div>
@@ -721,26 +720,26 @@ function TechnicianTicketsPage() {
 
           <section className="mt-8">
             <div className="mb-6 flex items-center justify-between">
-              <h3 className="text-xl font-black text-slate-900 tracking-tight">Active Work Queue</h3>
+              <h3 className="text-xl font-black text-slate-900 tracking-tight">Assigned Tickets</h3>
             </div>
 
             {isLoading ? (
-               <div className="py-24 text-center">
-                 <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-indigo-600" />
-                 <p className="mt-4 text-sm font-black uppercase tracking-widest text-slate-400">Syncing with task server...</p>
-               </div>
+              <div className="py-24 text-center">
+                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-indigo-600" />
+                <p className="mt-4 text-sm font-black uppercase tracking-widest text-slate-400">Loading tickets...</p>
+              </div>
             ) : tickets.length === 0 ? (
-               <div className="rounded-3xl border-2 border-dashed border-slate-200 bg-slate-50 p-12 text-center">
-                 <span className="material-symbols-outlined text-slate-300 text-6xl">upcoming</span>
-                 <p className="mt-4 text-sm font-black uppercase tracking-widest text-slate-400">Your queue is currently empty.</p>
-               </div>
+              <div className="rounded-3xl border-2 border-dashed border-slate-200 bg-slate-50 p-12 text-center">
+                <span className="material-symbols-outlined text-slate-300 text-6xl">upcoming</span>
+                <p className="mt-4 text-sm font-black uppercase tracking-widest text-slate-400">No tickets assigned.</p>
+              </div>
             ) : (
-               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                 {tickets.map((ticket) => {
-                   const sla = getSLADisplay(ticket.dueDate)
-                   return (
-                    <div 
-                      key={ticket.id} 
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {tickets.map((ticket) => {
+                  const sla = getSLADisplay(ticket.dueDate)
+                  return (
+                    <div
+                      key={ticket.id}
                       className="group relative flex flex-col rounded-[2rem] bg-white p-6 shadow-sm border border-slate-100 transition-all duration-500 hover:shadow-xl hover:border-indigo-100 hover:-translate-y-1"
                     >
                       <div className="mb-4 flex items-center justify-between">
@@ -757,23 +756,22 @@ function TechnicianTicketsPage() {
 
                       <div className="mt-auto space-y-4">
                         <div className="grid grid-cols-2 gap-4 border-t border-slate-50 pt-4">
-                           <div>
-                              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Reporter</p>
-                              <p className="text-[11px] font-bold text-slate-700 truncate">{ticket.userEmail || ticket.userId || 'Anonymous'}</p>
-                           </div>
-                           <div>
-                              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Priority</p>
-                              <p className={`text-[11px] font-black uppercase tracking-widest ${
-                                 ticket.priority === 'URGENT' || ticket.priority === 'HIGH' ? 'text-red-600' : 'text-slate-700'
+                          <div>
+                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Reporter</p>
+                            <p className="text-[11px] font-bold text-slate-700 truncate">{ticket.userEmail || ticket.userId || 'Anonymous'}</p>
+                          </div>
+                          <div>
+                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Priority</p>
+                            <p className={`text-[11px] font-black uppercase tracking-widest ${ticket.priority === 'URGENT' || ticket.priority === 'HIGH' ? 'text-red-600' : 'text-slate-700'
                               }`}>{ticket.priority || 'MEDIUM'}</p>
-                           </div>
+                          </div>
                         </div>
 
                         {sla && ticket.status === 'IN_PROGRESS' && (
-                           <div className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-[10px] font-black uppercase tracking-widest ${sla.bg} ${sla.color} ${sla.border}`}>
-                              <span className="material-symbols-outlined text-[16px]">{sla.icon}</span>
-                              {sla.text}
-                           </div>
+                          <div className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-[10px] font-black uppercase tracking-widest ${sla.bg} ${sla.color} ${sla.border}`}>
+                            <span className="material-symbols-outlined text-[16px]">{sla.icon}</span>
+                            {sla.text}
+                          </div>
                         )}
 
                         <button
@@ -781,13 +779,13 @@ function TechnicianTicketsPage() {
                           disabled={processingId === ticket.id}
                           className="w-full rounded-xl bg-slate-900 py-3.5 text-[10px] font-black uppercase tracking-widest text-white transition-all hover:bg-indigo-600 hover:shadow-[0_12px_24px_-8px_rgba(79,70,229,0.4)]"
                         >
-                          View Investigation
+                          Open
                         </button>
                       </div>
                     </div>
-                   )
-                 })}
-               </div>
+                  )
+                })}
+              </div>
             )}
           </section>
         </main>

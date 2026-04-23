@@ -12,6 +12,7 @@ import {
   uploadResourceImage,
   formatResourceType,
 } from '../../../api/resourceApi'
+import { sendAdminRoleBroadcast } from '../../../api/adminApi'
 import useAuth from '../../../context/useAuth'
 import useToast from '../../../context/useToast'
 import { getHeaderLabelsByRole, getSidebarItemsByRole } from '../constants'
@@ -125,6 +126,19 @@ function ResourceModal({ initialData, onClose, onSaved, getApiErrorMessage }) {
 
       if (imageFile) {
         saved = await uploadResourceImage(saved.id, imageFile)
+      }
+
+      // Broadcast to Admins about new resource
+      if (!isEditing) {
+        try {
+          await sendAdminRoleBroadcast({
+            targetRole: 'ADMIN',
+            title: 'New Resource Added',
+            message: `Resource "${saved.name}" has been added to the campus inventory at ${saved.location}.`,
+            actionUrl: '/admin/resource-analytics',
+            category: 'SYSTEM'
+          });
+        } catch (notiErr) { console.error('Broadcast failed:', notiErr); }
       }
 
       onSaved(saved, isEditing)
@@ -445,6 +459,85 @@ function ScheduleModal({ resource, onClose, getApiErrorMessage, showSuccess, sho
   )
 }
 
+// ─── Resource type icon map ───────────────────────────────────────────────────
+const TYPE_ICON = {
+  LECTURE_HALL: 'school',
+  LAB: 'science',
+  MEETING_ROOM: 'groups',
+  SPORTS_FACILITY: 'sports_soccer',
+  STUDY_ROOM: 'menu_book',
+}
+function resourceIcon(type) { return TYPE_ICON[type] || 'inventory_2' }
+
+// ─── Admin Resource card ──────────────────────────────────────────────────────
+function AdminResourceCard({ resource, onEdit, onDelete, onSchedule, deletingId }) {
+  const isUnavailable = resource.status === 'OUT_OF_SERVICE'
+  const isDeleting = deletingId === resource.id
+  return (
+    <div className="group flex flex-col rounded-2xl bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden">
+      {/* Image */}
+      <div className="relative h-40 bg-slate-100 flex-shrink-0">
+        {resource.imageUrl ? (
+          <img src={resource.imageUrl} alt={resource.name} className="h-full w-full object-cover" />
+        ) : (
+          <div className="h-full w-full flex items-center justify-center">
+            <span className="material-symbols-outlined text-5xl text-slate-300">{resourceIcon(resource.type)}</span>
+          </div>
+        )}
+        <span className={`absolute top-3 right-3 rounded-full px-2.5 py-0.5 text-xs font-bold shadow-sm ${
+          isUnavailable ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-700'
+        }`}>
+          {isUnavailable ? 'Out of Service' : 'Active'}
+        </span>
+      </div>
+
+      {/* Body */}
+      <div className="flex flex-1 flex-col p-5">
+        <div className="mb-3">
+          <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-1">{formatResourceType(resource.type)}</p>
+          <h3 className="text-base font-bold text-slate-900 leading-snug">{resource.name}</h3>
+        </div>
+        <div className="space-y-2 flex-1">
+          <div className="flex items-center gap-2 text-xs text-slate-500">
+            <span className="material-symbols-outlined text-base text-slate-400">location_on</span>
+            {resource.location}
+          </div>
+          <div className="flex items-center gap-2 text-xs text-slate-500">
+            <span className="material-symbols-outlined text-base text-slate-400">group</span>
+            Capacity: {resource.capacity}
+          </div>
+        </div>
+
+        {/* Admin actions */}
+        <div className="mt-4 grid grid-cols-3 gap-2">
+          <button
+            type="button"
+            onClick={() => onSchedule(resource)}
+            className="col-span-1 rounded-xl border border-indigo-200 bg-indigo-50 px-2 py-2 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-100"
+          >
+            Schedule
+          </button>
+          <button
+            type="button"
+            onClick={() => onEdit(resource)}
+            className="col-span-1 rounded-xl border border-slate-200 px-2 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
+          >
+            Edit
+          </button>
+          <button
+            type="button"
+            onClick={() => onDelete(resource.id)}
+            disabled={isDeleting}
+            className="col-span-1 rounded-xl border border-red-200 px-2 py-2 text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isDeleting ? '...' : 'Delete'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 function AdminResourcesPage() {
   const navigate  = useNavigate()
@@ -452,7 +545,7 @@ function AdminResourcesPage() {
   const { role, logout, getApiErrorMessage } = useAuth()
   const { showSuccess, showError }           = useToast()
 
-  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false)
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true) // expanded by default
   const [resources, setResources]                 = useState([])
   const [loading, setLoading]                     = useState(true)
   const [errorMessage, setErrorMessage]           = useState('')
@@ -581,47 +674,77 @@ function AdminResourcesPage() {
         <UserDashboardHeader
           onLogout={handleLogout}
           eyebrow={headerLabels.eyebrow}
-          title="Resource Catalogue"
+          title="Resources"
         />
 
-        <main className="mx-auto w-full max-w-6xl p-4 pb-24 md:p-8">
+        <main className="mx-auto w-full max-w-7xl p-4 pb-24 md:p-8">
           {errorMessage ? (
             <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
               {errorMessage}
             </div>
           ) : null}
 
-          {/* Header row */}
-          <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="text-xl font-bold text-slate-900">All Resources</h2>
-              <p className="text-sm text-slate-500">
-                {loading ? 'Loading...' : `${filtered.length} resource${filtered.length !== 1 ? 's' : ''} found`}
-              </p>
+          {/* Hero */}
+          <section className="mb-8 rounded-3xl bg-gradient-to-br from-indigo-900 to-slate-900 p-8 text-white shadow-xl">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div>
+                <h2 className="text-3xl font-black tracking-tight">Manage Resources</h2>
+                <p className="mt-2 text-indigo-100/70 font-medium">
+                  {loading ? 'Loading...' : `${resources.length} resource${resources.length !== 1 ? 's' : ''} in the campus inventory`}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleOpenCreate}
+                className="flex items-center gap-2 rounded-2xl bg-white text-indigo-950 px-5 py-2.5 text-sm font-bold shadow-lg hover:bg-indigo-50 transition"
+              >
+                <span className="material-symbols-outlined text-base">add</span>
+                Add Resource
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={handleOpenCreate}
-              className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700"
-            >
-              <span className="material-symbols-outlined text-base">add</span>
-              Add Resource
-            </button>
-          </div>
+          </section>
 
-          {/* Filters */}
-          <div className="mb-4 flex flex-wrap gap-3">
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by name or location..."
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 sm:w-64"
-            />
+          {/* Summary chips */}
+          {!loading && resources.length > 0 ? (
+            <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
+              {RESOURCE_TYPES.map((type) => {
+                const count = resources.filter((r) => r.type === type).length
+                return (
+                  <div
+                    key={type}
+                    onClick={() => setFilterType(filterType === type ? '' : type)}
+                    className={`cursor-pointer rounded-2xl p-4 border transition-all ${
+                      filterType === type
+                        ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-200'
+                        : 'bg-white border-slate-100 shadow-sm hover:shadow-md'
+                    }`}
+                  >
+                    <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${filterType === type ? 'text-indigo-200' : 'text-slate-400'}`}>
+                      {formatResourceType(type)}
+                    </p>
+                    <p className={`text-2xl font-black ${filterType === type ? 'text-white' : 'text-slate-900'}`}>{count}</p>
+                  </div>
+                )
+              })}
+            </div>
+          ) : null}
+
+          {/* Filters row */}
+          <div className="mb-6 flex flex-wrap gap-3 items-center">
+            <div className="relative">
+              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-base">search</span>
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search resources..."
+                className="pl-9 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 sm:w-64"
+              />
+            </div>
             <select
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+              className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
             >
               <option value="">All Types</option>
               {RESOURCE_TYPES.map((t) => (
@@ -631,7 +754,7 @@ function AdminResourcesPage() {
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+              className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
             >
               <option value="">All Statuses</option>
               <option value="ACTIVE">Active</option>
@@ -641,115 +764,59 @@ function AdminResourcesPage() {
               <button
                 type="button"
                 onClick={() => { setSearch(''); setFilterType(''); setFilterStatus('') }}
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-600 transition hover:bg-slate-50"
+                className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-600 shadow-sm transition hover:bg-slate-50"
               >
+                <span className="material-symbols-outlined text-base">close</span>
                 Clear
               </button>
             ) : null}
+            <span className="ml-auto text-sm text-slate-500">
+              {loading ? 'Loading...' : `${filtered.length} result${filtered.length !== 1 ? 's' : ''}`}
+            </span>
           </div>
 
-          {/* Table */}
-          <section className="overflow-hidden rounded-2xl bg-white shadow-sm">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-slate-100 text-sm">
-                <thead>
-                  <tr className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    <th className="px-5 py-3 text-left">Image</th>
-                    <th className="px-5 py-3 text-left">Name</th>
-                    <th className="px-5 py-3 text-left">Type</th>
-                    <th className="px-5 py-3 text-left">Location</th>
-                    <th className="px-5 py-3 text-left">Capacity</th>
-                    <th className="px-5 py-3 text-left">Schedule</th>
-                    <th className="px-5 py-3 text-left">Status</th>
-                    <th className="px-5 py-3 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {loading ? (
-                    <tr>
-                      <td colSpan={8} className="py-12 text-center text-sm text-slate-400">
-                        Loading resources...
-                      </td>
-                    </tr>
-                  ) : filtered.length === 0 ? (
-                    <tr>
-                      <td colSpan={8} className="py-12 text-center text-sm text-slate-400">
-                        No resources found.
-                      </td>
-                    </tr>
-                  ) : (
-                    filtered.map((resource) => (
-                      <tr key={resource.id} className="transition hover:bg-slate-50">
-                        <td className="px-5 py-4">
-                          {resource.imageUrl ? (
-                            <img
-                              src={resource.imageUrl}
-                              alt={resource.name}
-                              className="h-10 w-10 rounded-lg object-cover border border-slate-200"
-                            />
-                          ) : (
-                            <div className="h-10 w-10 rounded-lg bg-slate-100 flex items-center justify-center">
-                              <span className="material-symbols-outlined text-base text-slate-400">image</span>
-                            </div>
-                          )}
-                        </td>
-                        <td className="px-5 py-4 font-medium text-slate-900">{resource.name}</td>
-                        <td className="px-5 py-4 text-slate-600">{formatResourceType(resource.type)}</td>
-                        <td className="px-5 py-4 text-slate-600">{resource.location}</td>
-                        <td className="px-5 py-4 text-slate-600">{resource.capacity}</td>
-                        <td className="px-5 py-4">
-                          <button
-                            type="button"
-                            onClick={() => setScheduleTarget(resource)}
-                            className="rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-100"
-                          >
-                            Edit Schedule
-                          </button>
-                        </td>
-                        <td className="px-5 py-4">
-                          <StatusBadge status={resource.status} />
-                        </td>
-                        <td className="px-5 py-4">
-                          <div className="flex justify-end gap-2">
-                            <button
-                              type="button"
-                              onClick={() => handleOpenEdit(resource)}
-                              className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
-                            >
-                              Edit
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDelete(resource.id)}
-                              disabled={deletingId === resource.id}
-                              className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
-                            >
-                              {deletingId === resource.id ? '...' : 'Delete'}
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </section>
-
-          {/* Summary cards */}
-          {!loading && resources.length > 0 ? (
-            <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
-              {RESOURCE_TYPES.map((type) => {
-                const count = resources.filter((r) => r.type === type).length
-                return (
-                  <div key={type} className="rounded-2xl bg-white p-4 shadow-sm">
-                    <p className="text-xs text-slate-500">{formatResourceType(type)}</p>
-                    <p className="mt-1 text-2xl font-bold text-slate-900">{count}</p>
+          {/* Card grid */}
+          {loading ? (
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {[...Array(8)].map((_, i) => (
+                <div key={i} className="rounded-2xl bg-white border border-slate-100 shadow-sm overflow-hidden animate-pulse">
+                  <div className="h-40 bg-slate-200" />
+                  <div className="p-5 space-y-3">
+                    <div className="h-3 w-20 bg-slate-200 rounded" />
+                    <div className="h-5 w-3/4 bg-slate-200 rounded" />
+                    <div className="h-3 w-1/2 bg-slate-200 rounded" />
                   </div>
-                )
-              })}
+                </div>
+              ))}
             </div>
-          ) : null}
+          ) : filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-24 text-center">
+              <span className="material-symbols-outlined text-5xl text-slate-300 mb-4">inventory_2</span>
+              <p className="text-lg font-bold text-slate-400">No resources found</p>
+              <p className="text-sm text-slate-400 mt-1">Try adjusting your filters or add a new resource</p>
+              <button
+                type="button"
+                onClick={handleOpenCreate}
+                className="mt-6 flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700"
+              >
+                <span className="material-symbols-outlined text-base">add</span>
+                Add Resource
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {filtered.map((resource) => (
+                <AdminResourceCard
+                  key={resource.id}
+                  resource={resource}
+                  onEdit={handleOpenEdit}
+                  onDelete={handleDelete}
+                  onSchedule={setScheduleTarget}
+                  deletingId={deletingId}
+                />
+              ))}
+            </div>
+          )}
         </main>
       </div>
     </div>
@@ -757,3 +824,6 @@ function AdminResourcesPage() {
 }
 
 export default AdminResourcesPage
+
+
+

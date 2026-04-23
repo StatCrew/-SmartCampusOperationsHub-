@@ -1,49 +1,60 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import apiClient from '../../../api/authService'
+import { getTechnicianTickets } from '../../../api/ticketApi'
 import useAuth from '../../../context/useAuth'
 import { getHeaderLabelsByRole, getSidebarItemsByRole } from '../constants'
 import UserDashboardHeader from '../user/components/UserDashboardHeader'
 import UserSidebar from '../user/components/UserSidebar'
+import ActivityFeed from '../../../components/ActivityFeed'
+import { useNotificationContext } from '../../../context/NotificationContext'
+import { Button } from '../../../components/ui/Button'
+import { Badge } from '../../../components/ui/Badge'
 
 function TechnicianDashboardPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const { role, user, logout, syncProfile, getApiErrorMessage } = useAuth()
-  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false)
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true)
   const [profile, setProfile] = useState(user)
   const [loadingProfile, setLoadingProfile] = useState(true)
   const [profileError, setProfileError] = useState('')
+  const [tickets, setTickets] = useState([])
+  const [loadingTickets, setLoadingTickets] = useState(true)
+
+  const { notifications } = useNotificationContext()
 
   useEffect(() => {
     let isMounted = true
 
-    const loadProfile = async () => {
+    const loadDashboardData = async () => {
       setLoadingProfile(true)
+      setLoadingTickets(true)
       setProfileError('')
 
       try {
-        const response = await apiClient.get('/api/v1/users/me')
-        if (!isMounted) {
-          return
-        }
+        const [profileRes, ticketsData] = await Promise.all([
+          apiClient.get('/api/v1/users/me').catch(err => { throw err }),
+          getTechnicianTickets({ page: 0, size: 100 }).catch(() => [])
+        ])
+        
+        if (!isMounted) return
 
-        setProfile(response.data)
-        syncProfile(response.data)
+        setProfile(profileRes.data)
+        syncProfile(profileRes.data)
+        setTickets(ticketsData || [])
       } catch (error) {
-        if (!isMounted) {
-          return
-        }
-
+        if (!isMounted) return
         setProfileError(getApiErrorMessage(error))
       } finally {
         if (isMounted) {
           setLoadingProfile(false)
+          setLoadingTickets(false)
         }
       }
     }
 
-    loadProfile()
+    loadDashboardData()
 
     return () => {
       isMounted = false
@@ -62,6 +73,17 @@ function TechnicianDashboardPage() {
 
   const headerLabels = getHeaderLabelsByRole(role)
 
+  const activities = useMemo(() => {
+    return notifications.map(n => ({
+      id: `notification-${n.id}`,
+      type: n.category === 'TICKET' ? 'TICKET' : n.category === 'BOOKING' ? 'BOOKING' : n.category === 'SYSTEM' ? 'SYSTEM' : 'GENERAL',
+      title: n.title,
+      subtitle: n.message,
+      date: n.createdAt,
+      status: n.read ? 'READ' : 'UNREAD'
+    })).slice(0, 10)
+  }, [notifications])
+
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900">
       <UserSidebar
@@ -77,45 +99,62 @@ function TechnicianDashboardPage() {
         <UserDashboardHeader
           onLogout={handleLogout}
           eyebrow={headerLabels.eyebrow}
-          title={headerLabels.title}
+          title="My Workspace"
         />
 
-        <main className="mx-auto w-full max-w-6xl p-4 pb-24 md:p-8">
-          {profileError ? (
-            <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {profileError}
-            </div>
-          ) : null}
-
-          <section className="rounded-2xl bg-white p-6 shadow-sm">
-            <h2 className="text-2xl font-bold text-slate-900">Hello, {profile?.fullName || 'Technician'}!</h2>
-            <p className="mt-2 text-sm text-slate-600">Your assigned tickets and maintenance requests will appear here.</p>
-
-            <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
-              <div className="rounded-xl bg-slate-50 p-4">
-                <p className="text-xs text-slate-500">Email</p>
-                <p className="mt-1 text-sm font-semibold text-slate-800">
-                  {loadingProfile ? 'Loading...' : profile?.email || '-'}
+        <main className="mx-auto w-full max-w-7xl p-4 pb-24 md:p-8">
+          <section className="mb-8 rounded-3xl bg-gradient-to-br from-slate-900 to-indigo-950 p-8 text-white shadow-xl">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+              <div>
+                <h2 className="text-3xl font-black tracking-tight">
+                  Hello, {profile?.fullName || 'Technician'}!
+                </h2>
+                <p className="mt-2 text-indigo-100/70 max-w-md font-medium">
+                  You have {tickets.filter(t => t.status !== 'RESOLVED' && t.status !== 'CLOSED').length} open tickets requiring your attention.
                 </p>
               </div>
-              <div className="rounded-xl bg-slate-50 p-4">
-                <p className="text-xs text-slate-500">Role</p>
-                <p className="mt-1 text-sm font-semibold text-slate-800">{loadingProfile ? 'Loading...' : profile?.role || role}</p>
-              </div>
-              <div className="rounded-xl bg-slate-50 p-4">
-                <p className="text-xs text-slate-500">Email Status</p>
-                <p className="mt-1 text-sm font-semibold text-slate-800">
-                  {loadingProfile ? 'Loading...' : profile?.emailVerified ? 'Verified' : 'Pending'}
-                </p>
+              <div className="flex gap-3">
+                <Button 
+                  onClick={() => navigate('/dashboard/technician/tickets')} 
+                  className="bg-indigo-500/20 text-white border border-indigo-400/30 hover:bg-indigo-500/40 shadow-lg shadow-indigo-500/10 backdrop-blur-sm"
+                >
+                  View Tickets
+                </Button>
               </div>
             </div>
+          </section>
 
-            <div className="mt-6 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-5">
-              <h3 className="text-base font-semibold text-slate-800">Assigned tickets coming soon</h3>
-              <p className="mt-1 text-sm text-slate-600">
-                This section will show active tasks, priorities, and progress tracking for technician work.
-              </p>
+          <section className="grid grid-cols-1 gap-6 md:grid-cols-4 mb-8">
+            <div className="rounded-[2rem] bg-white p-6 shadow-sm border border-slate-100 transition-all hover:shadow-md">
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Total Assigned</p>
+              <h3 className="text-3xl font-black text-slate-900">{loadingTickets ? '—' : tickets.length}</h3>
             </div>
+            <div className="rounded-[2rem] bg-white p-6 shadow-sm border border-slate-100 transition-all hover:shadow-md">
+              <p className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-2">Pending Action</p>
+              <h3 className="text-3xl font-black text-amber-600">
+                {loadingTickets ? '—' : tickets.filter(t => t.status !== 'RESOLVED' && t.status !== 'CLOSED').length}
+              </h3>
+            </div>
+            <div className="rounded-[2rem] bg-white p-6 shadow-sm border border-slate-100 transition-all hover:shadow-md">
+              <p className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-2">Account Status</p>
+              <h3 className="text-sm font-black text-emerald-600 uppercase tracking-widest mt-3">
+                {loadingProfile ? 'Checking...' : profile?.emailVerified ? 'Verified' : 'Pending'}
+              </h3>
+            </div>
+            <div className="rounded-[2rem] bg-white p-6 shadow-sm border border-slate-100 transition-all hover:shadow-md">
+              <p className="text-[10px] font-black uppercase tracking-widest text-indigo-500 mb-2">Access Level</p>
+              <h3 className="text-sm font-black text-indigo-600 uppercase tracking-widest mt-3">
+                {loadingProfile ? 'Loading...' : profile?.role || role}
+              </h3>
+            </div>
+          </section>
+
+          <section className="rounded-3xl bg-white p-8 shadow-sm border border-slate-100">
+            <ActivityFeed 
+              activities={activities} 
+              title="Activity Feed"
+              subtitle="Latest ticket updates and system alerts."
+            />
           </section>
         </main>
       </div>

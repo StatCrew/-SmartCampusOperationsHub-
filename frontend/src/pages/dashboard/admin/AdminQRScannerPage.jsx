@@ -12,7 +12,7 @@ export default function AdminQRScannerPage() {
   const location = useLocation()
   const { role, logout } = useAuth()
 
-  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false)
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true)
   const [scanResult, setScanResult] = useState(null)
   const [scanHistory, setScanHistory] = useState([])
 
