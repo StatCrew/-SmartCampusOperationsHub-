@@ -4,7 +4,7 @@ const API_BASE_URL = (
   import.meta.env.VITE_API_BASE_URL ||
   import.meta.env.VITE_BACKEND_API_URL ||
   (typeof window !== 'undefined' && window.location.hostname !== 'localhost' 
-    ? `${window.location.protocol}//${window.location.hostname}:8080` 
+    ? `${window.location.protocol}//${window.location.hostname}` 
     : 'http://localhost:8080')
 ).replace(/\/$/, '')
 const AUTH_PREFIX = import.meta.env.VITE_AUTH_PREFIX || '/api/v1/auth'
