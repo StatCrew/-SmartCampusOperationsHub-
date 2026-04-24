@@ -3,10 +3,11 @@ import axios from 'axios'
 const API_BASE_URL = (
   import.meta.env.VITE_API_BASE_URL ||
   import.meta.env.VITE_BACKEND_API_URL ||
-  (typeof window !== 'undefined'
-    ? `${window.location.protocol}//${window.location.hostname}`
-    : 'http://localhost:8080')
+  'https://smartcampushub.duckdns.org'
 ).replace(/\/$/, '')
+
+const AUTH_PREFIX = '/api/v1/auth'
+const GOOGLE_AUTH_PATH = '/oauth2/authorization/google'
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
