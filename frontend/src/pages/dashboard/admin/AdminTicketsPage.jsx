@@ -6,6 +6,7 @@ import useAuth from '../../../context/useAuth'
 import { getSidebarItemsByRole } from '../constants'
 import UserDashboardHeader from '../user/components/UserDashboardHeader'
 import UserSidebar from '../user/components/UserSidebar'
+import TicketAnalyticsModal from './components/TicketAnalyticsModal'
 
 const STATUS_META = {
   OPEN: { label: 'Open', bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', dot: 'bg-amber-500' },
@@ -19,6 +20,15 @@ function formatDateTime(value) {
   if (!value) return '-'
   try {
     return new Date(value).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })
+  } catch {
+    return String(value)
+  }
+}
+
+function formatTimeOnly(value) {
+  if (!value) return '-'
+  try {
+    return new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   } catch {
     return String(value)
   }
@@ -325,7 +335,7 @@ function TicketDetailsModal({
                     type="button"
                     onClick={() => onUpdateStatus(ticket, 'CLOSED')}
                     disabled={isActionProcessing}
-                    className="rounded-xl bg-emerald-600 px-8 py-3.5 text-[11px] font-black text-white uppercase tracking-widest transition-all duration-300 hover:bg-emerald-500 hover:scale-105 active:scale-95 disabled:opacity-40"
+                    className="rounded-xl bg-red-600 px-8 py-3.5 text-[11px] font-black text-white uppercase tracking-widest transition-all duration-300 hover:bg-red-500 hover:scale-105 active:scale-95 disabled:opacity-40"
                   >
                     Close Ticket
                   </button>
@@ -399,7 +409,7 @@ function TicketDetailsModal({
                               <p className="text-sm font-bold leading-relaxed pr-6">{comment.message}</p>
                               <div className={`flex items-center gap-2 mt-2 opacity-50 ${isMe ? 'justify-end' : 'justify-start'}`}>
                                 <span className="text-[9px] font-black tracking-widest uppercase">
-                                  {formatDateTime(comment.createdAt).split(',')[1]?.trim() || formatDateTime(comment.createdAt)}
+                                  {formatTimeOnly(comment.createdAt)}
                                 </span>
                                 {isMe && <span className="material-symbols-outlined text-[14px]">done_all</span>}
                               </div>
@@ -428,7 +438,7 @@ function TicketDetailsModal({
                         </div>
                         {!isMe && (
                           <span className="mt-1.5 ml-3 text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">
-                            {comment.createdBy || 'Staff Support'}
+                            {comment.userName || comment.createdBy || 'Staff Support'}
                           </span>
                         )}
                       </div>
@@ -558,6 +568,7 @@ function AdminTicketsPage() {
   const [rejectionReason, setRejectionReason] = useState('')
   const [editingCommentId, setEditingCommentId] = useState(null)
   const [editingCommentText, setEditingCommentText] = useState('')
+  const [analyticsOpen, setAnalyticsOpen] = useState(false)
 
   const loadTickets = useCallback(async () => {
     setIsLoading(true)
@@ -818,14 +829,21 @@ function AdminTicketsPage() {
                   Oversee all campus incidents, coordinate technician workflows, and maintain service level agreements across all departments.
                 </p>
               </div>
-              <div className="flex gap-4">
+              <div className="flex flex-col items-end gap-6 self-stretch justify-between">
                 <div className="text-right">
                   <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">System Status</p>
-                  <div className="mt-1 flex items-center gap-2 text-emerald-600 font-bold">
+                  <div className="mt-1 flex items-center gap-2 text-emerald-600 font-bold text-xs">
                     <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                     Operational
                   </div>
                 </div>
+                <button
+                  onClick={() => setAnalyticsOpen(true)}
+                  className="flex items-center gap-2 rounded-full bg-indigo-600 px-8 py-4 text-[11px] font-black text-white uppercase tracking-widest transition-all duration-300 hover:bg-indigo-700 hover:shadow-2xl hover:shadow-indigo-600/40 hover:-translate-y-1 active:scale-95 shadow-xl shadow-indigo-600/20"
+                >
+                  <span className="material-symbols-outlined text-[20px]">assessment</span>
+                  Analyze Tickets
+                </button>
               </div>
             </div>
           </section>
@@ -995,6 +1013,11 @@ function AdminTicketsPage() {
         editingCommentText={editingCommentText}
         setEditingCommentText={setEditingCommentText}
         onUpdateStatus={handleStatusChange}
+      />
+
+      <TicketAnalyticsModal
+        open={analyticsOpen}
+        onClose={() => setAnalyticsOpen(false)}
       />
     </div>
   )

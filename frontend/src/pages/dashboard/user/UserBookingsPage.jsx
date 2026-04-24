@@ -180,7 +180,7 @@ export default function UserBookingsPage() {
               <p className="mt-1 text-sm text-slate-500 text-slate-600">View and manage your facility requests.</p>
             </div>
             <Button variant="primary" onClick={() => navigate('/dashboard/user/resources')} className="rounded-xl px-6">
-              <span className="material-symbols-outlined mr-2">add</span> Request Room
+              <span className="material-symbols-outlined mr-2">add</span> Book Resource
             </Button>
           </div>
 
