@@ -26,4 +26,6 @@ public class ResourceResponseDTO extends RepresentationModel<ResourceResponseDTO
     private String imageUrl;
     private Instant createdAt;
     private Instant updatedAt;
+    private String createdByName;
+    private String updatedByName;
 }
