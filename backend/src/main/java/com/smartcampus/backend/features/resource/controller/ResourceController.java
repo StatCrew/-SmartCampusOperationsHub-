@@ -3,15 +3,16 @@ package com.smartcampus.backend.features.resource.controller;
 import com.smartcampus.backend.features.resource.dto.ResourceRequestDTO;
 import com.smartcampus.backend.features.resource.dto.ResourceResponseDTO;
 import com.smartcampus.backend.features.resource.service.ResourceService;
+import com.smartcampus.backend.features.user.model.User;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.hateoas.Link;
 import org.springframework.http.CacheControl;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -64,8 +65,10 @@ public class ResourceController {
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize("hasAnyRole('ADMIN', 'TECHNICIAN')")
-    public ResponseEntity<ResourceResponseDTO> createResource(@Valid @RequestBody ResourceRequestDTO resourceDTO) {
-        ResourceResponseDTO createdResource = addLinks(resourceService.createResource(resourceDTO));
+    public ResponseEntity<ResourceResponseDTO> createResource(
+            @Valid @RequestBody ResourceRequestDTO resourceDTO,
+            @AuthenticationPrincipal User currentUser) {
+        ResourceResponseDTO createdResource = addLinks(resourceService.createResource(resourceDTO, currentUser));
         URI location = linkTo(methodOn(ResourceController.class).getResourceById(createdResource.getId(), null))
                 .toUri();
         return ResponseEntity.created(location).body(createdResource);
@@ -118,8 +121,9 @@ public class ResourceController {
     @PreAuthorize("hasAnyRole('ADMIN', 'TECHNICIAN')")
     public ResponseEntity<ResourceResponseDTO> updateResource(
             @PathVariable Long id,
-            @Valid @RequestBody ResourceRequestDTO resourceDTO) {
-        return ResponseEntity.ok(addLinks(resourceService.updateResource(id, resourceDTO)));
+            @Valid @RequestBody ResourceRequestDTO resourceDTO,
+            @AuthenticationPrincipal User currentUser) {
+        return ResponseEntity.ok(addLinks(resourceService.updateResource(id, resourceDTO, currentUser)));
     }
 
     @DeleteMapping("/{id}")
@@ -142,7 +146,8 @@ public class ResourceController {
     @PreAuthorize("hasAnyRole('ADMIN', 'TECHNICIAN')")
     public ResponseEntity<ResourceResponseDTO> uploadResourceImage(
             @PathVariable Long id,
-            @RequestParam("file") MultipartFile file) {
-        return ResponseEntity.ok(addLinks(resourceService.uploadResourceImage(id, file)));
+            @RequestParam("file") MultipartFile file,
+            @AuthenticationPrincipal User currentUser) {
+        return ResponseEntity.ok(addLinks(resourceService.uploadResourceImage(id, file, currentUser)));
     }
 }

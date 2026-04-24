@@ -1,5 +1,6 @@
 package com.smartcampus.backend.features.resource.model;
 
+import com.smartcampus.backend.features.user.model.User;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.Instant;
@@ -45,4 +46,12 @@ public class Resource {
 
     @Column(name = "image_key")
     private String imageKey;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by_user_id")
+    private User createdBy;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "updated_by_user_id")
+    private User updatedBy;
 }

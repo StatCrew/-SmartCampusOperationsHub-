@@ -506,6 +506,18 @@ function AdminResourceCard({ resource, onEdit, onDelete, onSchedule, deletingId 
             <span className="material-symbols-outlined text-base text-slate-400">group</span>
             Capacity: {resource.capacity}
           </div>
+          {resource.createdByName ? (
+            <div className="flex items-center gap-2 text-xs text-slate-400">
+              <span className="material-symbols-outlined text-base text-slate-300">person_add</span>
+              <span>Created by <span className="font-medium text-slate-500">{resource.createdByName}</span></span>
+            </div>
+          ) : null}
+          {resource.updatedByName ? (
+            <div className="flex items-center gap-2 text-xs text-slate-400">
+              <span className="material-symbols-outlined text-base text-slate-300">edit</span>
+              <span>Updated by <span className="font-medium text-slate-500">{resource.updatedByName}</span></span>
+            </div>
+          ) : null}
         </div>
 
         {/* Admin actions */}
