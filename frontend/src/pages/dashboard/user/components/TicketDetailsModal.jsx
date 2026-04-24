@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 const STATUS_META = {
   OPEN: { label: 'Open', bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' },
@@ -20,7 +20,16 @@ function TicketBadge({ status }) {
 function formatDateTime(value) {
   if (!value) return '-'
   try {
-    return new Date(value).toLocaleString()
+    return new Date(value).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })
+  } catch {
+    return String(value)
+  }
+}
+
+function formatTimeOnly(value) {
+  if (!value) return '-'
+  try {
+    return new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   } catch {
     return String(value)
   }
@@ -80,6 +89,22 @@ export default function TicketDetailsModal({
 }) {
   const [rating, setRating] = useState(0)
   const [feedback, setFeedback] = useState('')
+  const scrollRef = useRef(null)
+
+  // Reset rating states when modal opens or ticket changes
+  useEffect(() => {
+    if (open) {
+      setRating(0)
+      setFeedback('')
+    }
+  }, [open, ticket?.id])
+
+  // Auto-scroll to bottom when comments change
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [ticket?.comments, open])
 
   if (!open || !ticket) {
     return null
@@ -272,10 +297,10 @@ export default function TicketDetailsModal({
               <div className="rounded-[2.5rem] bg-gradient-to-br from-indigo-500 to-indigo-600 p-8 text-white shadow-xl shadow-indigo-500/20 animate-in slide-in-from-bottom-4 duration-700">
                 <div className="flex items-center gap-3 mb-6">
                   <div className="h-8 w-8 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                    <span className="material-symbols-outlined text-[20px]">{ticket.rating > 0 ? 'verified' : 'star'}</span>
+                    <span className="material-symbols-outlined text-[20px]">{ticket.rating ? 'verified' : 'star'}</span>
                   </div>
                   <p className="text-[10px] font-black uppercase tracking-[0.25em] text-indigo-100">
-                    {ticket.rating > 0 ? 'Your Rating' : 'Rate this Resolution'}
+                    {ticket.rating ? 'Your Rating' : 'Rate this Resolution'}
                   </p>
                 </div>
                 
@@ -285,9 +310,9 @@ export default function TicketDetailsModal({
                       <button
                         key={star}
                         type="button"
-                        onClick={() => ticket.rating === 0 && setRating(star)}
-                        disabled={ticket.rating > 0}
-                        className={`material-symbols-outlined text-[36px] transition-all duration-300 ${ticket.rating === 0 ? 'hover:scale-125 active:scale-95' : ''} ${
+                        onClick={() => !ticket.rating && setRating(star)}
+                        disabled={!!ticket.rating}
+                        className={`material-symbols-outlined text-[36px] transition-all duration-300 ${!ticket.rating ? 'hover:scale-125 active:scale-95' : ''} ${
                           star <= (ticket.rating || rating) ? 'text-amber-300 fill-1 drop-shadow-[0_0_8px_rgba(252,211,77,0.5)]' : 'text-indigo-200/50 hover:text-indigo-100'
                         }`}
                       >
@@ -296,7 +321,7 @@ export default function TicketDetailsModal({
                     ))}
                   </div>
                   
-                  {ticket.rating > 0 ? (
+                  {ticket.rating ? (
                     <div className="flex-1">
                       <p className="text-sm font-bold text-indigo-50 leading-relaxed italic">
                         "{ticket.feedback || 'No written feedback provided.'}"
@@ -372,7 +397,7 @@ export default function TicketDetailsModal({
                               <p className="text-sm font-bold leading-relaxed pr-6">{comment.message}</p>
                               <div className={`flex items-center gap-2 mt-2 opacity-50 ${isMe ? 'justify-end' : 'justify-start'}`}>
                                 <span className="text-[9px] font-black tracking-widest uppercase">
-                                  {formatDateTime(comment.createdAt).split(',')[1]?.trim() || formatDateTime(comment.createdAt)}
+                                  {formatTimeOnly(comment.createdAt)}
                                 </span>
                                 {isMe && <span className="material-symbols-outlined text-[14px]">done_all</span>}
                               </div>
@@ -401,7 +426,7 @@ export default function TicketDetailsModal({
                         </div>
                         {!isMe && (
                           <span className="mt-1.5 ml-3 text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">
-                            {comment.createdBy || 'Staff Support'}
+                            {comment.userName || comment.createdBy || 'Staff Support'}
                           </span>
                         )}
                       </div>
@@ -415,6 +440,7 @@ export default function TicketDetailsModal({
                     <p className="text-sm font-black uppercase tracking-widest text-slate-400">No discussion yet</p>
                   </div>
                 )}
+                <div ref={scrollRef} />
               </div>
 
               {/* Chat Input Area */}
