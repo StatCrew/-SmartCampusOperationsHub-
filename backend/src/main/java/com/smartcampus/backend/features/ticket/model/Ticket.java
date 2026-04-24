@@ -1,6 +1,8 @@
 package com.smartcampus.backend.features.ticket.model;
 
 import com.smartcampus.backend.features.user.model.User;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -52,6 +54,7 @@ public class Ticket {
     //Relationship with User
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
+    @OnDelete(action = OnDeleteAction.CASCADE)
     private User user;
 
     @Convert(converter = TicketStatusAttributeConverter.class)
@@ -59,6 +62,7 @@ public class Ticket {
 
     @ManyToOne
     @JoinColumn(name = "technician_id")
+    @OnDelete(action = OnDeleteAction.CASCADE)
     private User technician;
 
     @OneToMany(mappedBy = "ticket", cascade = CascadeType.ALL, fetch = FetchType.EAGER)

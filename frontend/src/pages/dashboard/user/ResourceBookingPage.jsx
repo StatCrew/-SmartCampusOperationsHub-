@@ -233,7 +233,7 @@ export default function ResourceBookingPage() {
                     disabled={resource.status === 'OUT_OF_SERVICE'}
                   >
                     <span className="material-symbols-outlined mr-2 text-[20px]">calendar_add_on</span>
-                    {modifyData ? 'Request Change' : 'Secure This Space'}
+                    {modifyData ? 'Request Change' : 'Reserve Now'}
                   </Button>
                 </div>
 
