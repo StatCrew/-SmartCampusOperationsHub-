@@ -5,6 +5,7 @@ import com.smartcampus.backend.features.resource.dto.ResourceRequestDTO;
 import com.smartcampus.backend.features.resource.dto.ResourceResponseDTO;
 import com.smartcampus.backend.features.resource.model.Resource;
 import com.smartcampus.backend.features.resource.repository.ResourceRepository;
+import com.smartcampus.backend.features.user.model.User;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -24,7 +25,7 @@ public class ResourceServiceImpl implements ResourceService {
 
     @Override
     @Transactional
-    public ResourceResponseDTO createResource(ResourceRequestDTO dto) {
+    public ResourceResponseDTO createResource(ResourceRequestDTO dto, User createdBy) {
         Instant now = Instant.now();
         Resource resource = Resource.builder()
                 .name(dto.getName())
@@ -36,6 +37,8 @@ public class ResourceServiceImpl implements ResourceService {
                 .availabilityWindow(dto.getAvailabilityWindow())
                 .createdAt(now)
                 .updatedAt(now)
+                .createdBy(createdBy)
+                .updatedBy(createdBy)
                 .build();
 
         Resource savedResource = resourceRepository.save(resource);
@@ -60,11 +63,10 @@ public class ResourceServiceImpl implements ResourceService {
 
     @Override
     @Transactional
-    public ResourceResponseDTO updateResource(Long id, ResourceRequestDTO dto) {
+    public ResourceResponseDTO updateResource(Long id, ResourceRequestDTO dto, User updatedBy) {
         Resource existingResource = resourceRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Resource not found with id: " + id));
 
-        // Update fields (imageKey is managed separately via uploadResourceImage)
         existingResource.setName(dto.getName());
         existingResource.setType(dto.getType());
         existingResource.setCapacity(dto.getCapacity());
@@ -73,6 +75,7 @@ public class ResourceServiceImpl implements ResourceService {
         existingResource.setDescription(dto.getDescription());
         existingResource.setAvailabilityWindow(dto.getAvailabilityWindow());
         existingResource.setUpdatedAt(Instant.now());
+        existingResource.setUpdatedBy(updatedBy);
 
         Resource updatedResource = resourceRepository.save(existingResource);
         return mapToResponseDTO(updatedResource);
@@ -139,12 +142,13 @@ public class ResourceServiceImpl implements ResourceService {
 
     @Override
     @Transactional
-    public ResourceResponseDTO uploadResourceImage(Long id, MultipartFile file) {
+    public ResourceResponseDTO uploadResourceImage(Long id, MultipartFile file, User updatedBy) {
         Resource resource = resourceRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Resource not found with id: " + id));
         String key = storageService.uploadTestImage(file).key();
         resource.setImageKey(key);
         resource.setUpdatedAt(Instant.now());
+        resource.setUpdatedBy(updatedBy);
         return mapToResponseDTO(resourceRepository.save(resource));
     }
 
@@ -170,6 +174,8 @@ public class ResourceServiceImpl implements ResourceService {
                 .imageUrl(imageUrl)
                 .createdAt(resource.getCreatedAt())
                 .updatedAt(resource.getUpdatedAt())
+                .createdByName(resource.getCreatedBy() != null ? resource.getCreatedBy().getFullName() : null)
+                .updatedByName(resource.getUpdatedBy() != null ? resource.getUpdatedBy().getFullName() : null)
                 .build();
     }
 }
