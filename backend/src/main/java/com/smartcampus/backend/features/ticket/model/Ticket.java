@@ -65,6 +65,7 @@ public class Ticket {
     private List<TicketAttachment> attachments;
 
     @OneToMany(mappedBy = "ticket", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @OrderBy("createdAt ASC")
     private List<TicketComment> comments;
 
 

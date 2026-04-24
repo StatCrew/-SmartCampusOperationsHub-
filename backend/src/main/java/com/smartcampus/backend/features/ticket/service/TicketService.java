@@ -297,6 +297,7 @@ public class TicketService {
 
         ticket.setStatus(TicketStatus.REJECTED);
         ticket.setRejectionReason(reason);
+        ticket.setTechnician(null);
         ticket.setUpdatedAt(LocalDateTime.now());
 
         TicketComment comment = TicketComment.builder()
@@ -349,6 +350,20 @@ public class TicketService {
         if (ticket.getStatus() != TicketStatus.RESOLVED && ticket.getStatus() != TicketStatus.CLOSED) {
             throw new RuntimeException("You can only rate resolved or closed tickets");
         }
+
+        // AUTO COMMENT (Integration with Discussion Thread)
+        String stars = "⭐".repeat(Math.max(0, rating != null ? rating : 0));
+        String commentMessage = String.format("User rated the resolution: %s (%d/5).\nFeedback: %s",
+                stars, rating, (feedback != null && !feedback.isBlank() ? feedback : "No feedback provided."));
+
+        TicketComment comment = TicketComment.builder()
+                .message(commentMessage)
+                .ticket(ticket)
+                .user(user)
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        commentRepository.save(comment);
 
         ticket.setRating(rating);
         ticket.setFeedback(feedback);
