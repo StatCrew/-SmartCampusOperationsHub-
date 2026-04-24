@@ -1,73 +1,54 @@
-        commentService.deleteComment(commentId, user);
-        return commentService.updateComment(commentId, message, user);
-import com.smartcampus.backend.features.ticket.dto.CreateTicketCommentRequest;
-import com.smartcampus.backend.features.ticket.dto.TicketCommentResponse;
-    public TicketComment updateComment(
-    public List<TicketComment> getComments(@PathVariable Long ticketId) {
-        return commentService.addComment(ticketId, message, user);
-            @RequestParam String message,
-import org.springframework.security.access.prepost.PreAuthorize;
-    public TicketComment addComment(
 package com.smartcampus.backend.features.ticket.controller;
 
-import com.smartcampus.backend.features.ticket.model.TicketComment;
+import com.smartcampus.backend.features.ticket.dto.CreateTicketCommentRequest;
+import com.smartcampus.backend.features.ticket.dto.TicketCommentResponse;
 import com.smartcampus.backend.features.ticket.service.TicketCommentService;
 import com.smartcampus.backend.features.user.model.User;
-
 import lombok.RequiredArgsConstructor;
-@PreAuthorize("hasAnyRole('USER', 'ADMIN', 'TECHNICIAN')")
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
-    public TicketCommentResponse addComment(
+@RequestMapping("/api/tickets/{ticketId}/comments")
 @RequiredArgsConstructor
-            @RequestBody CreateTicketCommentRequest request,
+@PreAuthorize("hasAnyRole('USER', 'ADMIN', 'TECHNICIAN')")
+public class TicketCommentController {
 
     private final TicketCommentService commentService;
-        return commentService.addComment(ticketId, request, user);
-    // Add comment
+
     @PostMapping
-    public TicketComment addComment(
+    public TicketCommentResponse addComment(
             @PathVariable Long ticketId,
-    public List<TicketCommentResponse> getComments(@PathVariable Long ticketId) {
+            @RequestBody CreateTicketCommentRequest request,
             @AuthenticationPrincipal User user
     ) {
-        return commentService.addComment(ticketId, message, user);
+        return commentService.addComment(ticketId, request, user);
     }
 
-    @SuppressWarnings("unused")
-    public TicketCommentResponse updateComment(
     @GetMapping
-    public List<TicketComment> getComments(@PathVariable Long ticketId) {
-            @RequestBody CreateTicketCommentRequest request,
+    public List<TicketCommentResponse> getComments(@PathVariable Long ticketId) {
+        return commentService.getComments(ticketId);
     }
 
-        Long currentTicketId = ticketId;
-        java.util.Objects.requireNonNull(currentTicketId, "ticketId");
-        return commentService.updateComment(currentTicketId, commentId, request.message(), user);
     @PutMapping("/{commentId}")
-    public TicketComment updateComment(
+    public TicketCommentResponse updateComment(
             @PathVariable Long ticketId,
             @PathVariable Long commentId,
-    @SuppressWarnings("unused")
-            @RequestParam String message,
+            @RequestBody CreateTicketCommentRequest request,
             @AuthenticationPrincipal User user
     ) {
-        return commentService.updateComment(commentId, message, user);
+        return commentService.updateComment(ticketId, commentId, request.message(), user);
     }
-        Long currentTicketId = ticketId;
-        java.util.Objects.requireNonNull(currentTicketId, "ticketId");
-        commentService.deleteComment(currentTicketId, commentId, user);
-    // Delete comments
+
     @DeleteMapping("/{commentId}")
     public void deleteComment(
             @PathVariable Long ticketId,
             @PathVariable Long commentId,
             @AuthenticationPrincipal User user
     ) {
-        commentService.deleteComment(commentId, user);
+        commentService.deleteComment(ticketId, commentId, user);
     }
 }

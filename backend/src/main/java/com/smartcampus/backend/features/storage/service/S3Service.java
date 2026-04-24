@@ -10,6 +10,7 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 
 import java.io.IOException;
@@ -42,4 +43,23 @@ public class S3Service {
         }
 
         return "https://" + s3Properties.bucket() + ".s3.amazonaws.com/" + fileName;
+    }
+
+    public String generatePresignedUrl(String key) {
+        GetObjectRequest getObjectRequest = GetObjectRequest.builder()
+                .bucket(s3Properties.bucket())
+                .key(key)
+                .build();
+
+        GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
+                .signatureDuration(Duration.ofMinutes(s3Properties.presignMinutes()))
+                .getObjectRequest(getObjectRequest)
+                .build();
+
+        return s3Presigner.presignGetObject(presignRequest).url().toString();
+    }
+
+    public int getPresignMinutes() {
+        return s3Properties.presignMinutes();
+    }
 }
