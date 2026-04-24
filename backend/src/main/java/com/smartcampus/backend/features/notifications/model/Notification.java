@@ -2,6 +2,8 @@ package com.smartcampus.backend.features.notifications.model;
 
 import com.smartcampus.backend.features.user.model.Role;
 import com.smartcampus.backend.features.user.model.User;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -39,6 +41,7 @@ public class Notification {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "recipient_user_id")
+    @OnDelete(action = OnDeleteAction.CASCADE)
     private User recipientUser;
 
     @Enumerated(EnumType.STRING)
