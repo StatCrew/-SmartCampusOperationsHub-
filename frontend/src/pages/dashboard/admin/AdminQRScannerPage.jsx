@@ -134,7 +134,12 @@ export default function AdminQRScannerPage() {
       />
 
       <div className={`min-h-screen transition-all duration-300 ${isSidebarExpanded ? 'md:pl-64' : 'md:pl-20'}`}>
-        <UserDashboardHeader onLogout={handleLogout} eyebrow="Admin Check-in" title="Facility Access Control" />
+        <UserDashboardHeader 
+          onLogout={handleLogout} 
+          eyebrow="Admin Check-in" 
+          title="Facility Access Control" 
+          onToggleSidebar={() => setIsSidebarExpanded((prev) => !prev)}
+        />
 
         <main className="mx-auto w-full max-w-5xl p-6 md:p-8 flex flex-col items-center">
 

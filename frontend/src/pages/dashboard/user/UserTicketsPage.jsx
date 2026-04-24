@@ -267,7 +267,11 @@ function UserTicketsPage() {
       />
 
       <div className={`min-h-screen transition-all duration-300 ${isSidebarExpanded ? 'md:pl-64' : 'md:pl-20'}`}>
-        <UserDashboardHeader eyebrow={headerLabels.eyebrow} title="Tickets" />
+        <UserDashboardHeader 
+          eyebrow={headerLabels.eyebrow} 
+          title="Tickets" 
+          onToggleSidebar={() => setIsSidebarExpanded(prev => !prev)}
+        />
 
         <main className="mx-auto w-full max-w-7xl p-4 pb-24 md:p-8">
           {errorMessage ? (

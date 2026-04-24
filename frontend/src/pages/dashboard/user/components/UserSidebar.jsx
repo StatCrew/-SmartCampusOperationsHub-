@@ -10,8 +10,11 @@ function UserSidebar({
 }) {
   return (
     <aside
-      className={`fixed left-0 top-0 z-40 hidden h-screen flex-col border-r border-slate-200 bg-white p-3 shadow-sm transition-all duration-300 md:flex ${isSidebarExpanded ? 'w-64' : 'w-20'
-        }`}
+      className={`fixed left-0 top-0 z-40 flex h-screen flex-col border-r border-slate-200 bg-white p-3 shadow-sm transition-all duration-300 ${
+        isSidebarExpanded 
+          ? 'w-64 translate-x-0' 
+          : 'w-20 -translate-x-full md:translate-x-0'
+      }`}
     >
       <div className="mb-6 flex items-center justify-between gap-2 px-2 py-2">
         <div className={`flex items-center gap-2 overflow-hidden ${isSidebarExpanded ? 'opacity-100' : 'justify-center'}`}>

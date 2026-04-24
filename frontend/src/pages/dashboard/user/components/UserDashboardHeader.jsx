@@ -17,7 +17,7 @@ function getInitials(nameOrEmail) {
   return source.slice(0, 2).toUpperCase()
 }
 
-function UserDashboardHeader({ eyebrow = 'Student Profile', title = 'My Account' }) {
+function UserDashboardHeader({ eyebrow = 'Student Profile', title = 'My Account', onToggleSidebar }) {
   const navigate = useNavigate()
   const { role, token, user, getApiErrorMessage } = useAuth()
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
@@ -85,9 +85,19 @@ function UserDashboardHeader({ eyebrow = 'Student Profile', title = 'My Account'
 
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between border-b border-slate-200 bg-white/90 px-4 py-3 backdrop-blur md:px-6">
-      <div>
-        <p className="text-xs uppercase tracking-[0.2em] text-slate-400">{eyebrow}</p>
-        <h1 className="text-xl font-semibold text-slate-900">{title}</h1>
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={onToggleSidebar}
+          className="grid h-10 w-10 place-items-center rounded-lg text-slate-500 transition hover:bg-slate-100 md:hidden"
+          aria-label="Toggle Menu"
+        >
+          <span className="material-symbols-outlined">menu</span>
+        </button>
+        <div>
+          <p className="text-xs uppercase tracking-[0.2em] text-slate-400">{eyebrow}</p>
+          <h1 className="text-xl font-semibold text-slate-900">{title}</h1>
+        </div>
       </div>
 
       <div className="flex items-center gap-2">

@@ -96,7 +96,11 @@ function AdminStorageTestPage() {
       />
 
       <div className={`min-h-screen transition-all duration-300 ${isSidebarExpanded ? 'md:pl-64' : 'md:pl-20'}`}>
-        <UserDashboardHeader eyebrow={headerLabels.eyebrow} title="S3 Upload Test" />
+        <UserDashboardHeader 
+          eyebrow={headerLabels.eyebrow} 
+          title="S3 Upload Test" 
+          onToggleSidebar={() => setIsSidebarExpanded((prev) => !prev)}
+        />
 
         <main className="mx-auto w-full max-w-3xl p-4 pb-24 md:p-8">
           <section className="rounded-2xl bg-white p-6 shadow-sm">

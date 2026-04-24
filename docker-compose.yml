@@ -2,23 +2,33 @@
 
 services:
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      network: host
     ports:
       - "8080:8080"
     env_file:
       - .env
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
     restart: on-failure
     networks:
       - smartcampus-network
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      network: host
     ports:
       - "3000:80"
     env_file:
       - .env
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
     depends_on:
       - backend
     networks:

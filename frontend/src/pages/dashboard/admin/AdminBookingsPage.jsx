@@ -434,7 +434,12 @@ export default function AdminBookingsPage() {
       />
 
       <div className={`min-h-screen transition-all duration-300 ${isSidebarExpanded ? 'md:pl-64' : 'md:pl-20'}`}>
-        <UserDashboardHeader onLogout={handleLogout} eyebrow="Campus Operations" title="Facility Bookings" />
+        <UserDashboardHeader 
+          onLogout={handleLogout} 
+          eyebrow="Campus Operations" 
+          title="Facility Bookings" 
+          onToggleSidebar={() => setIsSidebarExpanded(prev => !prev)}
+        />
 
         <main className="mx-auto w-full max-w-6xl p-4 md:p-8 pb-32 space-y-8">
           {errorMessage && (

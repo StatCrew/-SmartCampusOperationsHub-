@@ -4,7 +4,7 @@ function getApiBaseUrl() {
   return (
     import.meta.env.VITE_API_BASE_URL ||
     import.meta.env.VITE_BACKEND_API_URL ||
-    'http://localhost:8080'
+    'https://smartcampushub.duckdns.org'
   ).replace(/\/$/, '')
 }
 

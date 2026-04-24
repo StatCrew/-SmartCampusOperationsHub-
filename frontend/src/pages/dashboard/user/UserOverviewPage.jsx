@@ -39,6 +39,7 @@ function UserOverviewPage() {
           onLogout={handleLogout}
           eyebrow={headerLabels.eyebrow}
           title={headerLabels.title}
+          onToggleSidebar={() => setIsSidebarExpanded((prev) => !prev)}
         />
 
         <main className="mx-auto w-full max-w-6xl p-4 pb-24 md:p-8">

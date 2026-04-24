@@ -284,7 +284,12 @@ export default function AdminBookingAnalyticsPage() {
       />
 
       <div style={{ minHeight: '100vh', transition: 'padding-left 0.3s', paddingLeft: isSidebarExpanded ? 256 : 80 }}>
-        <UserDashboardHeader onLogout={handleLogout} eyebrow="Admin" title="Campus Analytics" />
+        <UserDashboardHeader 
+          onLogout={handleLogout} 
+          eyebrow="Admin" 
+          title="Campus Analytics" 
+          onToggleSidebar={() => setIsSidebarExpanded((prev) => !prev)}
+        />
 
         <main style={{ maxWidth: 1100, margin: '0 auto', padding: '2rem 1.5rem 5rem', display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
 

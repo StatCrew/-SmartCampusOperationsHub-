@@ -198,7 +198,12 @@ export default function AdminResourceAnalyticsPage() {
       />
 
       <div className={`min-h-screen transition-all duration-300 ${isSidebarExpanded ? 'md:pl-64' : 'md:pl-20'}`}>
-        <UserDashboardHeader onLogout={handleLogout} eyebrow={headerLabels.eyebrow} title="Resource Analytics" />
+        <UserDashboardHeader 
+          onLogout={handleLogout} 
+          eyebrow={headerLabels.eyebrow} 
+          title="Resource Analytics" 
+          onToggleSidebar={() => setIsSidebarExpanded((prev) => !prev)}
+        />
 
         <main className="mx-auto w-full max-w-6xl p-4 pb-24 md:p-8">
 

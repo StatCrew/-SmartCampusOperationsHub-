@@ -129,6 +129,7 @@ function CreateUserPage() {
           onLogout={handleLogout}
           eyebrow={headerLabels.eyebrow}
           title="Create User"
+          onToggleSidebar={() => setIsSidebarExpanded((prev) => !prev)}
         />
 
         <main className="mx-auto w-full max-w-3xl p-4 pb-24 md:p-8">
