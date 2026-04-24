@@ -26,6 +26,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
 
     private final UserRepository userRepository;
     private final ObjectProvider<AuthService> authServiceProvider;
+    private final HttpCookieOAuth2AuthorizationRequestRepository cookieAuthorizationRequestRepository;
 
     @Value("${app.oauth2.success-redirect-uri:http://localhost:5173/oauth/callback}")
     private String successRedirectUri;
@@ -35,8 +36,8 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request,
-                                        HttpServletResponse response,
-                                        Authentication authentication) throws IOException {
+                                         HttpServletResponse response,
+                                         Authentication authentication) throws IOException {
         OAuth2User principal = (OAuth2User) authentication.getPrincipal();
         Map<String, Object> attributes = principal.getAttributes();
         String email = String.valueOf(attributes.getOrDefault("email", "")).toLowerCase().trim();
@@ -58,14 +59,22 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         });
 
         if (!user.isEnabled()) {
-            response.sendRedirect(failureRedirectUri + "&message=" + encode("Your account is inactive. Contact an administrator"));
+            String redirectUrl = failureRedirectUri.contains("localhost:5173") && !System.getProperty("os.name").toLowerCase().contains("win")
+                    ? failureRedirectUri.replace("http://localhost:5173", "https://smartcampushub.duckdns.org")
+                    : failureRedirectUri;
+            response.sendRedirect(redirectUrl + "&message=" + encode("Your account is inactive. Contact an administrator"));
             return;
         }
 
         AuthResponse authResponse = authServiceProvider.getObject().issueOAuthToken(user);
-
         AuthResponse.UserSummary summary = authResponse.user();
-        String redirectUrl = successRedirectUri
+
+        String redirectBase = successRedirectUri;
+        if (redirectBase.contains("localhost:5173") && !System.getProperty("os.name").toLowerCase().contains("win")) {
+            redirectBase = redirectBase.replace("http://localhost:5173", "https://smartcampushub.duckdns.org");
+        }
+
+        String redirectUrl = redirectBase
                 + "?accessToken=" + encode(authResponse.accessToken())
                 + "&refreshToken=" + encode(authResponse.refreshToken())
                 + "&tokenType=" + encode(authResponse.tokenType())
@@ -77,6 +86,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
                 + "&active=" + summary.active()
                 + "&provider=" + encode(summary.provider());
 
+        cookieAuthorizationRequestRepository.removeAuthorizationRequestCookies(request, response);
         response.sendRedirect(redirectUrl);
     }
 

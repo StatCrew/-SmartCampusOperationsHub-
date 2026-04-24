@@ -5,6 +5,7 @@ import com.smartcampus.backend.security.jwt.JwtAuthFilter;
 import com.smartcampus.backend.security.jwt.JwtProperties;
 import com.smartcampus.backend.security.oauth.CustomOAuth2UserService;
 import com.smartcampus.backend.security.oauth.OAuth2SuccessHandler;
+import com.smartcampus.backend.security.oauth.HttpCookieOAuth2AuthorizationRequestRepository;
 import java.io.IOException;
 import java.util.List;
 import org.springframework.beans.factory.ObjectProvider;
@@ -47,17 +48,20 @@ public class SecurityConfig {
     private final OAuth2SuccessHandler oAuth2SuccessHandler;
     private final CustomOAuth2UserService customOAuth2UserService;
     private final ObjectProvider<ClientRegistrationRepository> clientRegistrationRepositoryProvider;
+    private final HttpCookieOAuth2AuthorizationRequestRepository cookieAuthorizationRequestRepository;
 
     public SecurityConfig(JwtAuthFilter jwtAuthFilter,
                           CustomUserDetailsService userDetailsService,
                           OAuth2SuccessHandler oAuth2SuccessHandler,
                           CustomOAuth2UserService customOAuth2UserService,
-                          ObjectProvider<ClientRegistrationRepository> clientRegistrationRepositoryProvider) {
+                          ObjectProvider<ClientRegistrationRepository> clientRegistrationRepositoryProvider,
+                          HttpCookieOAuth2AuthorizationRequestRepository cookieAuthorizationRequestRepository) {
         this.jwtAuthFilter = jwtAuthFilter;
         this.userDetailsService = userDetailsService;
         this.oAuth2SuccessHandler = oAuth2SuccessHandler;
         this.customOAuth2UserService = customOAuth2UserService;
         this.clientRegistrationRepositoryProvider = clientRegistrationRepositoryProvider;
+        this.cookieAuthorizationRequestRepository = cookieAuthorizationRequestRepository;
     }
 
     @Bean
@@ -67,7 +71,7 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authenticationProvider(authenticationProvider())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
@@ -85,7 +89,7 @@ public class SecurityConfig {
                         .requestMatchers("/error").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/auth/me").authenticated()
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/api/technician/**").hasRole("TECHNICIAN") // NEW Lakdu
+                        .requestMatchers("/api/technician/**").hasRole("TECHNICIAN")
                         .anyRequest().authenticated())
                 .exceptionHandling(ex -> ex
                         .defaultAuthenticationEntryPointFor(
@@ -98,6 +102,11 @@ public class SecurityConfig {
 
         if (clientRegistrationRepositoryProvider.getIfAvailable() != null) {
             http.oauth2Login(oauth2 -> oauth2
+                    .authorizationEndpoint(auth -> auth
+                            .baseUri("/oauth2/authorization")
+                            .authorizationRequestRepository(cookieAuthorizationRequestRepository))
+                    .redirectionEndpoint(redirection -> redirection
+                            .baseUri("/login/oauth2/code/*"))
                     .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
                     .successHandler(oAuth2SuccessHandler)
                     .failureHandler((request, response, exception) -> sendOAuthFailureRedirect(response, exception)));
@@ -109,7 +118,14 @@ public class SecurityConfig {
     private void sendOAuthFailureRedirect(HttpServletResponse response, Exception exception) throws IOException {
         String message = exception == null ? "oauth_failed" : exception.getMessage();
         String separator = oauthFailureRedirectUri.contains("?") ? "&" : "?";
-        response.sendRedirect(oauthFailureRedirectUri + separator + "message="
+        
+        // Ensure redirect URI is correct for production if fallback is used
+        String redirectBase = oauthFailureRedirectUri;
+        if (redirectBase.contains("localhost:5173") && !System.getProperty("os.name").toLowerCase().contains("win")) {
+             redirectBase = redirectBase.replace("http://localhost:5173", "https://smartcampushub.duckdns.org");
+        }
+
+        response.sendRedirect(redirectBase + separator + "message="
                 + java.net.URLEncoder.encode(message, java.nio.charset.StandardCharsets.UTF_8));
     }
 
@@ -134,14 +150,18 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("*"));
+        config.setAllowedOrigins(List.of(
+            "https://smartcampushub.duckdns.org", 
+            "http://localhost:5173", 
+            "http://localhost:3000"
+        ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
-        config.setAllowCredentials(false);
+        config.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
 
         return source;
     }
-}
+}
