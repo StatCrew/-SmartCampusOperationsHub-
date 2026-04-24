@@ -345,7 +345,7 @@ public class AuthService {
                 authenticatedUser.getRole().name(),
                 authenticatedUser.isEmailVerified(),
                 Boolean.TRUE.equals(authenticatedUser.getActive()),
-                authenticatedUser.getProvider().name(),
+                authenticatedUser.getProvider() != null ? authenticatedUser.getProvider().name() : "LOCAL",
                 authenticatedUser.getPhoneNumber());
     }
 
@@ -385,7 +385,7 @@ public class AuthService {
                 user.getRole().name(),
                 user.isEmailVerified(),
                 Boolean.TRUE.equals(user.getActive()),
-                user.getProvider().name(),
+                user.getProvider() != null ? user.getProvider().name() : "LOCAL",
                 user.getPhoneNumber());
 
         return new AuthResponse(accessToken, refreshToken, "Bearer", summary);

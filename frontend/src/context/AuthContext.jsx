@@ -16,7 +16,8 @@ function normalizeAuthPayload(data) {
   const token = data?.token || data?.accessToken || null
   const refreshToken = data?.refreshToken || null
   const tokenType = data?.tokenType || 'Bearer'
-  const role = data?.role || data?.user?.role || null
+  const roleRaw = data?.role || data?.user?.role || null
+  const role = roleRaw ? String(roleRaw).toUpperCase() : null
   const active = typeof data?.active === 'boolean' ? data.active : data?.user?.active
   const user = data?.user || null
 

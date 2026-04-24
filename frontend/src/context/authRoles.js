@@ -5,5 +5,6 @@ export const ROLE_DASHBOARD_PATHS = {
 }
 
 export function getDashboardPathByRole(role) {
-  return ROLE_DASHBOARD_PATHS[role] || '/signin'
+  const normalizedRole = String(role || '').toUpperCase()
+  return ROLE_DASHBOARD_PATHS[normalizedRole] || '/signin'
 }
