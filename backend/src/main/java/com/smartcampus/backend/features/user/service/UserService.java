@@ -27,6 +27,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.HexFormat;
 import java.util.concurrent.ThreadLocalRandom;
 import lombok.RequiredArgsConstructor;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -50,6 +51,7 @@ public class UserService {
     private final EmailVerificationNotificationService emailVerificationNotificationService;
     private final AuthService authService;
     private final NotificationEventPublisher notificationEventPublisher;
+    private final JdbcTemplate jdbcTemplate;
 
     @Transactional(readOnly = true)
     public UserResponse getMyProfile(User authenticatedUser) {
@@ -324,6 +326,22 @@ public class UserService {
         }
 
         User user = getUserOrThrow(id);
+        
+        // Manual Cascade Deletion due to DB constraint limitations
+        jdbcTemplate.update("DELETE FROM notifications WHERE recipient_user_id = ?", id);
+        jdbcTemplate.update("DELETE FROM refresh_tokens WHERE user_id = ?", id);
+        jdbcTemplate.update("DELETE FROM email_verification_otps WHERE user_id = ?", id);
+        jdbcTemplate.update("DELETE FROM password_reset_otps WHERE user_id = ?", id);
+        jdbcTemplate.update("DELETE FROM email_change_otps WHERE user_id = ?", id);
+        jdbcTemplate.update("DELETE FROM bookings WHERE user_id = ?", id);
+        
+        // Handle Tickets (can be requester or technician)
+        // First delete attachments and comments linked to user's tickets
+        jdbcTemplate.update("DELETE FROM ticket_attachments WHERE ticket_id IN (SELECT id FROM tickets WHERE user_id = ? OR technician_id = ?)", id, id);
+        jdbcTemplate.update("DELETE FROM ticket_comments WHERE ticket_id IN (SELECT id FROM tickets WHERE user_id = ? OR technician_id = ?)", id, id);
+        jdbcTemplate.update("DELETE FROM ticket_comments WHERE user_id = ?", id);
+        jdbcTemplate.update("DELETE FROM tickets WHERE user_id = ? OR technician_id = ?", id, id);
+
         userRepository.delete(user);
     }
 
