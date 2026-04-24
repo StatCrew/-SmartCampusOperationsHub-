@@ -168,6 +168,11 @@ export async function rejectAdminTicket(id, reason) {
   return response.data
 }
 
+export async function getTicketAnalytics() {
+  const response = await apiClient.get(`${ADMIN_TICKETS_PREFIX}/analytics`)
+  return response.data
+}
+
 export async function getTechnicianTickets(params = {}) {
   const response = await apiClient.get(TECHNICIAN_TICKETS_PREFIX, { params: buildParams(params) })
   return normalizeCollection(response.data)
