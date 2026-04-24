@@ -115,7 +115,7 @@ public class AuthService {
                     new UsernamePasswordAuthenticationToken(normalizedEmail, request.password()));
             User user = (User) authentication.getPrincipal();
 
-            if (user.getProvider() == AuthProvider.LOCAL && !user.isEmailVerified()) {
+            if (AuthProvider.LOCAL.equals(user.getProvider()) && !user.isEmailVerified()) {
                 throw new ResponseStatusException(FORBIDDEN, "Email is not verified. Verify your email before login");
             }
 
